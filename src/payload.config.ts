@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 
 import { Categories } from './collections/Categories'
 import { Media } from './collections/Media'
+// import { Messages } from './collections/Messages' // Temporarily disabled
 import { Pages } from './collections/Pages'
 import { Posts } from './collections/Posts'
 import { Users } from './collections/Users'
@@ -61,8 +62,10 @@ export default buildConfig({
   editor: defaultLexical,
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URI || '',
+      connectionString: process.env.DATABASE_URL || process.env.DATABASE_URI || '',
     },
+    migrationDir: path.resolve(dirname, 'migrations'),
+    push: false, // Disable auto-push of schema changes
   }),
   collections: [Pages, Posts, Media, Categories, Users],
   cors: [getServerSideURL()].filter(Boolean),
