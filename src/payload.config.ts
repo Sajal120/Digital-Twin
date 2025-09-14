@@ -12,6 +12,13 @@ import { Media } from './collections/Media'
 import { Pages } from './collections/Pages'
 import { Posts } from './collections/Posts'
 import { Users } from './collections/Users'
+// Admin collections - re-enabling
+import { PortfolioContent } from './collections/PortfolioContent'
+import { ChatAnalytics, SystemLogs } from './collections/AnalyticsCollections'
+import { ContentChunks } from './collections/ContentChunks'
+import { EmbeddingOperations } from './collections/EmbeddingOperations'
+import { DatabaseOperations } from './collections/DatabaseOperations'
+import { AuditLogs } from './collections/AuditLogs'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -65,9 +72,24 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URL || process.env.DATABASE_URI || '',
     },
     migrationDir: path.resolve(dirname, 'migrations'),
-    push: false, // Disable auto-push of schema changes
+    push: true, // Enable push mode to auto-create admin collection schema
   }),
-  collections: [Pages, Posts, Media, Categories, Users],
+  collections: [
+    // Core CMS collections
+    Pages,
+    Posts,
+    Media,
+    Categories,
+    Users,
+    // Portfolio Admin collections - re-enabled
+    PortfolioContent,
+    ChatAnalytics,
+    SystemLogs,
+    ContentChunks,
+    EmbeddingOperations,
+    DatabaseOperations,
+    AuditLogs,
+  ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
   plugins: [

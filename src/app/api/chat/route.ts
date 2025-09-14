@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ChatDatabase } from '@/utilities/database'
+import { getPayload } from 'payload'
+import configPromise from '@payload-config'
+import { Index } from '@upstash/vector'
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,6 +78,148 @@ async function generatePortfolioResponse(
   message: string,
   conversationHistory: any[],
 ): Promise<string> {
+  try {
+    // First, try vector search from Upstash
+    console.log(`Searching vector database for: "${message}"`)
+
+    try {
+      // Initialize Upstash Vector client
+      console.log('Initializing Upstash Vector client...')
+      const index = new Index({
+        url: process.env.UPSTASH_VECTOR_REST_URL!,
+        token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
+      })
+
+      // Query vector database - Upstash handles embedding generation automatically
+      console.log(`Searching vector database for: "${message}"`)
+      const vectorResults = await index.query({
+        data: message,
+        topK: 3,
+        includeMetadata: true,
+        includeData: true, // Include the actual vector data
+      })
+
+      console.log('Vector search results:', JSON.stringify(vectorResults, null, 2))
+
+      // Check if we have results
+      if (vectorResults && vectorResults.length > 0) {
+        const bestMatch = vectorResults[0]
+        console.log(`Found vector match with score: ${bestMatch.score}`)
+
+        // Check score threshold (adjust based on your data quality)
+        if (bestMatch.score >= 0.5) {
+          // Try different metadata field names that might contain the answer
+          if (bestMatch.metadata) {
+            console.log('Metadata:', JSON.stringify(bestMatch.metadata, null, 2))
+
+            // Try various common field names from your Upstash data
+            const possibleAnswerFields = [
+              'answer',
+              'content',
+              'response',
+              'text',
+              'message',
+              'description',
+              'summary',
+              'details',
+            ]
+
+            for (const field of possibleAnswerFields) {
+              if (bestMatch.metadata[field]) {
+                console.log(`Using vector result from metadata field: ${field}`)
+                return bestMatch.metadata[field] as string
+              }
+            }
+
+            // If we have a title and content type, generate a contextual response
+            if (bestMatch.metadata.title && bestMatch.metadata.content_type) {
+              const title = bestMatch.metadata.title
+              const contentType = bestMatch.metadata.content_type
+              const keywords = Array.isArray(bestMatch.metadata.keywords)
+                ? bestMatch.metadata.keywords
+                : []
+
+              console.log(`Generating response from metadata: ${title} (${contentType})`)
+
+              // Generate contextual response based on the matched content
+              if (keywords.length > 0) {
+                return `Based on my ${contentType} experience with "${title}", I work with technologies like ${keywords.join(', ')}. This project demonstrates my expertise in these areas.`
+              } else {
+                return `I have experience with "${title}" in the ${contentType} domain. This demonstrates my expertise in this area.`
+              }
+            }
+          }
+
+          // If no metadata content found, try the vector data itself
+          if (bestMatch.data) {
+            console.log('Using vector data field')
+            return bestMatch.data as string
+          }
+        } else {
+          console.log(`Score ${bestMatch.score} below threshold 0.5`)
+        }
+      } else {
+        console.log('No vector results found')
+      }
+    } catch (vectorError) {
+      console.error('Vector search exception:', vectorError)
+      console.log('Vector search unavailable, falling back to database')
+    }
+
+    // Fallback to direct database query
+    const messageLower = message.toLowerCase().trim()
+    console.log(`Looking for content matching: "${messageLower}"`)
+
+    // Direct database query for testing
+    const { Pool } = require('pg')
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+    })
+
+    const query = `
+      SELECT cc.content, ck.keyword 
+      FROM content_chunks cc 
+      JOIN content_chunks_keywords ck ON cc.id = ck._parent_id 
+      WHERE cc.is_active = true 
+      AND LOWER(ck.keyword) = $1
+      LIMIT 1
+    `
+
+    const result = await pool.query(query, [messageLower])
+
+    if (result.rows.length > 0) {
+      console.log(`Found content for keyword: "${result.rows[0].keyword}"`)
+      pool.end()
+      return result.rows[0].content
+    }
+
+    // Try partial matches
+    const partialQuery = `
+      SELECT cc.content, ck.keyword 
+      FROM content_chunks cc 
+      JOIN content_chunks_keywords ck ON cc.id = ck._parent_id 
+      WHERE cc.is_active = true 
+      AND $1 LIKE '%' || LOWER(ck.keyword) || '%'
+      ORDER BY LENGTH(ck.keyword) DESC
+      LIMIT 1
+    `
+
+    const partialResult = await pool.query(partialQuery, [messageLower])
+
+    if (partialResult.rows.length > 0) {
+      console.log(`Found partial content for keyword: "${partialResult.rows[0].keyword}"`)
+      pool.end()
+      return partialResult.rows[0].content
+    }
+
+    pool.end()
+    console.log(`No database content found for: "${messageLower}"`)
+  } catch (error) {
+    console.error('Database error:', error)
+  }
+
+  // Fallback to the existing keyword-based responses
+  console.log('Using fallback responses')
   // This simulates responses based on keywords - in production this would use your RAG system
   // You could integrate with Upstash Vector or other vector databases here
 

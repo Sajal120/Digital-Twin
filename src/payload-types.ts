@@ -72,6 +72,13 @@ export interface Config {
     media: Media;
     categories: Category;
     users: User;
+    'portfolio-content': PortfolioContent;
+    'chat-analytics': ChatAnalytic;
+    'system-logs': SystemLog;
+    'content-chunks': ContentChunk;
+    'embedding-operations': EmbeddingOperation;
+    'database-operations': DatabaseOperation;
+    'audit-logs': AuditLog;
     redirects: Redirect;
     forms: Form;
     'form-submissions': FormSubmission;
@@ -88,6 +95,13 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
+    'portfolio-content': PortfolioContentSelect<false> | PortfolioContentSelect<true>;
+    'chat-analytics': ChatAnalyticsSelect<false> | ChatAnalyticsSelect<true>;
+    'system-logs': SystemLogsSelect<false> | SystemLogsSelect<true>;
+    'content-chunks': ContentChunksSelect<false> | ContentChunksSelect<true>;
+    'embedding-operations': EmbeddingOperationsSelect<false> | EmbeddingOperationsSelect<true>;
+    'database-operations': DatabaseOperationsSelect<false> | DatabaseOperationsSelect<true>;
+    'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
@@ -735,6 +749,815 @@ export interface Form {
   createdAt: string;
 }
 /**
+ * Manage all portfolio content including personal info, experience, skills, and projects
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "portfolio-content".
+ */
+export interface PortfolioContent {
+  id: number;
+  /**
+   * Title for this content section
+   */
+  title: string;
+  /**
+   * Which section of the portfolio this content belongs to
+   */
+  section: 'personal' | 'about' | 'experience' | 'skills' | 'projects' | 'education' | 'achievements' | 'contact';
+  /**
+   * Whether this content is currently active on the portfolio
+   */
+  isActive?: boolean | null;
+  /**
+   * Display order (higher numbers appear first)
+   */
+  priority?: number | null;
+  content?: {
+    personalInfo?: {
+      fullName: string;
+      title: string;
+      tagline?: string | null;
+      location?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      website?: string | null;
+      profileImage?: (number | null) | Media;
+    };
+    aboutMe?: {
+      summary: {
+        root: {
+          type: string;
+          children: {
+            type: string;
+            version: number;
+            [k: string]: unknown;
+          }[];
+          direction: ('ltr' | 'rtl') | null;
+          format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+          indent: number;
+          version: number;
+        };
+        [k: string]: unknown;
+      };
+      highlights?:
+        | {
+            highlight: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    experience?: {
+      position: string;
+      company: string;
+      companyUrl?: string | null;
+      location?: string | null;
+      startDate: string;
+      endDate?: string | null;
+      current?: boolean | null;
+      description: {
+        root: {
+          type: string;
+          children: {
+            type: string;
+            version: number;
+            [k: string]: unknown;
+          }[];
+          direction: ('ltr' | 'rtl') | null;
+          format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+          indent: number;
+          version: number;
+        };
+        [k: string]: unknown;
+      };
+      achievements?:
+        | {
+            achievement: string;
+            id?: string | null;
+          }[]
+        | null;
+      technologies?:
+        | {
+            technology: string;
+            id?: string | null;
+          }[]
+        | null;
+    };
+    skills?: {
+      category: string;
+      skillList: {
+        name: string;
+        level?: ('beginner' | 'intermediate' | 'advanced' | 'expert') | null;
+        yearsOfExperience?: number | null;
+        id?: string | null;
+      }[];
+    };
+    project?: {
+      name: string;
+      description: {
+        root: {
+          type: string;
+          children: {
+            type: string;
+            version: number;
+            [k: string]: unknown;
+          }[];
+          direction: ('ltr' | 'rtl') | null;
+          format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+          indent: number;
+          version: number;
+        };
+        [k: string]: unknown;
+      };
+      shortDescription?: string | null;
+      technologies: {
+        technology: string;
+        id?: string | null;
+      }[];
+      projectUrl?: string | null;
+      githubUrl?: string | null;
+      demoUrl?: string | null;
+      images?:
+        | {
+            image: number | Media;
+            caption?: string | null;
+            id?: string | null;
+          }[]
+        | null;
+      featured?: boolean | null;
+      startDate?: string | null;
+      endDate?: string | null;
+      status?: ('completed' | 'in-progress' | 'on-hold' | 'planned') | null;
+    };
+    education?: {
+      institution: string;
+      degree: string;
+      field?: string | null;
+      startDate: string;
+      endDate?: string | null;
+      current?: boolean | null;
+      gpa?: string | null;
+      honors?:
+        | {
+            honor: string;
+            id?: string | null;
+          }[]
+        | null;
+      description?: {
+        root: {
+          type: string;
+          children: {
+            type: string;
+            version: number;
+            [k: string]: unknown;
+          }[];
+          direction: ('ltr' | 'rtl') | null;
+          format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+          indent: number;
+          version: number;
+        };
+        [k: string]: unknown;
+      } | null;
+    };
+    achievement?: {
+      title: string;
+      description: {
+        root: {
+          type: string;
+          children: {
+            type: string;
+            version: number;
+            [k: string]: unknown;
+          }[];
+          direction: ('ltr' | 'rtl') | null;
+          format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+          indent: number;
+          version: number;
+        };
+        [k: string]: unknown;
+      };
+      date: string;
+      organization?: string | null;
+      certificateUrl?: string | null;
+      image?: (number | null) | Media;
+    };
+    contact?: {
+      socialLinks?:
+        | {
+            platform: 'linkedin' | 'github' | 'twitter' | 'instagram' | 'facebook' | 'youtube' | 'portfolio' | 'other';
+            url: string;
+            username?: string | null;
+            id?: string | null;
+          }[]
+        | null;
+      availableForWork?: boolean | null;
+      preferredContactMethod?: ('email' | 'linkedin' | 'phone') | null;
+    };
+  };
+  metadata?: {
+    /**
+     * Keywords for AI chat system to better match user queries
+     */
+    keywords?:
+      | {
+          keyword: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Additional context for AI chat responses related to this content
+     */
+    chatContext?: string | null;
+    /**
+     * When embeddings were last generated for this content
+     */
+    lastEmbeddingUpdate?: string | null;
+    /**
+     * Vector database embedding ID
+     */
+    embeddingId?: string | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * System analytics and performance metrics for the AI chat system
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-analytics".
+ */
+export interface ChatAnalytic {
+  id: number;
+  metricType:
+    | 'total_conversations'
+    | 'total_messages'
+    | 'daily_active_users'
+    | 'avg_session_duration'
+    | 'messages_per_session'
+    | 'user_satisfaction'
+    | 'response_accuracy'
+    | 'db_connection_status'
+    | 'api_response_time'
+    | 'error_rate'
+    | 'storage_usage'
+    | 'memory_usage'
+    | 'cpu_usage'
+    | 'vector_search_time'
+    | 'embedding_generation_time'
+    | 'vector_db_size'
+    | 'search_success_rate'
+    | 'most_retrieved_content'
+    | 'content_hit_rate'
+    | 'popular_topics'
+    | 'search_query_success';
+  /**
+   * Metric value (can be number, string, or complex object)
+   */
+  value:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  timestamp: string;
+  period: 'realtime' | 'hourly' | 'daily' | 'weekly' | 'monthly';
+  metadata?: {
+    /**
+     * Source of the metric (e.g., chat-api, database, system)
+     */
+    source?: string | null;
+    /**
+     * User ID if metric is user-specific
+     */
+    userId?: string | null;
+    /**
+     * Session ID if metric is session-specific
+     */
+    sessionId?: string | null;
+    /**
+     * Any additional metadata for the metric
+     */
+    additionalData?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  /**
+   * Tags for filtering and categorizing metrics
+   */
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Real-time system logs and operational data
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "system-logs".
+ */
+export interface SystemLog {
+  id: number;
+  level: 'info' | 'warning' | 'error' | 'debug' | 'critical';
+  message: string;
+  source: 'chat-api' | 'database' | 'vector-db' | 'auth' | 'filesystem' | 'external-api' | 'admin-ops' | 'system';
+  /**
+   * Detailed log information (error stack, request data, etc.)
+   */
+  details?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * User ID if log is related to a specific user action
+   */
+  userId?: string | null;
+  /**
+   * Request ID for tracking related operations
+   */
+  requestId?: string | null;
+  /**
+   * IP address of the request
+   */
+  ipAddress?: string | null;
+  /**
+   * User agent string
+   */
+  userAgent?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Manage AI content chunks with metadata and vector embeddings
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "content-chunks".
+ */
+export interface ContentChunk {
+  id: number;
+  /**
+   * Descriptive title for this content chunk
+   */
+  title: string;
+  /**
+   * The actual content text that gets embedded and searched
+   */
+  content: string;
+  source:
+    | 'portfolio_data'
+    | 'experience'
+    | 'skills'
+    | 'projects'
+    | 'education'
+    | 'achievements'
+    | 'about_me'
+    | 'contact_info'
+    | 'custom'
+    | 'faq';
+  chunkType: 'informational' | 'conversational' | 'technical' | 'personal' | 'professional' | 'faq_answer';
+  /**
+   * Keywords that should trigger this content in chat responses
+   */
+  keywords: {
+    keyword: string;
+    id?: string | null;
+  }[];
+  /**
+   * Priority for search results (1 = lowest, 10 = highest)
+   */
+  priority?: number | null;
+  /**
+   * Whether this chunk should be used in chat responses
+   */
+  isActive?: boolean | null;
+  embedding?: {
+    /**
+     * Vector database ID for this content
+     */
+    vectorId?: string | null;
+    /**
+     * When embedding was last generated/updated
+     */
+    lastEmbeddingUpdate?: string | null;
+    /**
+     * AI model used for embedding generation
+     */
+    embeddingModel?: string | null;
+    /**
+     * Number of dimensions in the embedding vector
+     */
+    embeddingDimensions?: number | null;
+    /**
+     * Minimum similarity score for this chunk to be relevant
+     */
+    similarityThreshold?: number | null;
+  };
+  usage?: {
+    /**
+     * Number of times this chunk has been retrieved
+     */
+    retrievalCount?: number | null;
+    /**
+     * When this chunk was last used in a response
+     */
+    lastRetrieved?: string | null;
+    /**
+     * Average similarity score when retrieved
+     */
+    avgSimilarityScore?: number | null;
+    /**
+     * User feedback on this content chunk
+     */
+    userFeedback?:
+      | {
+          userId?: string | null;
+          rating?: ('helpful' | 'somewhat_helpful' | 'not_helpful') | null;
+          comment?: string | null;
+          timestamp?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  metadata?: {
+    /**
+     * URL or reference to original source (if applicable)
+     */
+    sourceUrl?: string | null;
+    /**
+     * Additional tags for categorization
+     */
+    tags?:
+      | {
+          tag: string;
+          id?: string | null;
+        }[]
+      | null;
+    language?: ('en' | 'es' | 'fr' | 'de') | null;
+    /**
+     * Character length of the content
+     */
+    contentLength?: number | null;
+    /**
+     * Word count of the content
+     */
+    wordCount?: number | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Track and manage vector database embedding operations
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "embedding-operations".
+ */
+export interface EmbeddingOperation {
+  id: number;
+  operationType:
+    | 'generate_all'
+    | 'update_single'
+    | 'bulk_regeneration'
+    | 'delete_embeddings'
+    | 'vector_sync'
+    | 'embedding_migration'
+    | 'search_test'
+    | 'quality_assessment';
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'partial';
+  startedAt?: string | null;
+  completedAt?: string | null;
+  progress?: {
+    totalItems?: number | null;
+    processedItems?: number | null;
+    failedItems?: number | null;
+    percentage?: number | null;
+  };
+  configuration?: {
+    embeddingModel?:
+      | (
+          | 'text-embedding-ada-002'
+          | 'text-embedding-3-small'
+          | 'text-embedding-3-large'
+          | 'sentence-transformers'
+          | 'custom'
+        )
+      | null;
+    batchSize?: number | null;
+    maxRetries?: number | null;
+    /**
+     * Timeout in seconds
+     */
+    timeout?: number | null;
+  };
+  targetContent?: {
+    contentType?: ('all' | 'content_chunks' | 'portfolio_content' | 'messages' | 'specific_ids') | null;
+    /**
+     * Specific content IDs to process
+     */
+    contentIds?:
+      | {
+          id: string;
+        }[]
+      | null;
+    /**
+     * Additional filters for content selection
+     */
+    filters?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  results?: {
+    successfulOperations?:
+      | {
+          contentId?: string | null;
+          vectorId?: string | null;
+          /**
+           * Processing time in milliseconds
+           */
+          processingTime?: number | null;
+          id?: string | null;
+        }[]
+      | null;
+    failedOperations?:
+      | {
+          contentId?: string | null;
+          error?: string | null;
+          attemptCount?: number | null;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Performance metrics and statistics
+     */
+    performanceMetrics?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  /**
+   * Operation logs and messages
+   */
+  logs?:
+    | {
+        timestamp: string;
+        level?: ('info' | 'warning' | 'error' | 'debug') | null;
+        message: string;
+        details?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * User who initiated this operation
+   */
+  initiatedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Track and manage database operations, queries, and maintenance tasks
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "database-operations".
+ */
+export interface DatabaseOperation {
+  id: number;
+  operationType:
+    | 'select'
+    | 'insert'
+    | 'update'
+    | 'delete'
+    | 'backup'
+    | 'restore'
+    | 'migration'
+    | 'create_index'
+    | 'analyze'
+    | 'cleanup'
+    | 'maintenance';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  /**
+   * SQL query or command executed
+   */
+  sqlQuery?: string | null;
+  /**
+   * Query parameters or operation configuration
+   */
+  parameters?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  executedAt?: string | null;
+  completedAt?: string | null;
+  /**
+   * Execution duration in milliseconds
+   */
+  duration?: number | null;
+  results?: {
+    /**
+     * Number of rows affected by the operation
+     */
+    rowsAffected?: number | null;
+    /**
+     * Query results or operation output
+     */
+    resultData?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Performance metrics and statistics
+     */
+    performanceMetrics?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  error?: {
+    errorCode?: string | null;
+    errorMessage?: string | null;
+    stackTrace?: string | null;
+  };
+  metadata?: {
+    database?: string | null;
+    table?: string | null;
+    operationSource?: ('admin_panel' | 'api_request' | 'scheduled_job' | 'migration_script' | 'manual_query') | null;
+    /**
+     * Request ID for tracing related operations
+     */
+    requestId?: string | null;
+    /**
+     * Admin session ID
+     */
+    sessionId?: string | null;
+  };
+  /**
+   * User who executed this operation
+   */
+  executedBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Track all admin actions and system changes for security auditing
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs".
+ */
+export interface AuditLog {
+  id: number;
+  action:
+    | 'content_created'
+    | 'content_updated'
+    | 'content_deleted'
+    | 'content_published'
+    | 'content_unpublished'
+    | 'embeddings_generated'
+    | 'embeddings_updated'
+    | 'embeddings_deleted'
+    | 'vector_search'
+    | 'db_query'
+    | 'db_backup'
+    | 'db_restore'
+    | 'db_migration'
+    | 'user_login'
+    | 'user_logout'
+    | 'user_created'
+    | 'user_updated'
+    | 'user_deleted'
+    | 'password_changed'
+    | 'role_changed'
+    | 'failed_login'
+    | 'account_locked'
+    | 'account_unlocked'
+    | 'security_changed'
+    | 'api_key_generated'
+    | 'api_key_revoked'
+    | 'system_config'
+    | 'cache_cleared'
+    | 'maintenance_enabled'
+    | 'maintenance_disabled';
+  /**
+   * User who performed the action
+   */
+  user?: (number | null) | User;
+  resource?: {
+    type?: ('portfolio-content' | 'content-chunks' | 'messages' | 'users' | 'system' | 'database' | 'api') | null;
+    /**
+     * ID of the resource that was affected
+     */
+    id?: string | null;
+    /**
+     * Human-readable identifier for the resource
+     */
+    title?: string | null;
+  };
+  details?: {
+    /**
+     * Before/after values for updates, or relevant operation details
+     */
+    changes?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Optional reason or comment for the action
+     */
+    reason?: string | null;
+    /**
+     * Additional context or metadata about the action
+     */
+    metadata?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+  request?: {
+    /**
+     * IP address of the request
+     */
+    ip?: string | null;
+    /**
+     * User agent string
+     */
+    userAgent?: string | null;
+    method?: ('GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE') | null;
+    /**
+     * API endpoint or admin URL
+     */
+    endpoint?: string | null;
+    /**
+     * Session identifier
+     */
+    sessionId?: string | null;
+  };
+  /**
+   * Security/operational severity of the action
+   */
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'success' | 'failed' | 'partial' | 'warning';
+  timestamp: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "redirects".
  */
@@ -926,6 +1749,34 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'users';
         value: number | User;
+      } | null)
+    | ({
+        relationTo: 'portfolio-content';
+        value: number | PortfolioContent;
+      } | null)
+    | ({
+        relationTo: 'chat-analytics';
+        value: number | ChatAnalytic;
+      } | null)
+    | ({
+        relationTo: 'system-logs';
+        value: number | SystemLog;
+      } | null)
+    | ({
+        relationTo: 'content-chunks';
+        value: number | ContentChunk;
+      } | null)
+    | ({
+        relationTo: 'embedding-operations';
+        value: number | EmbeddingOperation;
+      } | null)
+    | ({
+        relationTo: 'database-operations';
+        value: number | DatabaseOperation;
+      } | null)
+    | ({
+        relationTo: 'audit-logs';
+        value: number | AuditLog;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -1290,6 +2141,410 @@ export interface UsersSelect<T extends boolean = true> {
         createdAt?: T;
         expiresAt?: T;
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "portfolio-content_select".
+ */
+export interface PortfolioContentSelect<T extends boolean = true> {
+  title?: T;
+  section?: T;
+  isActive?: T;
+  priority?: T;
+  content?:
+    | T
+    | {
+        personalInfo?:
+          | T
+          | {
+              fullName?: T;
+              title?: T;
+              tagline?: T;
+              location?: T;
+              email?: T;
+              phone?: T;
+              website?: T;
+              profileImage?: T;
+            };
+        aboutMe?:
+          | T
+          | {
+              summary?: T;
+              highlights?:
+                | T
+                | {
+                    highlight?: T;
+                    id?: T;
+                  };
+            };
+        experience?:
+          | T
+          | {
+              position?: T;
+              company?: T;
+              companyUrl?: T;
+              location?: T;
+              startDate?: T;
+              endDate?: T;
+              current?: T;
+              description?: T;
+              achievements?:
+                | T
+                | {
+                    achievement?: T;
+                    id?: T;
+                  };
+              technologies?:
+                | T
+                | {
+                    technology?: T;
+                    id?: T;
+                  };
+            };
+        skills?:
+          | T
+          | {
+              category?: T;
+              skillList?:
+                | T
+                | {
+                    name?: T;
+                    level?: T;
+                    yearsOfExperience?: T;
+                    id?: T;
+                  };
+            };
+        project?:
+          | T
+          | {
+              name?: T;
+              description?: T;
+              shortDescription?: T;
+              technologies?:
+                | T
+                | {
+                    technology?: T;
+                    id?: T;
+                  };
+              projectUrl?: T;
+              githubUrl?: T;
+              demoUrl?: T;
+              images?:
+                | T
+                | {
+                    image?: T;
+                    caption?: T;
+                    id?: T;
+                  };
+              featured?: T;
+              startDate?: T;
+              endDate?: T;
+              status?: T;
+            };
+        education?:
+          | T
+          | {
+              institution?: T;
+              degree?: T;
+              field?: T;
+              startDate?: T;
+              endDate?: T;
+              current?: T;
+              gpa?: T;
+              honors?:
+                | T
+                | {
+                    honor?: T;
+                    id?: T;
+                  };
+              description?: T;
+            };
+        achievement?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              date?: T;
+              organization?: T;
+              certificateUrl?: T;
+              image?: T;
+            };
+        contact?:
+          | T
+          | {
+              socialLinks?:
+                | T
+                | {
+                    platform?: T;
+                    url?: T;
+                    username?: T;
+                    id?: T;
+                  };
+              availableForWork?: T;
+              preferredContactMethod?: T;
+            };
+      };
+  metadata?:
+    | T
+    | {
+        keywords?:
+          | T
+          | {
+              keyword?: T;
+              id?: T;
+            };
+        chatContext?: T;
+        lastEmbeddingUpdate?: T;
+        embeddingId?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-analytics_select".
+ */
+export interface ChatAnalyticsSelect<T extends boolean = true> {
+  metricType?: T;
+  value?: T;
+  timestamp?: T;
+  period?: T;
+  metadata?:
+    | T
+    | {
+        source?: T;
+        userId?: T;
+        sessionId?: T;
+        additionalData?: T;
+      };
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "system-logs_select".
+ */
+export interface SystemLogsSelect<T extends boolean = true> {
+  level?: T;
+  message?: T;
+  source?: T;
+  details?: T;
+  userId?: T;
+  requestId?: T;
+  ipAddress?: T;
+  userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "content-chunks_select".
+ */
+export interface ContentChunksSelect<T extends boolean = true> {
+  title?: T;
+  content?: T;
+  source?: T;
+  chunkType?: T;
+  keywords?:
+    | T
+    | {
+        keyword?: T;
+        id?: T;
+      };
+  priority?: T;
+  isActive?: T;
+  embedding?:
+    | T
+    | {
+        vectorId?: T;
+        lastEmbeddingUpdate?: T;
+        embeddingModel?: T;
+        embeddingDimensions?: T;
+        similarityThreshold?: T;
+      };
+  usage?:
+    | T
+    | {
+        retrievalCount?: T;
+        lastRetrieved?: T;
+        avgSimilarityScore?: T;
+        userFeedback?:
+          | T
+          | {
+              userId?: T;
+              rating?: T;
+              comment?: T;
+              timestamp?: T;
+              id?: T;
+            };
+      };
+  metadata?:
+    | T
+    | {
+        sourceUrl?: T;
+        tags?:
+          | T
+          | {
+              tag?: T;
+              id?: T;
+            };
+        language?: T;
+        contentLength?: T;
+        wordCount?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "embedding-operations_select".
+ */
+export interface EmbeddingOperationsSelect<T extends boolean = true> {
+  operationType?: T;
+  status?: T;
+  startedAt?: T;
+  completedAt?: T;
+  progress?:
+    | T
+    | {
+        totalItems?: T;
+        processedItems?: T;
+        failedItems?: T;
+        percentage?: T;
+      };
+  configuration?:
+    | T
+    | {
+        embeddingModel?: T;
+        batchSize?: T;
+        maxRetries?: T;
+        timeout?: T;
+      };
+  targetContent?:
+    | T
+    | {
+        contentType?: T;
+        contentIds?:
+          | T
+          | {
+              id?: T;
+            };
+        filters?: T;
+      };
+  results?:
+    | T
+    | {
+        successfulOperations?:
+          | T
+          | {
+              contentId?: T;
+              vectorId?: T;
+              processingTime?: T;
+              id?: T;
+            };
+        failedOperations?:
+          | T
+          | {
+              contentId?: T;
+              error?: T;
+              attemptCount?: T;
+              id?: T;
+            };
+        performanceMetrics?: T;
+      };
+  logs?:
+    | T
+    | {
+        timestamp?: T;
+        level?: T;
+        message?: T;
+        details?: T;
+        id?: T;
+      };
+  initiatedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "database-operations_select".
+ */
+export interface DatabaseOperationsSelect<T extends boolean = true> {
+  operationType?: T;
+  status?: T;
+  sqlQuery?: T;
+  parameters?: T;
+  executedAt?: T;
+  completedAt?: T;
+  duration?: T;
+  results?:
+    | T
+    | {
+        rowsAffected?: T;
+        resultData?: T;
+        performanceMetrics?: T;
+      };
+  error?:
+    | T
+    | {
+        errorCode?: T;
+        errorMessage?: T;
+        stackTrace?: T;
+      };
+  metadata?:
+    | T
+    | {
+        database?: T;
+        table?: T;
+        operationSource?: T;
+        requestId?: T;
+        sessionId?: T;
+      };
+  executedBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs_select".
+ */
+export interface AuditLogsSelect<T extends boolean = true> {
+  action?: T;
+  user?: T;
+  resource?:
+    | T
+    | {
+        type?: T;
+        id?: T;
+        title?: T;
+      };
+  details?:
+    | T
+    | {
+        changes?: T;
+        reason?: T;
+        metadata?: T;
+      };
+  request?:
+    | T
+    | {
+        ip?: T;
+        userAgent?: T;
+        method?: T;
+        endpoint?: T;
+        sessionId?: T;
+      };
+  severity?: T;
+  status?: T;
+  timestamp?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
