@@ -10,7 +10,8 @@ export async function POST(request: NextRequest) {
     await ChatDatabase.initializeTable()
 
     const body = await request.json()
-    let { user_id, role, content, message, conversationHistory } = body
+    let { user_id, role, content } = body
+    const { message, conversationHistory } = body
 
     // Handle both old format (user_id, role, content) and new portfolio format (message, conversationHistory)
     if (message && !content) {
@@ -171,7 +172,7 @@ async function generatePortfolioResponse(
     console.log(`Looking for content matching: "${messageLower}"`)
 
     // Direct database query for testing
-    const { Pool } = require('pg')
+    const { Pool } = await import('pg')
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
     })

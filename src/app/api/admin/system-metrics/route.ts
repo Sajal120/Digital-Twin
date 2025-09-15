@@ -62,8 +62,8 @@ async function getDiskUsage(): Promise<number> {
   // Simplified disk usage - in production you'd use a proper library
   // or system command to get actual disk usage
   try {
-    const fs = require('fs').promises
-    const stats = await fs.stat(process.cwd())
+    const { promises: fs } = await import('fs')
+    const _stats = await fs.stat(process.cwd())
     // This is a placeholder - real implementation would check actual disk space
     return Math.random() * 40 + 30 // Mock 30-70% usage
   } catch {

@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 import { AdminBar } from '@/components/AdminBar'
 
 export default function AdminDashboard() {
@@ -50,12 +51,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <a
+                <Link
                   href="/admin/collections/portfolio-content"
                   className="font-medium text-blue-600 hover:text-blue-500"
                 >
                   View all content →
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -91,12 +92,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <a
+                <Link
                   href="/admin/collections/chat-analytics"
                   className="font-medium text-green-600 hover:text-green-500"
                 >
                   View analytics →
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -134,12 +135,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <a
+                <Link
                   href="/admin/collections/system-logs"
                   className="font-medium text-yellow-600 hover:text-yellow-500"
                 >
                   View system logs →
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -175,12 +176,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <a
+                <Link
                   href="/admin/collections/embedding-operations"
                   className="font-medium text-purple-600 hover:text-purple-500"
                 >
                   Manage embeddings →
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -216,12 +217,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <a
+                <Link
                   href="/admin/collections/database-operations"
                   className="font-medium text-red-600 hover:text-red-500"
                 >
                   View operations →
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -257,12 +258,12 @@ export default function AdminDashboard() {
             </div>
             <div className="bg-gray-50 px-5 py-3">
               <div className="text-sm">
-                <a
+                <Link
                   href="/admin/collections/audit-logs"
                   className="font-medium text-indigo-600 hover:text-indigo-500"
                 >
                   View audit logs →
-                </a>
+                </Link>
               </div>
             </div>
           </div>

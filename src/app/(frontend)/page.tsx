@@ -11,11 +11,13 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Sajal Basnet - Full Stack Developer & AI Engineer',
-  description: 'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies. Building innovative solutions with cutting-edge technology.',
+  description:
+    'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies. Building innovative solutions with cutting-edge technology.',
   keywords: 'Full Stack Developer, React, Node.js, AI Engineer, Web Development, Portfolio',
   openGraph: {
     title: 'Sajal Basnet - Full Stack Developer & AI Engineer',
-    description: 'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies.',
+    description:
+      'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies.',
     type: 'website',
   },
 }
