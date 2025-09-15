@@ -1,5 +1,39 @@
-import PageTemplate, { generateMetadata } from './[slug]/page'
+import { Hero } from '@/components/portfolio/Hero'
+import { About } from '@/components/portfolio/About'
+import { Experience } from '@/components/portfolio/Experience'
+import { Skills } from '@/components/portfolio/Skills'
+import { Projects } from '@/components/portfolio/Projects'
+import { AIChat } from '@/components/portfolio/AIChat'
+import { Contact } from '@/components/portfolio/Contact'
+import { Navigation } from '@/components/portfolio/Navigation'
+import { Footer } from '@/components/portfolio/Footer'
+import type { Metadata } from 'next'
 
-export default PageTemplate
+export const metadata: Metadata = {
+  title: 'Sajal Basnet - Full Stack Developer & AI Engineer',
+  description: 'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies. Building innovative solutions with cutting-edge technology.',
+  keywords: 'Full Stack Developer, React, Node.js, AI Engineer, Web Development, Portfolio',
+  openGraph: {
+    title: 'Sajal Basnet - Full Stack Developer & AI Engineer',
+    description: 'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies.',
+    type: 'website',
+  },
+}
 
-export { generateMetadata }
+export default function HomePage() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Navigation />
+      <main>
+        <Hero />
+        <About />
+        <Experience />
+        <Skills />
+        <Projects />
+        <AIChat />
+        <Contact />
+      </main>
+      <Footer />
+    </div>
+  )
+}
