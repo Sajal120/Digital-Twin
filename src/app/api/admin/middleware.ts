@@ -18,6 +18,12 @@ export function withAdminSecurity(
   options: AdminMiddlewareOptions = {},
 ) {
   return async function (req: NextRequest, context?: any): Promise<NextResponse> {
+    // Skip middleware during build time if no DATABASE_URL is available
+    if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+      console.log('Skipping admin middleware during build - no database connection available')
+      return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 })
+    }
+
     const security = SecurityManager.getInstance()
     const clientInfo = security.getClientInfo(req)
 
