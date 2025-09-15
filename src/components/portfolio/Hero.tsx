@@ -58,7 +58,7 @@ export function Hero() {
             className="mb-8"
           >
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
-              <span className="block text-gray-900 dark:text-white">Hi, I'm</span>
+              <span className="block text-gray-900 dark:text-white">Hi, I&apos;m</span>
               <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Sajal Basnet
               </span>
@@ -73,16 +73,8 @@ export function Hero() {
               Full-stack Developer & AI/ML Engineer
             </motion.p>
 
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="text-lg text-gray-500 dark:text-gray-400 max-w-3xl mx-auto mb-8"
-            >
-              Passionate about building intelligent systems that solve real-world problems.
-              Specializing in AI/ML, web development, and data science with expertise in modern
-              technologies.
-            </motion.p>
+                        <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              I&apos;m passionate about creating innovative solutions and bringing ideas to life.
           </motion.div>
 
           {/* Contact Info */}
