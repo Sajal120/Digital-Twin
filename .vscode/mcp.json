@@ -3,6 +3,10 @@
     "Neon": {
       "url": "https://mcp.neon.tech/mcp",
       "type": "http"
+    },
+    "digital-twin": {
+      "url": "http://localhost:3000/api/mcp",
+      "type": "http"
     }
   },
   "inputs": []

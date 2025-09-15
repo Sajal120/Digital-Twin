@@ -50,7 +50,7 @@ function useClickableCard<T extends HTMLElement>({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, card, link, timeDown],
+    [external, newTab, router, scroll],
   )
 
   const handleMouseUp = useCallback(
@@ -72,7 +72,7 @@ function useClickableCard<T extends HTMLElement>({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [router, card, link, timeDown],
+    [external, newTab, router, scroll],
   )
 
   useEffect(() => {

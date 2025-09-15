@@ -138,7 +138,7 @@ export function Footer() {
               transition={{ duration: 0.6 }}
               className="flex items-center space-x-4 text-sm text-muted-foreground"
             >
-              <span>© {currentYear} Sajal Basnet. Built with</span>
+              <span>&copy; {currentYear} Sajal Basnet. Built with</span>
               <div className="flex items-center space-x-1">
                 <Heart className="w-4 h-4 text-red-500 fill-current" />
                 <span>and</span>
@@ -154,7 +154,7 @@ export function Footer() {
               className="flex items-center space-x-4"
             >
               <span className="text-sm text-muted-foreground">
-                Next.js • TypeScript • Tailwind CSS
+                Next.js &bull; TypeScript &bull; Tailwind CSS
               </span>
               <button
                 onClick={scrollToTop}

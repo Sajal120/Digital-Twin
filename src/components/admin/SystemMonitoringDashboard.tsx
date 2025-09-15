@@ -405,7 +405,7 @@ export default function SystemMonitoringDashboard() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <span>{new Date(log.timestamp).toLocaleString()}</span>
-                            <span>•</span>
+                            <span>&bull;</span>
                             <span>{log.source}</span>
                           </div>
                           <div className="text-sm font-medium mt-1">{log.message}</div>

@@ -1,5 +1,5 @@
 // Auto-sync hook for PayloadCMS Content Chunks
-import { CollectionAfterChangeHook } from 'payload/types'
+import type { CollectionAfterChangeHook } from 'payload'
 import { Index } from '@upstash/vector'
 
 const syncToUpstash: CollectionAfterChangeHook = async ({
@@ -45,7 +45,8 @@ const syncToUpstash: CollectionAfterChangeHook = async ({
 
     console.log(`✓ Auto-synced "${doc.title}" to Upstash`)
   } catch (error) {
-    console.error(`✗ Failed to auto-sync "${doc.title}" to Upstash:`, error.message)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error(`✗ Failed to auto-sync "${doc.title}" to Upstash:`, errorMessage)
     // Don't fail the save operation if sync fails
   }
 

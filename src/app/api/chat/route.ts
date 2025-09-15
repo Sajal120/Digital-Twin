@@ -232,19 +232,19 @@ async function generatePortfolioResponse(
     return `I'm proud of several key achievements that demonstrate my growth in AI, Development, Security, and Support:
 
 Technical Achievements:
-• Successfully completed a Software Developer Internship at Aubot, where I maintained Python and Java codebases, executed automation scripts, and contributed to quality assurance processes in an agile environment
-• Developed immersive VR experiences at edgedVR using Present4D, creating multi-device compatible applications with strong focus on usability and visual quality
-• Built this comprehensive AI-powered portfolio chatbot from scratch, demonstrating advanced conversational AI, database integration, and modern web development skills
+&bull; Successfully completed a Software Developer Internship at Aubot, where I maintained Python and Java codebases, executed automation scripts, and contributed to quality assurance processes in an agile environment
+&bull; Developed immersive VR experiences at edgedVR using Present4D, creating multi-device compatible applications with strong focus on usability and visual quality
+&bull; Built this comprehensive AI-powered portfolio chatbot from scratch, demonstrating advanced conversational AI, database integration, and modern web development skills
 
 Professional Growth:
-• Transitioned from hospitality management to tech development, showing adaptability and commitment to career change
-• Gained expertise in system management through Oracle Micros POS and Deputy systems, developing valuable IT operations skills
-• Successfully collaborated in agile development teams and contributed to enterprise-level software projects
+&bull; Transitioned from hospitality management to tech development, showing adaptability and commitment to career change
+&bull; Gained expertise in system management through Oracle Micros POS and Deputy systems, developing valuable IT operations skills
+&bull; Successfully collaborated in agile development teams and contributed to enterprise-level software projects
 
 Learning & Innovation:
-• Continuously expanding knowledge in AI and machine learning technologies
-• Building practical applications that solve real problems rather than just theoretical projects
-• Developing expertise across multiple domains: traditional development, VR/emerging tech, and AI systems
+&bull; Continuously expanding knowledge in AI and machine learning technologies
+&bull; Building practical applications that solve real problems rather than just theoretical projects
+&bull; Developing expertise across multiple domains: traditional development, VR/emerging tech, and AI systems
 
 I'm particularly proud that each role has contributed to my goal of specializing in intelligent, secure applications while building strong technical support capabilities. My diverse background gives me a unique perspective on technology implementation and user experience.`
   }
@@ -268,11 +268,11 @@ Feel free to ask me anything specific like "What's your experience with AI/ML?" 
     return `React is a popular JavaScript library for building user interfaces, especially for web applications. It was created by Facebook and is now maintained by Meta and the open-source community.
 
 Key features of React:
-• Component-based architecture - build reusable UI components
-• Virtual DOM - efficient updates and rendering
-• JSX syntax - write HTML-like code in JavaScript
-• One-way data flow - predictable state management
-• Large ecosystem with tons of libraries and tools
+&bull; Component-based architecture - build reusable UI components
+&bull; Virtual DOM - efficient updates and rendering
+&bull; JSX syntax - write HTML-like code in JavaScript
+&bull; One-way data flow - predictable state management
+&bull; Large ecosystem with tons of libraries and tools
 
 I use React extensively in my projects! This entire portfolio website you're chatting with is built using React with Next.js. React makes it easy to create interactive user interfaces like this chat system, with components for messages, input fields, and real-time updates.
 
@@ -297,11 +297,11 @@ Are you interested in learning more about how I use Node.js in my projects, or d
     return `Great question! I've been working with React quite a bit. My main React project right now is this AI-powered portfolio website that you're chatting with!
 
 This entire portfolio is built with React (specifically Next.js 15 with React 19), featuring:
-• Interactive AI chat system with real-time messaging
-• Modern component architecture with TypeScript
-• Responsive design with Tailwind CSS
-• Database integration for storing chat conversations
-• Smooth animations and professional UI components
+&bull; Interactive AI chat system with real-time messaging
+&bull; Modern component architecture with TypeScript
+&bull; Responsive design with Tailwind CSS
+&bull; Database integration for storing chat conversations
+&bull; Smooth animations and professional UI components
 
 I'm also planning some other React projects including a task management app and a VR content showcase platform that builds on my edgedVR experience.
 
@@ -319,10 +319,10 @@ Would you like to know more about the technical details of how I built this port
     return `At Kimpton Margot Hotel, I work as an Assistant Bar Manager, which might seem different from my tech focus, but it's actually taught me valuable skills that translate well to IT operations!
 
 I manage operations using Oracle Micros POS and Deputy systems daily. This has given me hands-on experience with:
-• System administration and troubleshooting
-• Inventory management and data tracking
-• Process optimization and workflow efficiency
-• Customer service and problem-solving under pressure
+&bull; System administration and troubleshooting
+&bull; Inventory management and data tracking
+&bull; Process optimization and workflow efficiency
+&bull; Customer service and problem-solving under pressure
 
 What's interesting is how this role has strengthened my IT support skills. Managing these enterprise systems, handling data integrity, and ensuring smooth operations during busy periods has taught me a lot about system reliability and user experience.
 
@@ -339,16 +339,16 @@ It's also helped me understand how technology impacts business operations from a
     return `I gained solid experience with both Python and Java during my Software Developer Internship at Aubot! Here's what I worked on:
 
 Python Experience:
-• Maintained existing Python codebases for educational technology platforms
-• Wrote automation scripts for data processing and quality assurance
-• Handled data integration and content management tasks
-• Worked with Python libraries for web scraping and data manipulation
+&bull; Maintained existing Python codebases for educational technology platforms
+&bull; Wrote automation scripts for data processing and quality assurance
+&bull; Handled data integration and content management tasks
+&bull; Worked with Python libraries for web scraping and data manipulation
 
 Java Experience:
-• Maintained Java applications and contributed to bug fixes
-• Collaborated on enterprise-level Java projects in an agile environment
-• Gained experience with object-oriented programming principles
-• Worked on code review and quality assurance processes
+&bull; Maintained Java applications and contributed to bug fixes
+&bull; Collaborated on enterprise-level Java projects in an agile environment
+&bull; Gained experience with object-oriented programming principles
+&bull; Worked on code review and quality assurance processes
 
 This internship was really valuable because I got to work with both languages in a professional setting, handling real production code rather than just personal projects. The agile development environment taught me best practices for collaborative coding, version control, and code quality.
 
@@ -417,18 +417,18 @@ My goal is to specialize in building secure, intelligent applications while prov
     return `My VR development experience at edgedVR was really exciting! I worked as a VR Developer from September 2021 to March 2022, creating immersive virtual reality experiences.
 
 What I worked on:
-• Developed immersive VR experiences using Present4D platform
-• Created panoramic VR content for multiple device types
-• Designed multi-device compatible applications (VR headsets, mobile, web)
-• Focused heavily on usability and visual quality
-• Delivered both web-based and app-based VR projects
+&bull; Developed immersive VR experiences using Present4D platform
+&bull; Created panoramic VR content for multiple device types
+&bull; Designed multi-device compatible applications (VR headsets, mobile, web)
+&bull; Focused heavily on usability and visual quality
+&bull; Delivered both web-based and app-based VR projects
 
 Key skills I developed:
-• 360-degree content creation and optimization
-• VR user experience design and spatial interfaces
-• Cross-platform VR application development
-• Performance optimization for VR environments
-• Understanding of VR hardware limitations and capabilities
+&bull; 360-degree content creation and optimization
+&bull; VR user experience design and spatial interfaces
+&bull; Cross-platform VR application development
+&bull; Performance optimization for VR environments
+&bull; Understanding of VR hardware limitations and capabilities
 
 This experience taught me a lot about cutting-edge user interfaces and emerging technologies. Working in VR requires thinking about user interaction in completely new ways - spatial design, motion tracking, and creating intuitive interfaces in 3D space.
 
@@ -446,26 +446,26 @@ Would you like to know more about the specific VR projects I worked on or the te
     return `I specialize in building intelligent, secure applications across four key technology areas:
 
 Core Programming Languages:
-• Python - My strongest language from my Aubot internship, used for automation, data processing, and AI development
-• Java - Enterprise development experience with object-oriented programming and agile methodologies
-• JavaScript/TypeScript - Modern web development, including this React-based portfolio chatbot
+&bull; Python - My strongest language from my Aubot internship, used for automation, data processing, and AI development
+&bull; Java - Enterprise development experience with object-oriented programming and agile methodologies
+&bull; JavaScript/TypeScript - Modern web development, including this React-based portfolio chatbot
 
 AI & Machine Learning Technologies:
-• TensorFlow for neural networks and machine learning models
-• Natural Language Processing for conversational AI systems
-• Conversational AI development (like this chatbot you're talking to!)
-• AI integration into web applications and business solutions
+&bull; TensorFlow for neural networks and machine learning models
+&bull; Natural Language Processing for conversational AI systems
+&bull; Conversational AI development (like this chatbot you're talking to!)
+&bull; AI integration into web applications and business solutions
 
 Web Development Stack:
-• React & Next.js for modern, interactive user interfaces
-• Node.js for backend API development and server-side JavaScript
-• HTML/CSS with modern frameworks like Tailwind CSS
-• Full-stack development with database integration
+&bull; React & Next.js for modern, interactive user interfaces
+&bull; Node.js for backend API development and server-side JavaScript
+&bull; HTML/CSS with modern frameworks like Tailwind CSS
+&bull; Full-stack development with database integration
 
 Emerging Technologies:
-• Virtual Reality development using Present4D platform
-• VR user experience design and 360-degree content creation
-• Multi-device application development for web, mobile, and VR
+&bull; Virtual Reality development using Present4D platform
+&bull; VR user experience design and 360-degree content creation
+&bull; Multi-device application development for web, mobile, and VR
 
 My specialty is combining these technologies to create practical solutions that solve real business problems. I'm particularly passionate about AI integration and secure development practices!
 
@@ -531,11 +531,11 @@ Would you like to know more about any specific project or the technologies I use
 The best way to reach me is through email - I usually respond within 24 hours. You can also check out my work on GitHub at github.com/Sajal120 where I showcase my development projects and code samples.
 
 I'm particularly interested in opportunities that involve:
-• AI and machine learning applications
-• Full-stack development projects
-• Security-focused software solutions
-• Technical support and system optimization
-• Innovative projects that combine multiple technologies
+&bull; AI and machine learning applications
+&bull; Full-stack development projects
+&bull; Security-focused software solutions
+&bull; Technical support and system optimization
+&bull; Innovative projects that combine multiple technologies
 
 Whether you're looking for someone to join your team, collaborate on a project, or need technical consultation, I'm always excited to discuss how my skills in AI, Development, Security, and Support can add value to your organization.
 
@@ -563,11 +563,11 @@ My approach has always been to combine strong technical skills with a genuine pa
     return `PostgreSQL (often called Postgres) is a powerful, open-source relational database management system. It's known for its reliability, feature robustness, and performance.
 
 Key features:
-• ACID compliance for reliable transactions
-• Support for JSON, arrays, and custom data types
-• Advanced indexing and query optimization
-• Strong data integrity and security features
-• Excellent for both small and enterprise applications
+&bull; ACID compliance for reliable transactions
+&bull; Support for JSON, arrays, and custom data types
+&bull; Advanced indexing and query optimization
+&bull; Strong data integrity and security features
+&bull; Excellent for both small and enterprise applications
 
 I use PostgreSQL with Neon for this portfolio's database, storing chat messages and user interactions. It's perfect for applications that need reliable data storage with complex queries!`
   }
@@ -576,11 +576,11 @@ I use PostgreSQL with Neon for this portfolio's database, storing chat messages 
     return `Python is a high-level, interpreted programming language known for its simplicity and readability. It's one of the most popular languages for beginners and professionals alike.
 
 Key strengths:
-• Clean, readable syntax that's easy to learn
-• Huge standard library and ecosystem (pip packages)
-• Great for web development, data science, AI/ML, automation
-• Cross-platform compatibility
-• Strong community support
+&bull; Clean, readable syntax that's easy to learn
+&bull; Huge standard library and ecosystem (pip packages)
+&bull; Great for web development, data science, AI/ML, automation
+&bull; Cross-platform compatibility
+&bull; Strong community support
 
 I gained solid Python experience during my internship at Aubot, where I maintained codebases, wrote automation scripts, and handled data processing tasks. Python's versatility makes it perfect for everything from web backends to AI applications!`
   }
@@ -589,11 +589,11 @@ I gained solid Python experience during my internship at Aubot, where I maintain
     return `Java is a robust, object-oriented programming language that's been a cornerstone of enterprise development for decades. It's known for its "write once, run anywhere" philosophy.
 
 Key features:
-• Platform independence through the Java Virtual Machine (JVM)
-• Strong object-oriented programming principles
-• Automatic memory management with garbage collection
-• Excellent for large-scale enterprise applications
-• Rich ecosystem with frameworks like Spring
+&bull; Platform independence through the Java Virtual Machine (JVM)
+&bull; Strong object-oriented programming principles
+&bull; Automatic memory management with garbage collection
+&bull; Excellent for large-scale enterprise applications
+&bull; Rich ecosystem with frameworks like Spring
 
 I worked with Java during my Aubot internship, maintaining enterprise applications and learning best practices for large-scale software development. Java's reliability and performance make it great for business-critical applications!`
   }
@@ -602,11 +602,11 @@ I worked with Java during my Aubot internship, maintaining enterprise applicatio
     return `HTML (HyperText Markup Language) is the standard markup language for creating web pages. It provides the basic structure and content of websites.
 
 Key concepts:
-• Uses tags to define elements like headings, paragraphs, links
-• Semantic markup for accessibility and SEO
-• Forms the foundation of all web content
-• Works together with CSS for styling and JavaScript for interactivity
-• Constantly evolving with new HTML5 features
+&bull; Uses tags to define elements like headings, paragraphs, links
+&bull; Semantic markup for accessibility and SEO
+&bull; Forms the foundation of all web content
+&bull; Works together with CSS for styling and JavaScript for interactivity
+&bull; Constantly evolving with new HTML5 features
 
 I use HTML extensively in my web development projects. Even when working with React, understanding HTML fundamentals is crucial for creating accessible, well-structured web applications!`
   }
@@ -615,11 +615,11 @@ I use HTML extensively in my web development projects. Even when working with Re
     return `CSS (Cascading Style Sheets) is the language used to style and layout web pages. It controls how HTML elements look and are positioned on the page.
 
 Key features:
-• Separation of content (HTML) from presentation (CSS)
-• Responsive design with media queries
-• Animations and transitions
-• Flexible layout systems (Flexbox, Grid)
-• Modern features like custom properties (CSS variables)
+&bull; Separation of content (HTML) from presentation (CSS)
+&bull; Responsive design with media queries
+&bull; Animations and transitions
+&bull; Flexible layout systems (Flexbox, Grid)
+&bull; Modern features like custom properties (CSS variables)
 
 While I often use Tailwind CSS for rapid development, understanding core CSS principles is essential. This portfolio uses CSS concepts through Tailwind classes for responsive design, animations, and professional styling!`
   }
@@ -629,11 +629,11 @@ While I often use Tailwind CSS for rapid development, understanding core CSS pri
     return `JavaScript is a versatile programming language that's essential for web development. Originally created for making web pages interactive, it's now used for both frontend and backend development.
 
 Key features:
-• Dynamic and interpreted language
-• Runs in browsers and on servers (Node.js)
-• Event-driven and asynchronous programming
-• Object-oriented and functional programming support
-• Huge ecosystem with npm packages
+&bull; Dynamic and interpreted language
+&bull; Runs in browsers and on servers (Node.js)
+&bull; Event-driven and asynchronous programming
+&bull; Object-oriented and functional programming support
+&bull; Huge ecosystem with npm packages
 
 I use JavaScript extensively in my projects, especially with React and Next.js for building interactive web applications like this portfolio chatbot. It's the foundation of modern web development!`
   }
@@ -642,11 +642,11 @@ I use JavaScript extensively in my projects, especially with React and Next.js f
     return `TypeScript is a strongly typed programming language that builds on JavaScript by adding static type definitions. It's developed and maintained by Microsoft.
 
 Key benefits:
-• Catches errors at compile time instead of runtime
-• Better code completion and refactoring in IDEs
-• Makes large codebases more maintainable
-• Compiles to clean, readable JavaScript
-• Great for team collaboration
+&bull; Catches errors at compile time instead of runtime
+&bull; Better code completion and refactoring in IDEs
+&bull; Makes large codebases more maintainable
+&bull; Compiles to clean, readable JavaScript
+&bull; Great for team collaboration
 
 I use TypeScript in all my modern projects, including this portfolio website. It makes development much more reliable and helps catch bugs before they reach production!`
   }
@@ -655,11 +655,11 @@ I use TypeScript in all my modern projects, including this portfolio website. It
     return `Next.js is a React framework that provides additional features and optimizations for production web applications. It's built by Vercel and is extremely popular for modern web development.
 
 Key features:
-• Server-side rendering (SSR) and static site generation (SSG)
-• Built-in routing system
-• API routes for backend functionality
-• Automatic code splitting and optimization
-• Great developer experience with hot reloading
+&bull; Server-side rendering (SSR) and static site generation (SSG)
+&bull; Built-in routing system
+&bull; API routes for backend functionality
+&bull; Automatic code splitting and optimization
+&bull; Great developer experience with hot reloading
 
 This entire portfolio website is built with Next.js 15! It's perfect for full-stack applications where you want both frontend and backend functionality in one framework.`
   }
@@ -668,11 +668,11 @@ This entire portfolio website is built with Next.js 15! It's perfect for full-st
     return `Tailwind CSS is a utility-first CSS framework that provides low-level utility classes to build custom designs without writing custom CSS.
 
 Key benefits:
-• Rapid development with utility classes
-• Consistent design system
-• Responsive design made easy
-• Small bundle size with purging unused styles
-• Highly customizable
+&bull; Rapid development with utility classes
+&bull; Consistent design system
+&bull; Responsive design made easy
+&bull; Small bundle size with purging unused styles
+&bull; Highly customizable
 
 I use Tailwind CSS for styling this portfolio website. Instead of writing custom CSS, I use classes like 'bg-blue-500', 'p-4', 'flex' to build responsive, professional interfaces quickly!`
   }
@@ -681,11 +681,11 @@ I use Tailwind CSS for styling this portfolio website. Instead of writing custom
     return `Present4D is a VR content creation platform that I used during my time at edgedVR for developing immersive virtual reality experiences. It specializes in creating panoramic VR content and interactive experiences.
 
 Key capabilities:
-• 360-degree panoramic content creation
-• Multi-device compatibility (VR headsets, mobile, web)
-• Interactive VR experience design
-• Content management for VR applications
-• Tools for creating immersive user interfaces
+&bull; 360-degree panoramic content creation
+&bull; Multi-device compatibility (VR headsets, mobile, web)
+&bull; Interactive VR experience design
+&bull; Content management for VR applications
+&bull; Tools for creating immersive user interfaces
 
 During my VR developer role, I used Present4D to create engaging VR experiences with focus on usability and visual quality. This experience gave me unique insights into emerging technologies and user experience design in virtual environments!`
   }
@@ -694,11 +694,11 @@ During my VR developer role, I used Present4D to create engaging VR experiences 
     return `Virtual Reality (VR) is an immersive technology that creates a simulated environment, allowing users to interact with 3D worlds through special headsets and controllers.
 
 Key aspects:
-• Full immersion in computer-generated environments
-• Head tracking and motion controllers for interaction
-• Applications in gaming, education, training, healthcare
-• Emerging technology with growing business applications
-• Requires specialized hardware and software development
+&bull; Full immersion in computer-generated environments
+&bull; Head tracking and motion controllers for interaction
+&bull; Applications in gaming, education, training, healthcare
+&bull; Emerging technology with growing business applications
+&bull; Requires specialized hardware and software development
 
 I worked as a VR Developer at edgedVR, creating immersive experiences using Present4D. This experience taught me about cutting-edge user interfaces, spatial design, and the challenges of developing for emerging technologies!`
   }
@@ -707,11 +707,11 @@ I worked as a VR Developer at edgedVR, creating immersive experiences using Pres
     return `Agile is a software development methodology that emphasizes iterative development, collaboration, and flexibility. It's widely used in modern software teams for faster, more responsive development.
 
 Key principles:
-• Short development cycles (sprints)
-• Regular collaboration between developers and stakeholders
-• Adaptive planning and continuous improvement
-• Working software over comprehensive documentation
-• Responding to change over following a rigid plan
+&bull; Short development cycles (sprints)
+&bull; Regular collaboration between developers and stakeholders
+&bull; Adaptive planning and continuous improvement
+&bull; Working software over comprehensive documentation
+&bull; Responding to change over following a rigid plan
 
 I experienced agile development during my internship at Aubot, where I participated in sprints, collaborated on QA processes, and contributed to iterative development cycles. It's an excellent approach for delivering quality software quickly!`
   }
@@ -720,11 +720,11 @@ I experienced agile development during my internship at Aubot, where I participa
     return `API (Application Programming Interface) is a set of protocols and tools that allows different software applications to communicate with each other. It defines how requests and responses should be formatted.
 
 Key concepts:
-• RESTful APIs for web services
-• JSON data format for data exchange
-• HTTP methods (GET, POST, PUT, DELETE)
-• Authentication and security protocols
-• Documentation for developers to understand usage
+&bull; RESTful APIs for web services
+&bull; JSON data format for data exchange
+&bull; HTTP methods (GET, POST, PUT, DELETE)
+&bull; Authentication and security protocols
+&bull; Documentation for developers to understand usage
 
 I built the API for this chatbot using Next.js API routes! It handles chat messages, database interactions, and returns responses. APIs are essential for connecting frontend applications with backend services and databases.`
   }
@@ -733,11 +733,11 @@ I built the API for this chatbot using Next.js API routes! It handles chat messa
     return `TensorFlow is an open-source machine learning framework developed by Google. It's one of the most popular platforms for building and deploying AI models.
 
 Key features:
-• Support for deep learning and neural networks
-• Works with Python, JavaScript, and other languages
-• Can run on CPUs, GPUs, and mobile devices
-• Extensive ecosystem with TensorFlow Lite, TensorFlow.js
-• Great for both research and production
+&bull; Support for deep learning and neural networks
+&bull; Works with Python, JavaScript, and other languages
+&bull; Can run on CPUs, GPUs, and mobile devices
+&bull; Extensive ecosystem with TensorFlow Lite, TensorFlow.js
+&bull; Great for both research and production
 
 I'm expanding my knowledge in TensorFlow for AI development, particularly for building intelligent systems and machine learning applications that can be integrated into web platforms like this chatbot!`
   }
@@ -779,26 +779,26 @@ What would you like to know more about my journey or aspirations?`
       return `Great! Let me dive into the technical details of how I built this AI-powered portfolio:
 
 Technology Stack:
-• Next.js 15 with React 19 - for the frontend framework
-• TypeScript - for type safety and better development experience
-• Tailwind CSS - for responsive, modern styling
-• PostgreSQL with Neon - for database storage of chat messages
-• Custom AI chat API - built with keyword-based response matching
-• Framer Motion - for smooth animations and transitions
+&bull; Next.js 15 with React 19 - for the frontend framework
+&bull; TypeScript - for type safety and better development experience
+&bull; Tailwind CSS - for responsive, modern styling
+&bull; PostgreSQL with Neon - for database storage of chat messages
+&bull; Custom AI chat API - built with keyword-based response matching
+&bull; Framer Motion - for smooth animations and transitions
 
 Architecture:
-• Component-based React architecture with reusable UI components
-• API routes for handling chat messages and database operations
-• Real-time chat interface with message history
-• Responsive design that works on desktop and mobile
-• Professional portfolio sections showcasing my work
+&bull; Component-based React architecture with reusable UI components
+&bull; API routes for handling chat messages and database operations
+&bull; Real-time chat interface with message history
+&bull; Responsive design that works on desktop and mobile
+&bull; Professional portfolio sections showcasing my work
 
 Key Features:
-• Intelligent chatbot with contextual responses
-• Database integration for persistent chat history
-• Modern UI with smooth animations
-• Professional portfolio presentation
-• Clean, maintainable codebase
+&bull; Intelligent chatbot with contextual responses
+&bull; Database integration for persistent chat history
+&bull; Modern UI with smooth animations
+&bull; Professional portfolio presentation
+&bull; Clean, maintainable codebase
 
 This project really showcases my full-stack development skills and my ability to integrate AI features into practical applications!`
     }
@@ -807,24 +807,24 @@ This project really showcases my full-stack development skills and my ability to
       return `Awesome! React development is really exciting. Here's what I think makes React great for modern web development:
 
 Why I Love React:
-• Component Reusability - write once, use everywhere
-• Strong Community - huge ecosystem of libraries and tools
-• Performance - Virtual DOM makes updates super efficient
-• Developer Experience - great debugging tools and error messages
-• Flexibility - works for small widgets or large applications
+&bull; Component Reusability - write once, use everywhere
+&bull; Strong Community - huge ecosystem of libraries and tools
+&bull; Performance - Virtual DOM makes updates super efficient
+&bull; Developer Experience - great debugging tools and error messages
+&bull; Flexibility - works for small widgets or large applications
 
 My React Development Approach:
-• Start with create-next-app for full-stack applications
-• Use TypeScript for better code quality and autocomplete
-• Implement responsive design with Tailwind CSS
-• Follow component composition patterns
-• Focus on accessibility and user experience
+&bull; Start with create-next-app for full-stack applications
+&bull; Use TypeScript for better code quality and autocomplete
+&bull; Implement responsive design with Tailwind CSS
+&bull; Follow component composition patterns
+&bull; Focus on accessibility and user experience
 
 Practical Tips:
-• Master hooks like useState, useEffect, and custom hooks
-• Learn state management (Context API, Redux, or Zustand)
-• Understand component lifecycle and optimization
-• Practice with real projects like portfolio sites or small apps
+&bull; Master hooks like useState, useEffect, and custom hooks
+&bull; Learn state management (Context API, Redux, or Zustand)
+&bull; Understand component lifecycle and optimization
+&bull; Practice with real projects like portfolio sites or small apps
 
 Are you just getting started with React, or are you looking to level up your existing React skills?`
     }

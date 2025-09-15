@@ -36,5 +36,10 @@
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "explicit"
     }
+  },
+  "chat.mcp.serverSampling": {
+    "cms-twin-portfolio/.vscode/mcp.json: Neon": {
+      "allowedModels": ["copilot/claude-sonnet-4"]
+    }
   }
 }
