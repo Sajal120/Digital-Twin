@@ -123,9 +123,10 @@ export function Contact() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl font-bold mb-4">Get In Touch</h2>
-                  <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          I&apos;m always interested in new opportunities and exciting projects. Let&apos;s discuss how we can work together!
-        </p>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            I&apos;m always interested in new opportunities and exciting projects. Let&apos;s
+            discuss how we can work together!
+          </p>
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-12">
@@ -141,7 +142,7 @@ export function Contact() {
               <h3 className="text-2xl font-bold mb-6">Let&apos;s Talk</h3>
               <p className="text-muted-foreground mb-8">
                 Whether you have a project in mind, want to collaborate, or just want to say hello,
-                                    I&apos;d love to hear from you! Here are the best ways to reach me:
+                I&apos;d love to hear from you! Here are the best ways to reach me:
               </p>
             </div>
 

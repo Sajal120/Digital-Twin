@@ -110,9 +110,9 @@ export function AIChat() {
             <Sparkles className="w-8 h-8 text-purple-600" />
             <h2 className="text-4xl font-bold">Chat with Sajal</h2>
           </div>
-                      <p className="text-gray-600 mb-6">
-              Ask me anything about Sajal&apos;s background, skills, experience, or projects!
-            </p>
+          <p className="text-gray-600 mb-6">
+            Ask me anything about Sajal&apos;s background, skills, experience, or projects!
+          </p>
         </motion.div>
 
         <motion.div

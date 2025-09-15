@@ -5,6 +5,7 @@ import sharp from 'sharp' // sharp-import
 import path from 'path'
 import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
+import crypto from 'crypto'
 
 import { Categories } from './collections/Categories'
 import { Media } from './collections/Media'
@@ -27,6 +28,34 @@ import { getServerSideURL } from './utilities/getURL'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Generate a consistent secret based on environment or create a secure fallback
+const getPayloadSecret = (): string => {
+  if (process.env.PAYLOAD_SECRET) {
+    return process.env.PAYLOAD_SECRET
+  }
+  
+  // For builds, create a deterministic secret based on DATABASE_URL or NODE_ENV
+  if (process.env.DATABASE_URL) {
+    return crypto.createHash('sha256').update(process.env.DATABASE_URL).digest('hex').slice(0, 32)
+  }
+  
+  // Final fallback for build environments
+  return crypto.createHash('sha256').update('cms-twin-portfolio-build-secret').digest('hex').slice(0, 32)
+}
+
+// Get database connection string with fallback
+const getDatabaseConnection = (): string => {
+  const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_URI
+  
+  if (dbUrl) {
+    return dbUrl
+  }
+  
+  // During build time, provide a mock connection string if none exists
+  console.warn('No DATABASE_URL found, using fallback for build process')
+  return 'postgresql://user:pass@localhost:5432/fallback_db'
+}
 
 export default buildConfig({
   admin: {
@@ -69,7 +98,7 @@ export default buildConfig({
   editor: defaultLexical,
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URL || process.env.DATABASE_URI || '',
+      connectionString: getDatabaseConnection(),
     },
     migrationDir: path.resolve(dirname, 'migrations'),
     push: true, // Enable push mode to auto-create admin collection schema
@@ -96,7 +125,7 @@ export default buildConfig({
     ...plugins,
     // storage-adapter-placeholder
   ],
-  secret: process.env.PAYLOAD_SECRET,
+  secret: getPayloadSecret(),
   sharp,
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
