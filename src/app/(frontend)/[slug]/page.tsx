@@ -14,6 +14,12 @@ import PageClient from './page.client'
 import { LivePreviewListener } from '@/components/LivePreviewListener'
 
 export async function generateStaticParams() {
+  // Skip database queries during build time if no DATABASE_URL is available
+  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+    console.log('Skipping generateStaticParams during build - no database connection available')
+    return []
+  }
+
   try {
     const payload = await getPayload({ config: configPromise })
     const pages = await payload.find({
@@ -86,6 +92,15 @@ export default async function Page({ params: paramsPromise }: Args) {
 }
 
 export async function generateMetadata({ params: paramsPromise }: Args): Promise<Metadata> {
+  // Skip database queries during build time if no DATABASE_URL is available
+  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+    console.log('Skipping generateMetadata during build - no database connection available')
+    return {
+      title: 'CMS Twin Portfolio',
+      description: 'Full-stack Developer & AI/ML Engineer Portfolio',
+    }
+  }
+
   try {
     const { slug = 'home' } = await paramsPromise
     const page = await queryPageBySlug({
@@ -103,6 +118,12 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
 }
 
 const queryPageBySlug = cache(async ({ slug }: { slug: string }) => {
+  // Skip database queries during build time if no DATABASE_URL is available
+  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+    console.log(`Skipping page query for "${slug}" during build - no database connection available`)
+    return null
+  }
+
   try {
     const { isEnabled: draft } = await draftMode()
 
