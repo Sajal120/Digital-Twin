@@ -51,11 +51,11 @@ const getPayloadSecret = (): string => {
 // Get database connection string with fallback
 const getDatabaseConnection = (): string => {
   const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_URI
-  
+
   if (dbUrl) {
     return dbUrl
   }
-  
+
   // During build time, provide a mock connection string if none exists
   console.warn('No DATABASE_URL found, using fallback for build process')
   return 'postgresql://user:pass@localhost:5432/fallback_db'
@@ -63,7 +63,9 @@ const getDatabaseConnection = (): string => {
 
 // Check if we're in a build environment without database access
 const isBuildTime = (): boolean => {
-  return !process.env.DATABASE_URL && !process.env.DATABASE_URI && process.env.NODE_ENV !== 'development'
+  return (
+    !process.env.DATABASE_URL && !process.env.DATABASE_URI && process.env.NODE_ENV !== 'development'
+  )
 }
 
 export default buildConfig({
