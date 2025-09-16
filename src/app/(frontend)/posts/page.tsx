@@ -7,22 +7,24 @@ import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 import React from 'react'
 import PageClient from './page.client'
+import { shouldSkipDatabaseOperation } from '@/lib/build-utils'
 
 export const dynamic = 'force-static'
 export const revalidate = 600
 
-export default async function Page() {
-  // Skip database queries during build time if no DATABASE_URL is available
-  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+export default async function PostsIndexPage() {
+  // Skip database queries during build time
+  if (shouldSkipDatabaseOperation()) {
+    console.log('Skipping posts query during build - no database connection available')
     return (
       <div className="pt-24 pb-24">
         <PageClient />
         <div className="container mb-16">
           <div className="prose dark:prose-invert max-w-none">
             <h1>Posts</h1>
-            <p>Posts will be available when the site is fully deployed.</p>
           </div>
         </div>
+        <CollectionArchive posts={[]} />
       </div>
     )
   }

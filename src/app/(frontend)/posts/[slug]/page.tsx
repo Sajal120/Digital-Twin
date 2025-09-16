@@ -7,6 +7,7 @@ import { getPayload } from 'payload'
 import { draftMode } from 'next/headers'
 import React, { cache } from 'react'
 import RichText from '@/components/RichText'
+import { shouldSkipDatabaseOperation } from '@/lib/build-utils'
 
 import type { Post } from '@/payload-types'
 
@@ -98,8 +99,8 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
 }
 
 const queryPostBySlug = cache(async ({ slug }: { slug: string }) => {
-  // Skip database queries during build time if no DATABASE_URL is available
-  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+  // Skip database queries during build time
+  if (shouldSkipDatabaseOperation()) {
     console.log(`Skipping post query for "${slug}" during build - no database connection available`)
     return null
   }

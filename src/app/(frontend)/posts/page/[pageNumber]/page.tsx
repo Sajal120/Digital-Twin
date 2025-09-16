@@ -8,6 +8,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 import PageClient from './page.client'
 import { notFound } from 'next/navigation'
+import { shouldSkipDatabaseOperation } from '@/lib/build-utils'
 
 export const revalidate = 600
 
@@ -17,20 +18,22 @@ type Args = {
   }>
 }
 
-export default async function Page({ params: paramsPromise }: Args) {
-  const { pageNumber } = await paramsPromise
+export default async function PostsPage({ params }: Args) {
+  const { pageNumber } = await params
+  const pageIndex = Number(pageNumber)
 
-  // Skip database queries during build time if no DATABASE_URL is available
-  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+  // Skip database queries during build time
+  if (shouldSkipDatabaseOperation()) {
+    console.log('Skipping posts pagination query during build - no database connection available')
     return (
       <div className="pt-24 pb-24">
         <PageClient />
         <div className="container mb-16">
           <div className="prose dark:prose-invert max-w-none">
             <h1>Posts</h1>
-            <p>Posts will be available when the site is fully deployed.</p>
           </div>
         </div>
+        <CollectionArchive posts={[]} />
       </div>
     )
   }

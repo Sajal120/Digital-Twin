@@ -25,6 +25,7 @@ import { Header } from './Header/config'
 import { plugins } from './plugins'
 import { defaultLexical } from '@/fields/defaultLexical'
 import { getServerSideURL } from './utilities/getURL'
+import { isBuildTime } from '@/lib/build-utils'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -59,25 +60,6 @@ const getDatabaseConnection = (): string => {
   // During build time, provide a mock connection string if none exists
   console.warn('No DATABASE_URL found, using fallback for build process')
   return 'postgresql://user:pass@localhost:5432/fallback_db'
-}
-
-// Check if we're in a build environment without database access
-const isBuildTime = (): boolean => {
-  // Multiple build environment checks for maximum coverage
-  const isVercelBuild = process.env.VERCEL === '1'
-  const isVercelProduction = process.env.VERCEL_ENV === 'production'
-  const isCIBuild = process.env.CI === 'true' || process.env.CI === '1'
-  const isProductionBuild = process.env.NODE_ENV === 'production'
-  const hasNoBuildDatabase = !process.env.DATABASE_URL && !process.env.DATABASE_URI
-
-  // Force build-time mode if any build indicators are present
-  const forceBuildMode = isVercelBuild || isCIBuild || (isProductionBuild && hasNoBuildDatabase)
-  
-  if (forceBuildMode) {
-    console.log(`🔧 Build-time detected: VERCEL=${process.env.VERCEL}, CI=${process.env.CI}, NODE_ENV=${process.env.NODE_ENV}, HAS_DB=${!!process.env.DATABASE_URL}`)
-  }
-  
-  return forceBuildMode
 }
 
 // Create database configuration based on environment

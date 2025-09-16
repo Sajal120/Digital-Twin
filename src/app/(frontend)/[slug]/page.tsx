@@ -6,6 +6,7 @@ import { getPayload, type RequiredDataFromCollectionSlug } from 'payload'
 import { draftMode } from 'next/headers'
 import React, { cache } from 'react'
 import { homeStatic } from '@/endpoints/seed/home-static'
+import { shouldSkipDatabaseOperation } from '@/lib/build-utils'
 
 import { RenderBlocks } from '@/blocks/RenderBlocks'
 import { RenderHero } from '@/heros/RenderHero'
@@ -93,8 +94,8 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
 }
 
 const queryPageBySlug = cache(async ({ slug }: { slug: string }) => {
-  // Skip database queries during build time if no DATABASE_URL is available
-  if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+  // Skip database queries during build time
+  if (shouldSkipDatabaseOperation()) {
     console.log(`Skipping page query for "${slug}" during build - no database connection available`)
     return null
   }
