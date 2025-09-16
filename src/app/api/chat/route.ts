@@ -6,8 +6,25 @@ import { Index } from '@upstash/vector'
 
 export async function POST(request: NextRequest) {
   try {
+    // Check environment variables first
+    if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
+      console.error('❌ No database URL available in environment')
+      return NextResponse.json(
+        {
+          error: 'Database connection not available',
+          response: "Sorry, I'm having trouble connecting right now. Please try again later.",
+        },
+        { status: 500 },
+      )
+    }
+
     // Initialize table if needed (only on first use)
-    await ChatDatabase.initializeTable()
+    try {
+      await ChatDatabase.initializeTable()
+    } catch (dbError) {
+      console.error('Database initialization error:', dbError)
+      // Continue with fallback response instead of failing completely
+    }
 
     const body = await request.json()
     let { user_id, role, content } = body
@@ -33,12 +50,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insert the user message into Neon Postgres
-    const userMessage = await ChatDatabase.insertMessage({
-      user_id,
-      role,
-      content,
-    })
+    // Try to insert the user message into database, but continue if it fails
+    let userMessage = null
+    try {
+      userMessage = await ChatDatabase.insertMessage({
+        user_id,
+        role,
+        content,
+      })
+    } catch (dbError) {
+      console.error('Failed to insert user message:', dbError)
+      // Continue without database - we'll still provide a response
+    }
 
     // Generate AI response using portfolio-specific logic
     const aiResponse = await generatePortfolioResponse(
@@ -46,12 +69,18 @@ export async function POST(request: NextRequest) {
       conversationHistory || [],
     )
 
-    // Insert the AI response into the database
-    const assistantMessage = await ChatDatabase.insertMessage({
-      user_id,
-      role: 'assistant',
-      content: aiResponse,
-    })
+    // Try to insert the AI response into the database, but continue if it fails
+    let assistantMessage = null
+    try {
+      assistantMessage = await ChatDatabase.insertMessage({
+        user_id,
+        role: 'assistant',
+        content: aiResponse,
+      })
+    } catch (dbError) {
+      console.error('Failed to insert assistant message:', dbError)
+      // Continue without database - we still have the response
+    }
 
     // For portfolio format, return just the response
     if (message) {
@@ -61,17 +90,39 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // For original format, return full context
-    const recentMessages = await ChatDatabase.getRecentMessages(20, user_id)
+    // For original format, try to get recent messages, fallback to current conversation
+    let recentMessages = []
+    try {
+      recentMessages = await ChatDatabase.getRecentMessages(20, user_id)
+    } catch (dbError) {
+      console.error('Failed to get recent messages:', dbError)
+      // Fallback to just the current conversation
+      recentMessages = [
+        { user_id, role, content, timestamp: new Date() },
+        { user_id, role: 'assistant', content: aiResponse, timestamp: new Date() },
+      ].filter(Boolean)
+    }
+
     return NextResponse.json({
       success: true,
-      message: assistantMessage,
+      message: assistantMessage || {
+        user_id,
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date(),
+      },
       context: recentMessages,
       total: recentMessages.length,
     })
   } catch (error) {
     console.error('Chat API Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        response: "Sorry, I'm having trouble connecting right now. Please try again later.",
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -80,147 +131,190 @@ async function generatePortfolioResponse(
   conversationHistory: any[],
 ): Promise<string> {
   try {
-    // First, try vector search from Upstash
-    console.log(`Searching vector database for: "${message}"`)
-
-    try {
-      // Initialize Upstash Vector client
-      console.log('Initializing Upstash Vector client...')
-      const index = new Index({
-        url: process.env.UPSTASH_VECTOR_REST_URL!,
-        token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
-      })
-
-      // Query vector database - Upstash handles embedding generation automatically
+    // First, try vector search from Upstash (only if environment variables are available)
+    if (process.env.UPSTASH_VECTOR_REST_URL && process.env.UPSTASH_VECTOR_REST_TOKEN) {
       console.log(`Searching vector database for: "${message}"`)
-      const vectorResults = await index.query({
-        data: message,
-        topK: 3,
-        includeMetadata: true,
-        includeData: true, // Include the actual vector data
-      })
 
-      console.log('Vector search results:', JSON.stringify(vectorResults, null, 2))
+      try {
+        // Initialize Upstash Vector client
+        console.log('Initializing Upstash Vector client...')
+        const index = new Index({
+          url: process.env.UPSTASH_VECTOR_REST_URL!,
+          token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
+        })
 
-      // Check if we have results
-      if (vectorResults && vectorResults.length > 0) {
-        const bestMatch = vectorResults[0]
-        console.log(`Found vector match with score: ${bestMatch.score}`)
+        // Query vector database - Upstash handles embedding generation automatically
+        console.log(`Searching vector database for: "${message}"`)
+        const vectorResults = await index.query({
+          data: message,
+          topK: 3,
+          includeMetadata: true,
+          includeData: true, // Include the actual vector data
+        })
 
-        // Check score threshold (adjust based on your data quality)
-        if (bestMatch.score >= 0.5) {
-          // Try different metadata field names that might contain the answer
-          if (bestMatch.metadata) {
-            console.log('Metadata:', JSON.stringify(bestMatch.metadata, null, 2))
+        console.log('Vector search results:', JSON.stringify(vectorResults, null, 2))
 
-            // Try various common field names from your Upstash data
-            const possibleAnswerFields = [
-              'answer',
-              'content',
-              'response',
-              'text',
-              'message',
-              'description',
-              'summary',
-              'details',
-            ]
+        // Check if we have results
+        if (vectorResults && vectorResults.length > 0) {
+          const bestMatch = vectorResults[0]
+          console.log(`Found vector match with score: ${bestMatch.score}`)
 
-            for (const field of possibleAnswerFields) {
-              if (bestMatch.metadata[field]) {
-                console.log(`Using vector result from metadata field: ${field}`)
-                return bestMatch.metadata[field] as string
+          // Check score threshold (adjust based on your data quality)
+          if (bestMatch.score >= 0.5) {
+            // Try different metadata field names that might contain the answer
+            if (bestMatch.metadata) {
+              console.log('Metadata:', JSON.stringify(bestMatch.metadata, null, 2))
+
+              // Try various common field names from your Upstash data
+              const possibleAnswerFields = [
+                'answer',
+                'content',
+                'response',
+                'text',
+                'message',
+                'description',
+                'summary',
+                'details',
+              ]
+
+              for (const field of possibleAnswerFields) {
+                if (bestMatch.metadata[field]) {
+                  console.log(`Using vector result from metadata field: ${field}`)
+                  return bestMatch.metadata[field] as string
+                }
+              }
+
+              // If we have a title and content type, generate a contextual response
+              if (bestMatch.metadata.title && bestMatch.metadata.content_type) {
+                const title = bestMatch.metadata.title
+                const contentType = bestMatch.metadata.content_type
+                const keywords = Array.isArray(bestMatch.metadata.keywords)
+                  ? bestMatch.metadata.keywords
+                  : []
+
+                console.log(`Generating response from metadata: ${title} (${contentType})`)
+
+                // Generate contextual response based on the matched content
+                if (keywords.length > 0) {
+                  return `Based on my ${contentType} experience with "${title}", I work with technologies like ${keywords.join(', ')}. This project demonstrates my expertise in these areas.`
+                } else {
+                  return `I have experience with "${title}" in the ${contentType} domain. This demonstrates my expertise in this area.`
+                }
               }
             }
 
-            // If we have a title and content type, generate a contextual response
-            if (bestMatch.metadata.title && bestMatch.metadata.content_type) {
-              const title = bestMatch.metadata.title
-              const contentType = bestMatch.metadata.content_type
-              const keywords = Array.isArray(bestMatch.metadata.keywords)
-                ? bestMatch.metadata.keywords
-                : []
-
-              console.log(`Generating response from metadata: ${title} (${contentType})`)
-
-              // Generate contextual response based on the matched content
-              if (keywords.length > 0) {
-                return `Based on my ${contentType} experience with "${title}", I work with technologies like ${keywords.join(', ')}. This project demonstrates my expertise in these areas.`
-              } else {
-                return `I have experience with "${title}" in the ${contentType} domain. This demonstrates my expertise in this area.`
-              }
+            // If no metadata content found, try the vector data itself
+            if (bestMatch.data) {
+              console.log('Using vector data field')
+              return bestMatch.data as string
             }
-          }
-
-          // If no metadata content found, try the vector data itself
-          if (bestMatch.data) {
-            console.log('Using vector data field')
-            return bestMatch.data as string
+          } else {
+            console.log(`Score ${bestMatch.score} below threshold 0.5`)
           }
         } else {
-          console.log(`Score ${bestMatch.score} below threshold 0.5`)
+          console.log('No vector results found')
         }
-      } else {
-        console.log('No vector results found')
+      } catch (vectorError) {
+        console.error('Vector search exception:', vectorError)
+        console.log('Vector search unavailable, falling back to database')
       }
-    } catch (vectorError) {
-      console.error('Vector search exception:', vectorError)
-      console.log('Vector search unavailable, falling back to database')
+    } else {
+      console.log('Upstash credentials not available, skipping vector search')
     }
 
-    // Fallback to direct database query
-    const messageLower = message.toLowerCase().trim()
-    console.log(`Looking for content matching: "${messageLower}"`)
+    // Fallback to direct database query (only if DATABASE_URL is available)
+    if (process.env.DATABASE_URL) {
+      const messageLower = message.toLowerCase().trim()
+      console.log(`Looking for content matching: "${messageLower}"`)
 
-    // Direct database query for testing
-    const { Pool } = await import('pg')
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-    })
+      try {
+        // Direct database query for testing
+        const { Pool } = await import('pg')
+        const pool = new Pool({
+          connectionString: process.env.DATABASE_URL,
+        })
 
-    const query = `
-      SELECT cc.content, ck.keyword 
-      FROM content_chunks cc 
-      JOIN content_chunks_keywords ck ON cc.id = ck._parent_id 
-      WHERE cc.is_active = true 
-      AND LOWER(ck.keyword) = $1
-      LIMIT 1
-    `
+        const query = `
+          SELECT cc.content, ck.keyword 
+          FROM content_chunks cc 
+          JOIN content_chunks_keywords ck ON cc.id = ck._parent_id 
+          WHERE cc.is_active = true 
+          AND LOWER(ck.keyword) = $1
+          LIMIT 1
+        `
 
-    const result = await pool.query(query, [messageLower])
+        const result = await pool.query(query, [messageLower])
 
-    if (result.rows.length > 0) {
-      console.log(`Found content for keyword: "${result.rows[0].keyword}"`)
-      pool.end()
-      return result.rows[0].content
+        if (result.rows.length > 0) {
+          console.log(`Found content for keyword: "${result.rows[0].keyword}"`)
+          pool.end()
+          return result.rows[0].content
+        }
+
+        // Try partial matches
+        const partialQuery = `
+          SELECT cc.content, ck.keyword 
+          FROM content_chunks cc 
+          JOIN content_chunks_keywords ck ON cc.id = ck._parent_id 
+          WHERE cc.is_active = true 
+          AND $1 LIKE '%' || LOWER(ck.keyword) || '%'
+          ORDER BY LENGTH(ck.keyword) DESC
+          LIMIT 1
+        `
+
+        const partialResult = await pool.query(partialQuery, [messageLower])
+
+        if (partialResult.rows.length > 0) {
+          console.log(`Found partial content for keyword: "${partialResult.rows[0].keyword}"`)
+          pool.end()
+          return partialResult.rows[0].content
+        }
+
+        pool.end()
+        console.log(`No database content found for: "${messageLower}"`)
+      } catch (error) {
+        console.error('Database error:', error)
+      }
     }
-
-    // Try partial matches
-    const partialQuery = `
-      SELECT cc.content, ck.keyword 
-      FROM content_chunks cc 
-      JOIN content_chunks_keywords ck ON cc.id = ck._parent_id 
-      WHERE cc.is_active = true 
-      AND $1 LIKE '%' || LOWER(ck.keyword) || '%'
-      ORDER BY LENGTH(ck.keyword) DESC
-      LIMIT 1
-    `
-
-    const partialResult = await pool.query(partialQuery, [messageLower])
-
-    if (partialResult.rows.length > 0) {
-      console.log(`Found partial content for keyword: "${partialResult.rows[0].keyword}"`)
-      pool.end()
-      return partialResult.rows[0].content
-    }
-
-    pool.end()
-    console.log(`No database content found for: "${messageLower}"`)
   } catch (error) {
-    console.error('Database error:', error)
+    console.error('Error in generatePortfolioResponse:', error)
   }
 
   // Fallback to the existing keyword-based responses
-  console.log('Using fallback responses')
+  console.log('Using fallback keyword-based responses')
+  return getKeywordBasedResponse(message, conversationHistory)
+}
+
+// Extract the keyword-based responses into a separate function for better organization
+function getKeywordBasedResponse(message: string, conversationHistory: any[]): string {
+  // This simulates responses based on keywords - in production this would use your RAG system
+  // You could integrate with Upstash Vector or other vector databases here
+
+  // Achievements - prioritize this before other matches
+  if (
+    message.includes('achievements') ||
+    message.includes('accomplishments') ||
+    message.includes('key achievements')
+  ) {
+    return `I'm proud of several key achievements that demonstrate my growth in AI, Development, Security, and Support:
+
+Technical Achievements:
+&bull; Successfully completed a Software Developer Internship at Aubot, where I maintained Python and Java codebases, executed automation scripts, and contributed to quality assurance processes in an agile environment
+&bull; Developed immersive VR experiences at edgedVR using Present4D, creating multi-device compatible applications with strong focus on usability and visual quality
+&bull; Built this comprehensive AI-powered portfolio chatbot from scratch, demonstrating advanced conversational AI, database integration, and modern web development skills
+
+Professional Growth:
+&bull; Transitioned from hospitality management to tech development, showing adaptability and commitment to career change
+&bull; Gained expertise in system management through Oracle Micros POS and Deputy systems, developing valuable IT operations skills
+&bull; Successfully collaborated in agile development teams and contributed to enterprise-level software projects
+
+Learning & Innovation:
+&bull; Continuously expanding knowledge in AI and machine learning technologies
+&bull; Building practical applications that solve real problems rather than just theoretical projects
+&bull; Developing expertise across multiple domains: traditional development, VR/emerging tech, and AI systems
+
+I'm particularly proud that each role has contributed to my goal of specializing in intelligent, secure applications while building strong technical support capabilities. My diverse background gives me a unique perspective on technology implementation and user experience.`
+  }
   // This simulates responses based on keywords - in production this would use your RAG system
   // You could integrate with Upstash Vector or other vector databases here
 
