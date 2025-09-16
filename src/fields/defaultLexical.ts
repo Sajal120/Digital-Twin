@@ -8,13 +8,26 @@ import {
   UnderlineFeature,
   type LinkFields,
 } from '@payloadcms/richtext-lexical'
+import { isBuildTime } from '@/lib/build-utils'
 
-export const defaultLexical = lexicalEditor({
-  features: [
+// Create build-time safe Lexical editor configuration
+const createLexicalConfig = () => {
+  const basicFeatures = [
     ParagraphFeature(),
     UnderlineFeature(),
     BoldFeature(),
     ItalicFeature(),
+  ]
+
+  // During build time, only include basic features to avoid collection validation
+  if (isBuildTime()) {
+    console.log('🔧 Using build-time Lexical editor (no LinkFeature)')
+    return basicFeatures
+  }
+
+  // Runtime configuration with full LinkFeature
+  return [
+    ...basicFeatures,
     LinkFeature({
       enabledCollections: ['pages', 'posts'],
       fields: ({ defaultFields }) => {
@@ -43,5 +56,9 @@ export const defaultLexical = lexicalEditor({
         ]
       },
     }),
-  ],
+  ]
+}
+
+export const defaultLexical = lexicalEditor({
+  features: createLexicalConfig(),
 })

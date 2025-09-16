@@ -229,7 +229,7 @@ export default buildConfig({
       ],
     },
   },
-  editor: defaultLexical,
+  editor: isBuildTime() ? undefined : defaultLexical,
   db: getDatabaseConfig(),
   collections: isBuildTime() ? [] : [
     Pages,
