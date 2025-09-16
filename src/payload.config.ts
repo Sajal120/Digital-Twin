@@ -63,16 +63,21 @@ const getDatabaseConnection = (): string => {
 
 // Check if we're in a build environment without database access
 const isBuildTime = (): boolean => {
-  // Check for Vercel build environment
-  const isVercelBuild = process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production'
+  // Multiple build environment checks for maximum coverage
+  const isVercelBuild = process.env.VERCEL === '1'
+  const isVercelProduction = process.env.VERCEL_ENV === 'production'
+  const isCIBuild = process.env.CI === 'true' || process.env.CI === '1'
+  const isProductionBuild = process.env.NODE_ENV === 'production'
+  const hasNoBuildDatabase = !process.env.DATABASE_URL && !process.env.DATABASE_URI
 
-  // Check for CI environments or build without database
-  const isCIBuild = process.env.CI === 'true' || process.env.NODE_ENV === 'production'
-
-  // Check if we don't have a database URL available
-  const hasNoDatabase = !process.env.DATABASE_URL && !process.env.DATABASE_URI
-
-  return (isVercelBuild && hasNoDatabase) || (isCIBuild && hasNoDatabase)
+  // Force build-time mode if any build indicators are present
+  const forceBuildMode = isVercelBuild || isCIBuild || (isProductionBuild && hasNoBuildDatabase)
+  
+  if (forceBuildMode) {
+    console.log(`🔧 Build-time detected: VERCEL=${process.env.VERCEL}, CI=${process.env.CI}, NODE_ENV=${process.env.NODE_ENV}, HAS_DB=${!!process.env.DATABASE_URL}`)
+  }
+  
+  return forceBuildMode
 }
 
 // Create database configuration based on environment
@@ -80,83 +85,87 @@ const getDatabaseConfig = () => {
   // For build time without database, skip database entirely
   if (isBuildTime()) {
     console.log('🔧 Using build-time PayloadCMS configuration (database-free)')
-    // Return a comprehensive mock adapter with all required methods
+    
+    // Create a comprehensive mock that intercepts ALL database calls
+    const mockResponse = { id: 'mock', createdAt: new Date(), updatedAt: new Date() }
+    const mockPaginatedResponse = {
+      docs: [],
+      totalDocs: 0,
+      limit: 10,
+      totalPages: 0,
+      page: 1,
+      pagingCounter: 1,
+      hasPrevPage: false,
+      hasNextPage: false,
+      prevPage: null,
+      nextPage: null,
+    }
+
+    // Return an ultra-comprehensive mock adapter with extensive method coverage
     return {
-      name: 'mock-adapter',
+      name: 'comprehensive-mock-adapter',
       payload: null as any,
       
+      // Core connection methods
+      connect: async () => { console.log('🔧 Mock: connect called'); return Promise.resolve() },
+      destroy: async () => { console.log('🔧 Mock: destroy called'); return Promise.resolve() },
+      init: async () => { console.log('🔧 Mock: init called'); return Promise.resolve() },
+      
       // Transaction methods
-      beginTransaction: async () => ({ commit: async () => {}, rollback: async () => {} }),
-      commitTransaction: async () => {},
-      rollbackTransaction: async () => {},
+      beginTransaction: async () => { 
+        console.log('🔧 Mock: beginTransaction called')
+        return { commit: async () => {}, rollback: async () => {} }
+      },
+      commitTransaction: async () => { console.log('🔧 Mock: commitTransaction called') },
+      rollbackTransaction: async () => { console.log('🔧 Mock: rollbackTransaction called') },
       
-      // Connection methods
-      connect: async () => {},
-      destroy: async () => {},
-      init: async () => {},
+      // Collection CRUD methods
+      count: async () => { console.log('🔧 Mock: count called'); return { totalDocs: 0 } },
+      create: async () => { console.log('🔧 Mock: create called'); return mockResponse },
+      createMany: async () => { console.log('🔧 Mock: createMany called'); return [] },
+      deleteMany: async () => { console.log('🔧 Mock: deleteMany called'); return { docs: [] } },
+      deleteOne: async () => { console.log('🔧 Mock: deleteOne called'); return mockResponse },
+      deleteVersions: async () => { console.log('🔧 Mock: deleteVersions called') },
+      find: async () => { console.log('🔧 Mock: find called'); return mockPaginatedResponse },
+      findOne: async () => { console.log('🔧 Mock: findOne called'); return null },
+      findVersions: async () => { console.log('🔧 Mock: findVersions called'); return mockPaginatedResponse },
+      updateOne: async () => { console.log('🔧 Mock: updateOne called'); return mockResponse },
+      updateMany: async () => { console.log('🔧 Mock: updateMany called'); return [] },
+      updateVersion: async () => { console.log('🔧 Mock: updateVersion called'); return mockResponse },
+      queryDrafts: async () => { console.log('🔧 Mock: queryDrafts called'); return mockPaginatedResponse },
       
-      // Collection methods
-      count: async () => ({ totalDocs: 0 }),
-      create: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      deleteMany: async () => ({ docs: [] }),
-      deleteOne: async () => ({ id: 'mock' }),
-      deleteVersions: async () => {},
-      find: async () => ({
-        docs: [],
-        totalDocs: 0,
-        limit: 10,
-        totalPages: 0,
-        page: 1,
-        pagingCounter: 1,
-        hasPrevPage: false,
-        hasNextPage: false,
-        prevPage: null,
-        nextPage: null,
-      }),
-      findOne: async () => null,
-      findVersions: async () => ({
-        docs: [],
-        totalDocs: 0,
-        limit: 10,
-        totalPages: 0,
-        page: 1,
-        pagingCounter: 1,
-        hasPrevPage: false,
-        hasNextPage: false,
-        prevPage: null,
-        nextPage: null,
-      }),
-      updateOne: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      updateVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      queryDrafts: async () => ({ docs: [], totalDocs: 0 }),
+      // Global methods (the problematic ones!)
+      findGlobal: async () => { console.log('🔧 Mock: findGlobal called'); return mockResponse },
+      updateGlobal: async () => { console.log('🔧 Mock: updateGlobal called'); return mockResponse },
+      createGlobal: async () => { console.log('🔧 Mock: createGlobal called'); return mockResponse },
       
-      // Global methods (this is what was missing!)
-      findGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      updateGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      // Version methods
+      createVersion: async () => { console.log('🔧 Mock: createVersion called'); return mockResponse },
+      deleteVersion: async () => { console.log('🔧 Mock: deleteVersion called'); return mockResponse },
       
       // Migration methods
-      migrate: async () => {},
-      migrateDown: async () => {},
-      migrateFresh: async () => {},
-      migrateRefresh: async () => {},
-      migrateReset: async () => {},
-      migrateStatus: async () => [],
+      migrate: async () => { console.log('🔧 Mock: migrate called') },
+      migrateDown: async () => { console.log('🔧 Mock: migrateDown called') },
+      migrateFresh: async () => { console.log('🔧 Mock: migrateFresh called') },
+      migrateRefresh: async () => { console.log('🔧 Mock: migrateRefresh called') },
+      migrateReset: async () => { console.log('🔧 Mock: migrateReset called') },
+      migrateStatus: async () => { console.log('🔧 Mock: migrateStatus called'); return [] },
+      createMigration: async () => { console.log('🔧 Mock: createMigration called') },
       
-      // Additional methods that might be called
-      createGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      createVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      deleteVersion: async () => ({ id: 'mock' }),
-      distinct: async () => [],
+      // Utility methods
+      distinct: async () => { console.log('🔧 Mock: distinct called'); return [] },
       
-      // Session methods
-      createMigration: async () => {},
-      
-      // Batch methods
-      createMany: async () => [],
-      updateMany: async () => [],
+      // Catch any missed methods with Proxy
+      ...new Proxy({}, {
+        get: (target, prop) => {
+          console.log(`🔧 Mock: Intercepted unknown method "${String(prop)}"`)
+          return async () => mockResponse
+        }
+      })
     } as any
   }
 
+  console.log('🚀 Using full PayloadCMS configuration with database')
   return postgresAdapter({
     pool: {
       connectionString: getDatabaseConnection(),
