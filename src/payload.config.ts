@@ -65,13 +65,13 @@ const getDatabaseConnection = (): string => {
 const isBuildTime = (): boolean => {
   // Check for Vercel build environment
   const isVercelBuild = process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production'
-  
+
   // Check for CI environments or build without database
   const isCIBuild = process.env.CI === 'true' || process.env.NODE_ENV === 'production'
-  
+
   // Check if we don't have a database URL available
   const hasNoDatabase = !process.env.DATABASE_URL && !process.env.DATABASE_URI
-  
+
   return (isVercelBuild && hasNoDatabase) || (isCIBuild && hasNoDatabase)
 }
 
@@ -80,19 +80,27 @@ const getDatabaseConfig = () => {
   // For build time without database, skip database entirely
   if (isBuildTime()) {
     console.log('🔧 Using build-time PayloadCMS configuration (database-free)')
-    // Return a minimal mock adapter that doesn't connect
+    // Return a comprehensive mock adapter with all required methods
     return {
       name: 'mock-adapter',
       payload: null as any,
+      
+      // Transaction methods
       beginTransaction: async () => ({ commit: async () => {}, rollback: async () => {} }),
       commitTransaction: async () => {},
+      rollbackTransaction: async () => {},
+      
+      // Connection methods
       connect: async () => {},
+      destroy: async () => {},
+      init: async () => {},
+      
+      // Collection methods
       count: async () => ({ totalDocs: 0 }),
       create: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
       deleteMany: async () => ({ docs: [] }),
       deleteOne: async () => ({ id: 'mock' }),
       deleteVersions: async () => {},
-      destroy: async () => {},
       find: async () => ({
         docs: [],
         totalDocs: 0,
@@ -105,7 +113,6 @@ const getDatabaseConfig = () => {
         prevPage: null,
         nextPage: null,
       }),
-      findGlobal: async () => null,
       findOne: async () => null,
       findVersions: async () => ({
         docs: [],
@@ -119,18 +126,34 @@ const getDatabaseConfig = () => {
         prevPage: null,
         nextPage: null,
       }),
-      init: async () => {},
+      updateOne: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      updateVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      queryDrafts: async () => ({ docs: [], totalDocs: 0 }),
+      
+      // Global methods (this is what was missing!)
+      findGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      updateGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      
+      // Migration methods
       migrate: async () => {},
       migrateDown: async () => {},
       migrateFresh: async () => {},
       migrateRefresh: async () => {},
       migrateReset: async () => {},
       migrateStatus: async () => [],
-      queryDrafts: async () => ({ docs: [], totalDocs: 0 }),
-      rollbackTransaction: async () => {},
-      updateGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      updateOne: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
-      updateVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      
+      // Additional methods that might be called
+      createGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      createVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      deleteVersion: async () => ({ id: 'mock' }),
+      distinct: async () => [],
+      
+      // Session methods
+      createMigration: async () => {},
+      
+      // Batch methods
+      createMany: async () => [],
+      updateMany: async () => [],
     } as any
   }
 
