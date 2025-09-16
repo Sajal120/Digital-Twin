@@ -63,9 +63,16 @@ const getDatabaseConnection = (): string => {
 
 // Check if we're in a build environment without database access
 const isBuildTime = (): boolean => {
-  return (
-    !process.env.DATABASE_URL && !process.env.DATABASE_URI && process.env.NODE_ENV !== 'development'
-  )
+  // Check for Vercel build environment
+  const isVercelBuild = process.env.VERCEL === '1' && process.env.VERCEL_ENV === 'production'
+  
+  // Check for CI environments or build without database
+  const isCIBuild = process.env.CI === 'true' || process.env.NODE_ENV === 'production'
+  
+  // Check if we don't have a database URL available
+  const hasNoDatabase = !process.env.DATABASE_URL && !process.env.DATABASE_URI
+  
+  return (isVercelBuild && hasNoDatabase) || (isCIBuild && hasNoDatabase)
 }
 
 // Create database configuration based on environment
@@ -86,10 +93,32 @@ const getDatabaseConfig = () => {
       deleteOne: async () => ({ id: 'mock' }),
       deleteVersions: async () => {},
       destroy: async () => {},
-      find: async () => ({ docs: [], totalDocs: 0, limit: 10, totalPages: 0, page: 1, pagingCounter: 1, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null }),
+      find: async () => ({
+        docs: [],
+        totalDocs: 0,
+        limit: 10,
+        totalPages: 0,
+        page: 1,
+        pagingCounter: 1,
+        hasPrevPage: false,
+        hasNextPage: false,
+        prevPage: null,
+        nextPage: null,
+      }),
       findGlobal: async () => null,
       findOne: async () => null,
-      findVersions: async () => ({ docs: [], totalDocs: 0, limit: 10, totalPages: 0, page: 1, pagingCounter: 1, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null }),
+      findVersions: async () => ({
+        docs: [],
+        totalDocs: 0,
+        limit: 10,
+        totalPages: 0,
+        page: 1,
+        pagingCounter: 1,
+        hasPrevPage: false,
+        hasNextPage: false,
+        prevPage: null,
+        nextPage: null,
+      }),
       init: async () => {},
       migrate: async () => {},
       migrateDown: async () => {},
@@ -104,7 +133,7 @@ const getDatabaseConfig = () => {
       updateVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
     } as any
   }
-  
+
   return postgresAdapter({
     pool: {
       connectionString: getDatabaseConnection(),
@@ -114,104 +143,71 @@ const getDatabaseConfig = () => {
   })
 }
 
-// Simple build-time detection
-const isBuilding = process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL
-
-// Create minimal config for build time, full config for runtime
-const createConfig = () => {
-  if (isBuilding) {
-    console.log('🔧 Using build-time PayloadCMS configuration (database-free)')
-    
-    // Return minimal config that won't connect to database
-    return buildConfig({
-      secret: getPayloadSecret(),
-      collections: [],
-      globals: [],
-      db: postgresAdapter({
-        pool: {
-          connectionString: 'postgresql://build:build@localhost:5432/build',
-          max: 0, // No connections during build
+export default buildConfig({
+  admin: {
+    components: {
+      beforeLogin: ['@/components/BeforeLogin'],
+      beforeDashboard: ['@/components/BeforeDashboard'],
+    },
+    importMap: {
+      baseDir: path.resolve(dirname),
+    },
+    user: Users.slug,
+    livePreview: {
+      breakpoints: [
+        {
+          label: 'Mobile',
+          name: 'mobile',
+          width: 375,
+          height: 667,
         },
-        migrationDir: path.resolve(dirname, 'migrations'),
-        push: false,
-      }),
-      sharp,
-    })
-  }
-
-  // Full production configuration
-  console.log('🚀 Using full PayloadCMS configuration with database')
-  
-  return buildConfig({
-    admin: {
-      components: {
-        beforeLogin: ['@/components/BeforeLogin'],
-        beforeDashboard: ['@/components/BeforeDashboard'],
-      },
-      importMap: {
-        baseDir: path.resolve(dirname),
-      },
-      user: Users.slug,
-      livePreview: {
-        breakpoints: [
-          {
-            label: 'Mobile',
-            name: 'mobile',
-            width: 375,
-            height: 667,
-          },
-          {
-            label: 'Tablet',
-            name: 'tablet',
-            width: 768,
-            height: 1024,
-          },
-          {
-            label: 'Desktop',
-            name: 'desktop',
-            width: 1440,
-            height: 900,
-          },
-        ],
-      },
-    },
-    editor: defaultLexical,
-    db: getDatabaseConfig(),
-    collections: [
-      Pages,
-      Posts,
-      Media,
-      Categories,
-      Users,
-      PortfolioContent,
-      ChatAnalytics,
-      SystemLogs,
-      ContentChunks,
-      EmbeddingOperations,
-      DatabaseOperations,
-      AuditLogs,
-    ],
-    cors: [getServerSideURL()].filter(Boolean),
-    globals: [Header, Footer],
-    plugins: [
-      ...plugins,
-    ],
-    secret: getPayloadSecret(),
-    sharp,
-    typescript: {
-      outputFile: path.resolve(dirname, 'payload-types.ts'),
-    },
-    jobs: {
-      access: {
-        run: ({ req }: { req: PayloadRequest }): boolean => {
-          if (req.user) return true
-          const authHeader = req.headers.get('authorization')
-          return authHeader === `Bearer ${process.env.CRON_SECRET}`
+        {
+          label: 'Tablet',
+          name: 'tablet',
+          width: 768,
+          height: 1024,
         },
-      },
-      tasks: [],
+        {
+          label: 'Desktop',
+          name: 'desktop',
+          width: 1440,
+          height: 900,
+        },
+      ],
     },
-  })
-}
-
-export default createConfig()
+  },
+  editor: defaultLexical,
+  db: getDatabaseConfig(),
+  collections: [
+    Pages,
+    Posts,
+    Media,
+    Categories,
+    Users,
+    PortfolioContent,
+    ChatAnalytics,
+    SystemLogs,
+    ContentChunks,
+    EmbeddingOperations,
+    DatabaseOperations,
+    AuditLogs,
+  ],
+  cors: [getServerSideURL()].filter(Boolean),
+  globals: [Header, Footer],
+  plugins: [...plugins],
+  secret: getPayloadSecret(),
+  sharp,
+  typescript: {
+    outputFile: path.resolve(dirname, 'payload-types.ts'),
+  },
+  jobs: {
+    access: {
+      run: ({ req }: { req: PayloadRequest }): boolean => {
+        if (req.user) return true
+        const authHeader = req.headers.get('authorization')
+        return authHeader === `Bearer ${process.env.CRON_SECRET}`
+      },
+    },
+    tasks: [],
+  },
+})

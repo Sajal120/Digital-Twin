@@ -15,7 +15,7 @@ type Args = {
 }
 export default async function Page({ searchParams: searchParamsPromise }: Args) {
   const { q: query } = await searchParamsPromise
-  
+
   // Skip database queries during build time if no DATABASE_URL is available
   if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
     return (

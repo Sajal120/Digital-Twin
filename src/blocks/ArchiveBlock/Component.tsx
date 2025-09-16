@@ -21,7 +21,9 @@ export const ArchiveBlock: React.FC<
   if (populateBy === 'collection') {
     // Skip database queries during build time if no DATABASE_URL is available
     if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
-      console.log('Skipping ArchiveBlock database query during build - no database connection available')
+      console.log(
+        'Skipping ArchiveBlock database query during build - no database connection available',
+      )
       posts = []
     } else {
       try {

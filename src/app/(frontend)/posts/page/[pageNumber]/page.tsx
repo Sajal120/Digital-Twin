@@ -19,7 +19,7 @@ type Args = {
 
 export default async function Page({ params: paramsPromise }: Args) {
   const { pageNumber } = await paramsPromise
-  
+
   // Skip database queries during build time if no DATABASE_URL is available
   if (!process.env.DATABASE_URL && !process.env.DATABASE_URI) {
     return (
@@ -103,9 +103,5 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
 export async function generateStaticParams() {
   // During build without database, return predefined static pagination
   // This prevents database connections during build time
-  return [
-    { pageNumber: '1' },
-    { pageNumber: '2' },
-    { pageNumber: '3' },
-  ]
+  return [{ pageNumber: '1' }, { pageNumber: '2' }, { pageNumber: '3' }]
 }

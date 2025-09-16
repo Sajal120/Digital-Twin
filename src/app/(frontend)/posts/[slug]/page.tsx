@@ -68,7 +68,7 @@ export default async function Post({ params: paramsPromise }: Args) {
 
 export async function generateMetadata({ params: paramsPromise }: Args): Promise<Metadata> {
   const { slug = '' } = await paramsPromise
-  
+
   // Return static metadata during build without database queries
   const staticMetadata: Record<string, { title: string; description: string }> = {
     'getting-started-with-ai': {
@@ -86,13 +86,15 @@ export async function generateMetadata({ params: paramsPromise }: Args): Promise
     'web-development-trends': {
       title: 'Web Development Trends - Sajal Basnet',
       description: 'Current trends and future directions in web development.',
+    },
+  }
+
+  return (
+    staticMetadata[slug] || {
+      title: 'Blog Post - Sajal Basnet',
+      description: 'Insights and articles by Sajal Basnet on development and AI/ML.',
     }
-  }
-  
-  return staticMetadata[slug] || {
-    title: 'Blog Post - Sajal Basnet',
-    description: 'Insights and articles by Sajal Basnet on development and AI/ML.',
-  }
+  )
 }
 
 const queryPostBySlug = cache(async ({ slug }: { slug: string }) => {
