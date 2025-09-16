@@ -1,36 +1,32 @@
 // Centralized build-time detection utility
 export const isBuildTime = (): boolean => {
-  // Check for explicit build environment indicators
-  const isVercelBuild = process.env.VERCEL === '1'
-  const isCIBuild = process.env.CI === 'true' || process.env.CI === '1'
-  const isProductionBuild = process.env.NODE_ENV === 'production'
-  const hasDatabase = !!(process.env.DATABASE_URL || process.env.DATABASE_URI)
-  
-  // Check if we're in Next.js static generation phase (most reliable indicator)
-  const isNextJSStaticGeneration = 
-    process.env.NODE_ENV === 'production' &&
-    (process.env.__NEXT_PROCESSED_ENV === '1' || process.env.NEXT_PHASE === 'phase-production-build')
-
-  // Only consider it build time in these specific scenarios:
-  // 1. Vercel build environment
-  // 2. CI environment  
-  // 3. Production build without database (for static generation)
-  // 4. Next.js static generation phase
-  const forceBuildMode = 
-    isVercelBuild || 
-    isCIBuild || 
-    isNextJSStaticGeneration ||
-    (isProductionBuild && !hasDatabase)
-
-  // Special case: Never force build mode in development (NODE_ENV=development)
+  // NEVER use build mode in development - be absolutely explicit
   if (process.env.NODE_ENV === 'development') {
     return false
   }
+  
+  // Check for development server indicators
+  if (process.argv.includes('dev') || process.env.NEXT_DEV === 'true') {
+    return false
+  }
+  
+  // Only trigger build mode during actual Vercel deployments or explicit build commands
+  const isVercelStaticBuild = process.env.VERCEL === '1' && 
+                              process.env.CI === 'true' && 
+                              process.env.NODE_ENV === 'production'
+  
+  const isExplicitBuildCommand = process.argv.includes('next-build') || 
+                                process.argv.includes('vercel-build') ||
+                                (process.argv.includes('build') && !process.argv.includes('dev'))
+
+  const forceBuildMode = isVercelStaticBuild || isExplicitBuildCommand
 
   if (forceBuildMode) {
     console.log(
-      `🔧 Build-time detected: VERCEL=${process.env.VERCEL}, CI=${process.env.CI}, NODE_ENV=${process.env.NODE_ENV}, HAS_DB=${hasDatabase}, PHASE=${process.env.NEXT_PHASE}`,
+      `🔧 Build-time detected: VERCEL=${process.env.VERCEL}, CI=${process.env.CI}, NODE_ENV=${process.env.NODE_ENV}`,
     )
+  } else {
+    console.log('🚀 Development mode - using full PayloadCMS with database')
   }
 
   return forceBuildMode
