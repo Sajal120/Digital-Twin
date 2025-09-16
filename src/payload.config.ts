@@ -70,19 +70,39 @@ const isBuildTime = (): boolean => {
 
 // Create database configuration based on environment
 const getDatabaseConfig = () => {
-  // For build time without database, use minimal configuration
+  // For build time without database, skip database entirely
   if (isBuildTime()) {
-    console.log('Using minimal database configuration for build process')
-    return postgresAdapter({
-      pool: {
-        connectionString: getDatabaseConnection(),
-        // Disable connection pooling during build
-        max: 0,
-        min: 0,
-      },
-      migrationDir: path.resolve(dirname, 'migrations'),
-      push: false, // Disable migrations during build
-    })
+    console.log('🔧 Using build-time PayloadCMS configuration (database-free)')
+    // Return a minimal mock adapter that doesn't connect
+    return {
+      name: 'mock-adapter',
+      payload: null as any,
+      beginTransaction: async () => ({ commit: async () => {}, rollback: async () => {} }),
+      commitTransaction: async () => {},
+      connect: async () => {},
+      count: async () => ({ totalDocs: 0 }),
+      create: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      deleteMany: async () => ({ docs: [] }),
+      deleteOne: async () => ({ id: 'mock' }),
+      deleteVersions: async () => {},
+      destroy: async () => {},
+      find: async () => ({ docs: [], totalDocs: 0, limit: 10, totalPages: 0, page: 1, pagingCounter: 1, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null }),
+      findGlobal: async () => null,
+      findOne: async () => null,
+      findVersions: async () => ({ docs: [], totalDocs: 0, limit: 10, totalPages: 0, page: 1, pagingCounter: 1, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null }),
+      init: async () => {},
+      migrate: async () => {},
+      migrateDown: async () => {},
+      migrateFresh: async () => {},
+      migrateRefresh: async () => {},
+      migrateReset: async () => {},
+      migrateStatus: async () => [],
+      queryDrafts: async () => ({ docs: [], totalDocs: 0 }),
+      rollbackTransaction: async () => {},
+      updateGlobal: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      updateOne: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+      updateVersion: async () => ({ id: 'mock', createdAt: new Date(), updatedAt: new Date() }),
+    } as any
   }
   
   return postgresAdapter({
