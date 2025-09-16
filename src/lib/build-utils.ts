@@ -9,11 +9,13 @@ export const isBuildTime = (): boolean => {
 
   // Force build-time mode if any build indicators are present
   const forceBuildMode = isVercelBuild || isCIBuild || (isProductionBuild && hasNoBuildDatabase)
-  
+
   if (forceBuildMode) {
-    console.log(`🔧 Build-time detected: VERCEL=${process.env.VERCEL}, CI=${process.env.CI}, NODE_ENV=${process.env.NODE_ENV}, HAS_DB=${!!process.env.DATABASE_URL}`)
+    console.log(
+      `🔧 Build-time detected: VERCEL=${process.env.VERCEL}, CI=${process.env.CI}, NODE_ENV=${process.env.NODE_ENV}, HAS_DB=${!!process.env.DATABASE_URL}`,
+    )
   }
-  
+
   return forceBuildMode
 }
 

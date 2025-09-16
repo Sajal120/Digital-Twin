@@ -12,12 +12,7 @@ import { isBuildTime } from '@/lib/build-utils'
 
 // Create build-time safe Lexical editor configuration
 const createLexicalConfig = () => {
-  const basicFeatures = [
-    ParagraphFeature(),
-    UnderlineFeature(),
-    BoldFeature(),
-    ItalicFeature(),
-  ]
+  const basicFeatures = [ParagraphFeature(), UnderlineFeature(), BoldFeature(), ItalicFeature()]
 
   // During build time, only include basic features to avoid collection validation
   if (isBuildTime()) {
