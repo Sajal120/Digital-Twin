@@ -197,7 +197,7 @@ const getDatabaseConfig = () => {
 }
 
 export default buildConfig({
-  admin: {
+  admin: isBuildTime() ? undefined : {
     components: {
       beforeLogin: ['@/components/BeforeLogin'],
       beforeDashboard: ['@/components/BeforeDashboard'],
@@ -231,7 +231,7 @@ export default buildConfig({
   },
   editor: defaultLexical,
   db: getDatabaseConfig(),
-  collections: [
+  collections: isBuildTime() ? [] : [
     Pages,
     Posts,
     Media,
@@ -246,8 +246,8 @@ export default buildConfig({
     AuditLogs,
   ],
   cors: [getServerSideURL()].filter(Boolean),
-  globals: [Header, Footer],
-  plugins: [...plugins],
+  globals: isBuildTime() ? [] : [Header, Footer],
+  plugins: isBuildTime() ? [] : [...plugins],
   secret: getPayloadSecret(),
   sharp,
   typescript: {
