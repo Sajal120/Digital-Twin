@@ -57,6 +57,8 @@ export function AIChat() {
             role: m.role,
             content: m.content,
           })),
+          enhancedMode: true,
+          interviewType: 'general', // You can change this to: 'technical', 'behavioral', 'executive'
         }),
       })
 

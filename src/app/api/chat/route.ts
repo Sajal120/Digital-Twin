@@ -3,6 +3,12 @@ import { ChatDatabase } from '@/utilities/database'
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
 import { Index } from '@upstash/vector'
+import {
+  enhancedRAGQuery,
+  contextAwareRAG,
+  type VectorResult,
+  type InterviewContextType,
+} from '@/lib/llm-enhanced-rag'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +34,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     let { user_id, role, content } = body
-    const { message, conversationHistory } = body
+    const {
+      message,
+      conversationHistory,
+      interviewType,
+      enhancedMode = !!process.env.GROQ_API_KEY,
+    } = body
 
     // Handle both old format (user_id, role, content) and new portfolio format (message, conversationHistory)
     if (message && !content) {
@@ -63,11 +74,23 @@ export async function POST(request: NextRequest) {
       // Continue without database - we'll still provide a response
     }
 
-    // Generate AI response using portfolio-specific logic
-    const aiResponse = await generatePortfolioResponse(
-      content.toLowerCase(),
-      conversationHistory || [],
-    )
+    // Generate AI response using enhanced or basic RAG
+    let aiResponse = ''
+    let responseMetadata = null
+
+    if (enhancedMode && process.env.GROQ_API_KEY) {
+      console.log('🚀 Using Enhanced RAG with LLM processing...')
+      const enhancedResult = await generateEnhancedPortfolioResponse(
+        content.toLowerCase(),
+        conversationHistory || [],
+        interviewType as InterviewContextType,
+      )
+      aiResponse = enhancedResult.response
+      responseMetadata = enhancedResult.metadata
+    } else {
+      console.log('📝 Using Basic RAG fallback...')
+      aiResponse = await generatePortfolioResponse(content.toLowerCase(), conversationHistory || [])
+    }
 
     // Try to insert the AI response into the database, but continue if it fails
     let assistantMessage = null
@@ -82,11 +105,13 @@ export async function POST(request: NextRequest) {
       // Continue without database - we still have the response
     }
 
-    // For portfolio format, return just the response
+    // For portfolio format, return enhanced response
     if (message) {
       return NextResponse.json({
         response: aiResponse,
         timestamp: new Date().toISOString(),
+        enhanced: enhancedMode && !!responseMetadata,
+        metadata: responseMetadata,
       })
     }
 
@@ -113,6 +138,8 @@ export async function POST(request: NextRequest) {
       },
       context: recentMessages,
       total: recentMessages.length,
+      enhanced: enhancedMode && !!responseMetadata,
+      metadata: responseMetadata,
     })
   } catch (error) {
     console.error('Chat API Error:', error)
@@ -123,6 +150,91 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     )
+  }
+}
+
+/**
+ * Enhanced Portfolio Response Generation
+ * ====================================
+ *
+ * Uses LLM-enhanced RAG pipeline for dramatically improved interview responses
+ */
+async function generateEnhancedPortfolioResponse(
+  message: string,
+  conversationHistory: any[],
+  interviewType?: InterviewContextType,
+): Promise<{ response: string; metadata: any }> {
+  try {
+    // Check if Upstash Vector is available
+    if (!process.env.UPSTASH_VECTOR_REST_URL || !process.env.UPSTASH_VECTOR_REST_TOKEN) {
+      console.log('Upstash credentials not available, falling back to basic response')
+      const basicResponse = await generatePortfolioResponse(message, conversationHistory)
+      return {
+        response: basicResponse,
+        metadata: {
+          originalQuery: message,
+          enhancedQuery: message,
+          resultsFound: 0,
+          fallbackUsed: true,
+        },
+      }
+    }
+
+    // Create vector search function
+    const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {
+      try {
+        console.log(`Searching vector database for: "${query}"`)
+
+        // Initialize Upstash Vector client
+        const index = new Index({
+          url: process.env.UPSTASH_VECTOR_REST_URL!,
+          token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
+        })
+
+        // Query vector database
+        const vectorResults = await index.query({
+          data: query,
+          topK: 5, // Get more results for better context
+          includeMetadata: true,
+          includeData: true,
+        })
+
+        // Convert to our VectorResult format
+        return vectorResults.map((result) => ({
+          score: result.score,
+          data: result.data as string,
+          metadata: result.metadata,
+        }))
+      } catch (error) {
+        console.error('Vector search failed:', error)
+        return []
+      }
+    }
+
+    // Use context-aware enhanced RAG if interview type specified
+    if (interviewType) {
+      console.log(`🎯 Using context-aware RAG for ${interviewType} interview`)
+      return await contextAwareRAG(message, vectorSearchFunction, interviewType)
+    } else {
+      // Use general enhanced RAG
+      console.log('🚀 Using general enhanced RAG')
+      return await enhancedRAGQuery(message, vectorSearchFunction, 'General Interview')
+    }
+  } catch (error) {
+    console.error('Enhanced portfolio response failed:', error)
+
+    // Fallback to basic response
+    const basicResponse = await generatePortfolioResponse(message, conversationHistory)
+    return {
+      response: basicResponse,
+      metadata: {
+        originalQuery: message,
+        enhancedQuery: message,
+        resultsFound: 0,
+        fallbackUsed: true,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+    }
   }
 }
 
