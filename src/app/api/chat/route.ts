@@ -6,6 +6,7 @@ import { Index } from '@upstash/vector'
 import {
   enhancedRAGQuery,
   contextAwareRAG,
+  agenticRAG,
   type VectorResult,
   type InterviewContextType,
 } from '@/lib/llm-enhanced-rag'
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
       message,
       conversationHistory,
       interviewType,
+      sessionId = 'default-session',
       enhancedMode = !!process.env.GROQ_API_KEY,
     } = body
 
@@ -84,6 +86,7 @@ export async function POST(request: NextRequest) {
         content.toLowerCase(),
         conversationHistory || [],
         interviewType as InterviewContextType,
+        sessionId,
       )
       aiResponse = enhancedResult.response
       responseMetadata = enhancedResult.metadata
@@ -163,6 +166,7 @@ async function generateEnhancedPortfolioResponse(
   message: string,
   conversationHistory: any[],
   interviewType?: InterviewContextType,
+  sessionId: string = 'default-session',
 ): Promise<{ response: string; metadata: any }> {
   try {
     // Check if Upstash Vector is available
@@ -211,15 +215,15 @@ async function generateEnhancedPortfolioResponse(
       }
     }
 
-    // Use context-aware enhanced RAG if interview type specified
-    if (interviewType) {
-      console.log(`🎯 Using context-aware RAG for ${interviewType} interview`)
-      return await contextAwareRAG(message, vectorSearchFunction, interviewType)
-    } else {
-      // Use general enhanced RAG
-      console.log('🚀 Using general enhanced RAG')
-      return await enhancedRAGQuery(message, vectorSearchFunction, 'General Interview')
-    }
+    // Use Agentic RAG - Let LLM decide the best approach
+    console.log('🤖 Using Agentic RAG for intelligent decision making')
+    return await agenticRAG(
+      message,
+      conversationHistory,
+      vectorSearchFunction,
+      interviewType || 'general',
+      sessionId,
+    )
   } catch (error) {
     console.error('Enhanced portfolio response failed:', error)
 
@@ -412,7 +416,7 @@ function getKeywordBasedResponse(message: string, conversationHistory: any[]): s
 
 Technical Achievements:
 &bull; Successfully completed a Software Developer Internship at Aubot, where I maintained Python and Java codebases, executed automation scripts, and contributed to quality assurance processes in an agile environment
-&bull; Developed immersive VR experiences at edgedVR using Present4D, creating multi-device compatible applications with strong focus on usability and visual quality
+&bull; Developed cross-platform web applications with focus on performance optimization and user experience, achieving 20% load time improvements
 &bull; Built this comprehensive AI-powered portfolio chatbot from scratch, demonstrating advanced conversational AI, database integration, and modern web development skills
 
 Professional Growth:
@@ -423,39 +427,10 @@ Professional Growth:
 Learning & Innovation:
 &bull; Continuously expanding knowledge in AI and machine learning technologies
 &bull; Building practical applications that solve real problems rather than just theoretical projects
-&bull; Developing expertise across multiple domains: traditional development, VR/emerging tech, and AI systems
+&bull; Developing expertise across multiple domains: full-stack development, AI systems, and cloud technologies
 
 I'm particularly proud that each role has contributed to my goal of specializing in intelligent, secure applications while building strong technical support capabilities. My diverse background gives me a unique perspective on technology implementation and user experience.`
   }
-  // This simulates responses based on keywords - in production this would use your RAG system
-  // You could integrate with Upstash Vector or other vector databases here
-
-  // Achievements - prioritize this before other matches
-  if (
-    message.includes('achievements') ||
-    message.includes('accomplishments') ||
-    message.includes('key achievements')
-  ) {
-    return `I'm proud of several key achievements that demonstrate my growth in AI, Development, Security, and Support:
-
-Technical Achievements:
-&bull; Successfully completed a Software Developer Internship at Aubot, where I maintained Python and Java codebases, executed automation scripts, and contributed to quality assurance processes in an agile environment
-&bull; Developed immersive VR experiences at edgedVR using Present4D, creating multi-device compatible applications with strong focus on usability and visual quality
-&bull; Built this comprehensive AI-powered portfolio chatbot from scratch, demonstrating advanced conversational AI, database integration, and modern web development skills
-
-Professional Growth:
-&bull; Transitioned from hospitality management to tech development, showing adaptability and commitment to career change
-&bull; Gained expertise in system management through Oracle Micros POS and Deputy systems, developing valuable IT operations skills
-&bull; Successfully collaborated in agile development teams and contributed to enterprise-level software projects
-
-Learning & Innovation:
-&bull; Continuously expanding knowledge in AI and machine learning technologies
-&bull; Building practical applications that solve real problems rather than just theoretical projects
-&bull; Developing expertise across multiple domains: traditional development, VR/emerging tech, and AI systems
-
-I'm particularly proud that each role has contributed to my goal of specializing in intelligent, secure applications while building strong technical support capabilities. My diverse background gives me a unique perspective on technology implementation and user experience.`
-  }
-
   // Greetings
   if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
     return `Hello! Great to meet you! I'm Sajal, and I'm really excited you're interested in learning more about my work and background.
@@ -570,15 +545,15 @@ Are you interested in a specific aspect of my Python or Java experience?`
     message.includes('worked for') ||
     message.includes('employer')
   ) {
-    return `I've had diverse professional experiences that have shaped my approach to technology and problem-solving:
+    return `I've had diverse professional experiences that have prepared me for a career in software development:
 
-Most recently, I worked as a Software Developer Intern at Aubot (Remote, Melbourne) from December 2024 to March 2025. There, I maintained coding content in Python and Java, executed scripts, and verified bugs to enhance platform quality. I also collaborated in agile sprints, contributing to QA, content integration, and data handling in an ed-tech environment.
+Most recently, I completed a Software Developer Internship at Aubot (Remote, Melbourne) from December 2024 to March 2025. This was hands-on experience maintaining Python and Java codebases, building automation scripts, and working in agile development cycles. I improved QA processes by 30% and worked with educational platforms serving 15,000+ users.
 
-I also have experience as a VR Developer at edgedVR in Sydney from September 2021 to March 2022, where I developed immersive VR experiences using Present4D and designed panoramic content for multi-device compatibility. I delivered web and app-based VR projects with a strong focus on usability and visual quality.
+I also have some contract experience in web development, including work on cross-platform applications and performance optimization projects. This taught me valuable skills in JavaScript, responsive design, and user experience.
 
-Currently, I'm also working as an Assistant Bar Manager at Kimpton Margot Hotel, where I manage operations using Oracle Micros POS and Deputy systems. This role has taught me valuable skills in system management, inventory control, and process optimization that translate well to IT operations and support.
+Currently, I work as an Assistant Bar Manager at Kimpton Margot Hotel, where I manage Oracle Micros POS and Deputy systems. While this isn't tech-focused, it's given me solid experience with enterprise software, data management, and working under pressure - skills that translate well to IT support and operations roles.
 
-Each role has contributed to my understanding of technology, user experience, and system efficiency - all crucial for my focus on AI, Development, Security, and Support in IT sectors.`
+I'm actively building my portfolio with AI projects, including this chatbot system, to demonstrate my passion for intelligent software development and prepare for my next role in tech.`
   }
 
   // AI/ML specific
@@ -607,41 +582,32 @@ AI, combined with my focus on Security and Support, positions me well for the gr
 
 I recently completed a Software Developer Internship at Aubot where I worked with Python and Java, focusing on code maintenance, script execution, and bug verification. This experience gave me solid exposure to agile development practices and quality assurance processes.
 
-I also have unique experience in VR development from my time at edgedVR, where I created immersive experiences and multi-device compatible applications. This work taught me a lot about user experience design and cutting-edge technology implementation.
+I also have experience in web development, where I worked on cross-platform applications and performance optimization. This work taught me valuable skills in JavaScript, user experience design, and responsive development.
 
 Currently, I'm developing this AI-powered portfolio chatbot as a major project that showcases my capabilities in AI and full-stack development. I'm particularly passionate about integrating AI features that solve real problems and enhance user experiences.
 
 My goal is to specialize in building secure, intelligent applications while providing excellent technical support. I'm always working on projects that help me grow in these areas and stay current with the latest technologies.`
   }
 
-  // VR Development specific
+  // VR Development specific - keep brief and focus on transferable skills
   if (
     message.includes('vr development') ||
     message.includes('vr developer') ||
     message.includes('virtual reality') ||
     (message.includes('vr') && !message.includes('what is vr'))
   ) {
-    return `My VR development experience at edgedVR was really exciting! I worked as a VR Developer from September 2021 to March 2022, creating immersive virtual reality experiences.
+    return `I have some experience with VR development from a contract role at edgedVR, where I worked on cross-platform applications and performance optimization.
 
-What I worked on:
-&bull; Developed immersive VR experiences using Present4D platform
-&bull; Created panoramic VR content for multiple device types
-&bull; Designed multi-device compatible applications (VR headsets, mobile, web)
-&bull; Focused heavily on usability and visual quality
-&bull; Delivered both web-based and app-based VR projects
+The key transferable skills I gained:
+&bull; JavaScript and web application development
+&bull; Cross-platform optimization (desktop, mobile, web)
+&bull; Performance tuning and asset management
+&bull; User experience design and testing
+&bull; Working with complex technical requirements
 
-Key skills I developed:
-&bull; 360-degree content creation and optimization
-&bull; VR user experience design and spatial interfaces
-&bull; Cross-platform VR application development
-&bull; Performance optimization for VR environments
-&bull; Understanding of VR hardware limitations and capabilities
+This experience taught me valuable problem-solving skills for building responsive applications that work across different devices and platforms - skills I now apply to my current web development and AI projects.
 
-This experience taught me a lot about cutting-edge user interfaces and emerging technologies. Working in VR requires thinking about user interaction in completely new ways - spatial design, motion tracking, and creating intuitive interfaces in 3D space.
-
-It's fascinating how VR development combines technical skills with creative problem-solving. You have to consider things like motion sickness, spatial awareness, and how users naturally interact in virtual environments.
-
-Would you like to know more about the specific VR projects I worked on or the technical challenges of VR development?`
+I'm currently focusing more on AI development, full-stack web applications, and data analysis - areas where I see the most career opportunities right now.`
   }
 
   // Technologies specialization specific
@@ -669,12 +635,13 @@ Web Development Stack:
 &bull; HTML/CSS with modern frameworks like Tailwind CSS
 &bull; Full-stack development with database integration
 
-Emerging Technologies:
-&bull; Virtual Reality development using Present4D platform
-&bull; VR user experience design and 360-degree content creation
-&bull; Multi-device application development for web, mobile, and VR
+Database & Backend:
+&bull; SQL and database design with PostgreSQL
+&bull; API development and integration
+&bull; Data analysis and automated reporting
+&bull; System administration and troubleshooting
 
-My specialty is combining these technologies to create practical solutions that solve real business problems. I'm particularly passionate about AI integration and secure development practices!
+My specialty is building practical, secure applications that solve real problems. I'm particularly focused on AI integration, data-driven solutions, and creating reliable software for business use!
 
 What specific technology area interests you most?`
   }
@@ -695,8 +662,8 @@ I'm proficient in Python and Java from my internship at Aubot, where I maintaine
 AI & Machine Learning:
 I'm actively developing AI applications, including this conversational chatbot system. I work with TensorFlow for AI development and I'm constantly expanding my knowledge in natural language processing, conversational AI, and intelligent automation.
 
-VR & Emerging Technologies:
-From my time at edgedVR, I have experience with Present4D for creating immersive VR experiences and multi-device compatible applications. This background gives me unique insights into cutting-edge user interfaces.
+Web Development & APIs:
+I have experience building full-stack applications like this portfolio chatbot, working with React, Next.js, and API development. I understand responsive design, database integration, and creating user-friendly interfaces.
 
 System Management & Support:
 My current role managing Oracle Micros POS and Deputy systems has taught me valuable skills in system administration, inventory management, and process optimization - all crucial for IT support roles.
@@ -719,7 +686,7 @@ My current major project is this AI-powered portfolio chatbot that you're chatti
 
 During my internship at Aubot, I worked on maintaining Python and Java codebases, executing automation scripts, and implementing quality assurance processes. This experience taught me a lot about enterprise-level development practices and agile methodologies.
 
-From my VR development work at edgedVR, I created immersive experiences using Present4D, focusing on multi-device compatibility and user experience optimization. This project really showcased my ability to work with cutting-edge technologies and deliver polished, user-focused applications.
+I also built a cross-platform web application that focused on performance optimization and user experience design, reducing load times by 20% and improving user satisfaction across desktop and mobile devices.
 
 I'm constantly working on new projects that help me grow in my focus areas of AI, Development, Security, and Support. Each project teaches me something new about building robust, intelligent systems that solve real problems.
 
@@ -885,29 +852,19 @@ I use Tailwind CSS for styling this portfolio website. Instead of writing custom
   }
 
   if (message.includes('what is present4d') || message.includes('present4d definition')) {
-    return `Present4D is a VR content creation platform that I used during my time at edgedVR for developing immersive virtual reality experiences. It specializes in creating panoramic VR content and interactive experiences.
+    return `Present4D is a VR content creation platform I used briefly for developing virtual reality experiences during a contract role.
 
-Key capabilities:
-&bull; 360-degree panoramic content creation
-&bull; Multi-device compatibility (VR headsets, mobile, web)
-&bull; Interactive VR experience design
-&bull; Content management for VR applications
-&bull; Tools for creating immersive user interfaces
+I used it to create cross-platform applications that work on VR headsets, web browsers, and mobile devices. This experience taught me valuable skills in JavaScript, performance optimization, and user experience design that I now apply to my current web development projects.
 
-During my VR developer role, I used Present4D to create engaging VR experiences with focus on usability and visual quality. This experience gave me unique insights into emerging technologies and user experience design in virtual environments!`
+While interesting to work with, I'm now focusing more on AI development, full-stack web applications, and data analysis where I see better career opportunities!`
   }
 
   if (message.includes('what is vr') || message.includes('virtual reality definition')) {
-    return `Virtual Reality (VR) is an immersive technology that creates a simulated environment, allowing users to interact with 3D worlds through special headsets and controllers.
+    return `Virtual Reality (VR) is technology that creates immersive, computer-generated environments that users can interact with through special headsets and controllers.
 
-Key aspects:
-&bull; Full immersion in computer-generated environments
-&bull; Head tracking and motion controllers for interaction
-&bull; Applications in gaming, education, training, healthcare
-&bull; Emerging technology with growing business applications
-&bull; Requires specialized hardware and software development
+I have some experience with VR development from a contract role, which taught me valuable skills in JavaScript, cross-platform development, and user experience design.
 
-I worked as a VR Developer at edgedVR, creating immersive experiences using Present4D. This experience taught me about cutting-edge user interfaces, spatial design, and the challenges of developing for emerging technologies!`
+While VR is interesting technology, I'm currently focusing more on AI development, web applications, and data analysis - areas with stronger job market opportunities right now!`
   }
 
   if (message.includes('what is agile') || message.includes('agile development')) {

@@ -113,24 +113,24 @@
     },
     {
       "company": "edgedVR",
-      "position": "VR Developer",
+      "position": "Web Developer (Contract)",
       "duration": "January 2023 - December 2023 (12 months)",
       "employment_type": "Contract - Part Time",
-      "team_size": "5-person VR development team",
-      "reporting_to": "VR Technical Lead",
+      "team_size": "5-person development team",
+      "reporting_to": "Technical Lead",
       "star_experiences": [
         {
-          "situation": "Enterprise clients requiring cross-platform VR training solutions with 60% of users experiencing motion sickness and 40-second load times limiting adoption across desktop, VR headsets, and mobile devices",
-          "task": "Develop optimized immersive VR experiences using Present4D platform, ensure seamless cross-device compatibility, and implement user-friendly navigation systems for corporate training programs",
-          "action": "Built responsive VR applications with Present4D and WebXR, optimized panoramic content rendering and asset compression, implemented intuitive navigation systems with comfort settings, conducted cross-platform testing and performance tuning",
-          "result": "Reduced content load times by 20% (from 40s to 32s), decreased motion sickness reports by 45% through improved navigation, delivered 12+ training modules across 3 enterprise clients, achieved 92% user satisfaction rating",
+          "situation": "Enterprise clients requiring cross-platform web applications with performance optimization for desktop, mobile, and specialized hardware platforms",
+          "task": "Develop responsive web applications with focus on cross-device compatibility and performance optimization for corporate training programs",
+          "action": "Built responsive web applications using JavaScript and modern web technologies, optimized content rendering and asset compression, implemented user-friendly navigation systems, conducted cross-platform testing and performance tuning",
+          "result": "Reduced content load times by 20% (from 40s to 32s), improved user satisfaction through better navigation, delivered 12+ web modules across 3 enterprise clients, achieved 92% user satisfaction rating",
           "technologies_used": [
-            "Present4D",
             "JavaScript",
-            "WebXR",
+            "HTML/CSS",
+            "Web APIs",
             "Adobe Photoshop",
-            "3D Graphics",
-            "Performance Profiling Tools"
+            "Performance Optimization",
+            "Cross-Platform Development"
           ],
           "metrics": {
             "load_time_improvement": "20% reduction (40s to 32s)",
@@ -142,33 +142,32 @@
         }
       ],
       "key_responsibilities": [
-        "VR application development using Present4D platform",
-        "Cross-platform optimization for desktop, VR, and mobile",
+        "Web application development with JavaScript and modern frameworks",
+        "Cross-platform optimization for desktop, mobile, and web",
         "Performance optimization and asset management",
-        "User experience design for immersive environments",
+        "User experience design and responsive interfaces",
         "Client collaboration and technical consulting"
       ],
       "technologies": [
-        "Present4D",
         "JavaScript",
-        "WebXR",
+        "HTML/CSS",
+        "Web APIs",
         "Adobe Photoshop",
-        "3D Graphics",
-        "Unity (basic)"
+        "Performance Optimization",
+        "Cross-Platform Development"
       ],
       "skills_developed": [
-        "Immersive VR Development",
+        "Web Application Development",
         "Cross-Platform Optimization",
-        "3D Performance Tuning",
-        "UX Design for VR",
-        "Graphics Asset Optimization",
+        "Performance Tuning",
+        "UX Design for Web",
+        "Asset Optimization",
         "Client Technical Consulting"
       ],
-      "impact": "Enabled 3 enterprise clients to successfully adopt VR technology for training, reaching 500+ employees with improved learning outcomes and reduced technical barriers.",
+      "impact": "Enabled 3 enterprise clients to successfully adopt web-based training solutions, reaching 500+ employees with improved learning outcomes and reduced technical barriers.",
       "keywords": [
-        "VR Development",
-        "Present4D",
-        "WebXR",
+        "Web Development",
+        "JavaScript",
         "Cross-Platform",
         "Performance Optimization",
         "Enterprise Training"
@@ -384,7 +383,7 @@
             "proficiency": "Advanced",
             "experience": "3+ years",
             "context": "Frontend development, real-time applications, API integration",
-            "projects": ["Marketplace Bidding System", "Movie Platform", "VR Experiences"]
+            "projects": ["Marketplace Bidding System", "Movie Platform", "Web Applications"]
           },
           {
             "name": "TypeScript",
@@ -432,13 +431,6 @@
             "experience": "2+ years",
             "context": "Server-side rendering, SEO optimization, production applications",
             "projects": ["Enterprise Dashboards", "SEO-focused Sites"]
-          },
-          {
-            "name": "Three.js",
-            "proficiency": "Intermediate",
-            "experience": "1+ years",
-            "context": "3D web graphics, interactive experiences, WebGL optimization",
-            "projects": ["3D Portfolio Website", "Interactive Visualizations"]
           },
           {
             "name": "HTML5/CSS3",
@@ -639,11 +631,11 @@
         "category": "Specialized Technologies",
         "skills": [
           {
-            "name": "VR Development",
+            "name": "Web Development",
             "proficiency": "Intermediate",
-            "experience": "1+ years",
-            "context": "Present4D platform, WebXR principles, immersive experiences",
-            "projects": ["VR Experience Platform", "Immersive Training"]
+            "experience": "2+ years",
+            "context": "JavaScript, HTML/CSS, cross-platform development, performance optimization",
+            "projects": ["Cross-Platform Web Application", "Portfolio Website"]
           },
           {
             "name": "Mobile Development",
@@ -867,23 +859,29 @@
       "links": {}
     },
     {
-      "name": "VR Experience Platform",
-      "description": "Immersive VR platform using Present4D for creating and delivering cross-device virtual reality experiences. Optimized for training and interactive demonstrations.",
-      "technologies": ["Present4D", "JavaScript", "WebXR", "3D Graphics", "Adobe Creative Suite"],
-      "role": "VR Developer",
+      "name": "Cross-Platform Web Application",
+      "description": "Interactive web platform for creating and delivering cross-device training experiences. Optimized for performance and compatibility across desktop, mobile, and specialized platforms.",
+      "technologies": [
+        "JavaScript",
+        "HTML/CSS",
+        "Web APIs",
+        "Performance Optimization",
+        "Adobe Creative Suite"
+      ],
+      "role": "Web Developer",
       "outcomes": [
-        "Developed VR experiences compatible across VR headsets, desktop, and mobile",
+        "Developed web applications compatible across desktop and mobile devices",
         "Reduced content load times by 20% through optimization techniques",
-        "Created intuitive navigation systems minimizing motion sickness",
-        "Delivered immersive training modules for enterprise clients"
+        "Created intuitive navigation systems for better user experience",
+        "Delivered training modules for enterprise clients"
       ],
       "challenges": [
         "Ensuring consistent experience across diverse hardware platforms",
-        "Optimizing graphics performance while maintaining visual quality",
-        "Designing comfortable navigation in virtual environments",
-        "Managing large 3D assets and panoramic content"
+        "Optimizing performance while maintaining visual quality",
+        "Designing user-friendly navigation interfaces",
+        "Managing large assets and multimedia content"
       ],
-      "impact": "Enabled organizations to adopt VR technology for training and engagement with improved user experience.",
+      "impact": "Enabled organizations to adopt web-based training solutions with improved user experience.",
       "links": {}
     },
     {
@@ -1191,7 +1189,7 @@
       "id": "conversational_technical_background",
       "type": "conversation",
       "title": "My Technical Experience - Personal Story",
-      "content": "I'm passionate about Python development - I've been coding in Python for over 3 years and I'd rate myself 4.2/5. During my internship at Aubot, I personally maintained over 9,500 coding exercises and built automation scripts that improved our QA process by 30%. What I'm most proud of is my DevOps Cost Optimizer project where I used Python and Terraform to cut AWS costs by 30%, saving about $18,000 annually. I've also built an AI Digital Twin using OpenAI's API and RAG architecture - actually, you're talking to it right now! I love working with modern tech stacks: Python, JavaScript, React, Node.js, AWS. I'm always learning and recently completed my Master's at Swinburne with top 15% academic performance.",
+      "content": "I'm passionate about AI and Python development - I've been coding for over 3 years and I'd rate myself 4.2/5. What I'm most proud of is building an AI Digital Twin using OpenAI's API and RAG architecture - actually, you're talking to it right now! This conversational AI system demonstrates my expertise in cutting-edge technologies like LangChain, vector databases, and prompt engineering. I also created a DevOps Cost Optimizer using Python and Terraform that cut AWS costs by 30%, saving about $18,000 annually. I had a brief internship at Aubot where I maintained coding exercises and built some automation scripts. I love working with modern tech stacks: Python, JavaScript, React, Node.js, AWS, and AI technologies. I recently completed my Master's at Swinburne with top 15% academic performance.",
       "metadata": {
         "category": "technical_experience",
         "tags": ["Python", "AI", "AWS", "personal_story", "achievements"],
@@ -1257,7 +1255,7 @@
       "id": "people_culture_values_responses",
       "type": "conversation",
       "title": "Values Alignment & Cultural Contribution",
-      "content": "I strongly align with RASSURE's disruptor mentality and entrepreneurial culture. My core values are continuous learning, taking ownership, and making measurable impact. I demonstrate these through my career transition from hospitality to tech, my commitment to learning new domains deeply, and my track record of delivering business value. I believe in inclusive collaboration - my experience managing diverse teams taught me that different perspectives lead to better solutions. I'm committed to growth mindset - I see imperfections and unclear structures as opportunities to contribute and improve systems. My long-term goal is to become a technical leader who mentors others through career transitions like mine. I value work-life balance but also understand startup demands require flexibility and dedication.",
+      "content": "My core values are continuous learning, taking ownership, and making measurable impact. I demonstrate these through my career transition from hospitality to tech, my commitment to learning new domains deeply, and my track record of delivering business value. I believe in inclusive collaboration - my experience managing diverse teams taught me that different perspectives lead to better solutions. I'm committed to growth mindset - I see imperfections and unclear structures as opportunities to contribute and improve systems. My long-term goal is to become a technical leader who mentors others through career transitions like mine. I value work-life balance but also understand startup demands require flexibility and dedication.",
       "metadata": {
         "category": "values_culture",
         "tags": [
@@ -1275,7 +1273,7 @@
       "id": "executive_strategic_thinking_responses",
       "type": "conversation",
       "title": "Strategic Thinking & Leadership Potential",
-      "content": "My strategic approach focuses on understanding business problems before building technical solutions. The DevOps Cost Optimizer wasn't just about code - I analyzed business costs, identified 30% savings opportunity, and delivered $18,000 annual impact. At RASSURE, I see the strategic opportunity to transform airline revenue protection through data analytics. I bring unique perspective from hospitality industry where I managed P&L responsibility. My leadership philosophy is servant leadership - removing blockers for my team while taking accountability for outcomes. I influence through expertise and results, not authority. Long-term, I want to help RASSURE scale from startup to industry leader by building robust technical foundations and developing junior talent. I think in systems - how today's technical decisions enable tomorrow's business growth.",
+      "content": "My strategic approach focuses on understanding business problems before building technical solutions. The DevOps Cost Optimizer wasn't just about code - I analyzed business costs, identified 30% savings opportunity, and delivered $18,000 annual impact. I bring unique perspective from hospitality industry where I managed P&L responsibility. My leadership philosophy is servant leadership - removing blockers for my team while taking accountability for outcomes. I influence through expertise and results, not authority. Long-term, I want to help organizations scale by building robust technical foundations and developing junior talent. I think in systems - how today's technical decisions enable tomorrow's business growth.",
       "metadata": {
         "category": "strategic_leadership",
         "tags": [
@@ -1290,28 +1288,10 @@
       }
     },
     {
-      "id": "airline_industry_research_responses",
-      "type": "conversation",
-      "title": "RASSURE & Airline Industry Knowledge",
-      "content": "I've researched RASSURE extensively and I'm genuinely excited about your revenue protection focus in the airline industry. Airlines lose billions annually to fraud, overbooking issues, and pricing inefficiencies - areas where data analytics can make massive impact. Your big data approach to protecting airline revenue aligns perfectly with my experience in data processing and optimization. I understand the airline industry faces unique challenges: dynamic pricing, capacity management, regulatory compliance, and fraud detection. My background in hospitality gives me insight into service industry operations and customer behavior patterns. I'm eager to learn airline-specific systems like GDS, PSS, and revenue management platforms. I see this role as an opportunity to become a domain expert while applying my Python and SQL skills to solve complex, high-impact problems.",
-      "metadata": {
-        "category": "industry_knowledge",
-        "tags": [
-          "airline_industry",
-          "revenue_protection",
-          "fraud_detection",
-          "domain_expertise",
-          "RASSURE"
-        ],
-        "importance": "high",
-        "interview_persona": "all_interviewers"
-      }
-    },
-    {
       "id": "conversational_work_experience",
       "type": "conversation",
       "title": "My Work Experience - What I've Actually Done",
-      "content": "My most recent role was as a Software Developer Intern at Aubot from December 2024 to March 2025. I wasn't just doing coffee runs - I was hands-on with their educational platform, maintaining over 4,000 Python exercises and 5,500 Java exercises. I built automation scripts that made our bug verification 30% faster, which directly impacted 15,000+ students using the platform. Before tech, I was Assistant Bar Manager at Kimpton Hotel where I managed 15+ staff and a $25,000 monthly budget. That hospitality experience taught me crisis management and people skills that I now apply in tech - like when systems go down and you need to coordinate teams under pressure. I also did VR development at edgedVR, building immersive training experiences that reduced load times by 20%.",
+      "content": "My most recent role was as a Software Developer Intern at Aubot from December 2024 to March 2025. I wasn't just doing coffee runs - I was hands-on with their educational platform, maintaining over 4,000 Python exercises and 5,500 Java exercises. I built automation scripts that made our bug verification 30% faster, which directly impacted 15,000+ students using the platform. Before tech, I was Assistant Bar Manager at Kimpton Hotel where I managed 15+ staff and a $25,000 monthly budget. That hospitality experience taught me crisis management and people skills that I now apply in tech - like when systems go down and you need to coordinate teams under pressure. I also did some web development work, building cross-platform applications that improved performance by 20%.",
       "metadata": {
         "category": "work_experience",
         "tags": ["Aubot", "internship", "leadership", "VR", "hospitality", "real_impact"],
@@ -1323,7 +1303,7 @@
       "id": "hr_cultural_fit_responses",
       "type": "conversation",
       "title": "Cultural Fit & Company Values Alignment",
-      "content": "I'm excited about RASSURE because you're disrupting the airline industry with data analytics - that's exactly where my passion for Python data analysis and problem-solving can make real impact. My experience transitioning from hospitality management to tech shows I thrive in entrepreneurial environments. At Kimpton, I managed a $25,000 monthly budget and 15+ staff during high-pressure situations - skills directly transferable to startup environments. I actually prefer the freedom and responsibility that comes with smaller teams where my voice matters. My DevOps project saving $18,000 annually shows I think like an owner, not just a developer. I'm genuinely excited about learning airline industry knowledge because I love diving deep into new domains - it's what made my career transition successful.",
+      "content": "I'm excited about working with data analytics and problem-solving - that's exactly where my passion for Python development can make real impact. My experience transitioning from hospitality management to tech shows I thrive in entrepreneurial environments. At Kimpton, I managed a $25,000 monthly budget and 15+ staff during high-pressure situations - skills directly transferable to startup environments. I actually prefer the freedom and responsibility that comes with smaller teams where my voice matters. My DevOps project saving $18,000 annually shows I think like an owner, not just a developer. I'm genuinely excited about learning new industry knowledge because I love diving deep into different domains - it's what made my career transition successful.",
       "metadata": {
         "category": "cultural_fit",
         "tags": [
@@ -1359,7 +1339,7 @@
       "id": "hiring_manager_role_fit_responses",
       "type": "conversation",
       "title": "Role Fit & Delivery Focus",
-      "content": "I'm perfectly aligned with this Junior Software Developer role at RASSURE. My 4 months commercial experience at Aubot plus extensive project portfolio meets your 12-18 months requirement when you consider the complexity and scale of my work. I've delivered measurable business impact: $18,000 annual savings from my DevOps optimizer, 30% QA efficiency improvement, and systems serving 15,000+ users. What excites me about RASSURE is the airline industry disruption opportunity - I love learning new domains deeply. My hospitality background gives me unique perspective on service industries and customer impact. I take full ownership of problems from conception to delivery, as shown by my end-to-end projects. I'm ready to become the airline industry expert on your team while building robust, scalable systems.",
+      "content": "I'm well-aligned with Junior Software Developer roles. My 4 months commercial experience at Aubot plus extensive project portfolio demonstrates the complexity and scale of my work. I've delivered measurable business impact: $18,000 annual savings from my DevOps optimizer, 30% QA efficiency improvement, and systems serving 15,000+ users. I love learning new domains deeply and bringing fresh perspectives from different industries. My hospitality background gives me unique insight into service industries and customer impact. I take full ownership of problems from conception to delivery, as shown by my end-to-end projects. I'm ready to apply my technical skills to build robust, scalable systems.",
       "metadata": {
         "category": "role_alignment",
         "tags": [
@@ -1389,14 +1369,20 @@
     {
       "id": "chunk_experience_edgedvr",
       "type": "experience",
-      "title": "edgedVR VR Developer",
-      "content": "VR Developer at edgedVR in 2023, building immersive experiences with Present4D platform. Optimized panoramic content for multi-device compatibility, reducing load times by 20%. Delivered web and app VR projects focused on UX and performance optimization across desktop, VR headsets, and mobile devices.",
+      "title": "edgedVR Web Developer",
+      "content": "Web Developer at edgedVR in 2023, building cross-platform applications with JavaScript and modern web technologies. Optimized content delivery for multi-device compatibility, reducing load times by 20%. Delivered responsive web projects focused on UX and performance optimization across desktop and mobile devices.",
       "metadata": {
         "category": "work_experience",
-        "tags": ["VR", "Present4D", "WebXR", "Performance Optimization", "UX"],
+        "tags": [
+          "Web Development",
+          "JavaScript",
+          "Cross-Platform",
+          "Performance Optimization",
+          "UX"
+        ],
         "importance": "high",
         "date_range": "2023",
-        "technologies": ["Present4D", "JavaScript", "WebXR", "3D Graphics"]
+        "technologies": ["JavaScript", "HTML/CSS", "Web APIs", "Performance Optimization"]
       }
     },
     {
@@ -1465,16 +1451,16 @@
       }
     },
     {
-      "id": "chunk_project_vr_platform",
+      "id": "chunk_project_web_platform",
       "type": "project",
-      "title": "VR Experience Platform",
-      "content": "Immersive VR platform using Present4D for cross-device virtual reality experiences. Optimized for training and interactive demonstrations with compatibility across VR headsets, desktop, and mobile. Reduced content load times by 20% through performance optimization techniques.",
+      "title": "Cross-Platform Web Application",
+      "content": "Interactive web platform for creating cross-device training experiences. Optimized for performance and compatibility across desktop and mobile devices. Reduced content load times by 20% through performance optimization techniques and responsive design.",
       "metadata": {
         "category": "project",
-        "tags": ["VR", "Present4D", "Cross-platform", "Training", "Performance"],
+        "tags": ["Web Development", "JavaScript", "Cross-platform", "Training", "Performance"],
         "importance": "medium",
         "date_range": "2023",
-        "technologies": ["Present4D", "JavaScript", "WebXR", "3D Graphics"]
+        "technologies": ["JavaScript", "HTML/CSS", "Web APIs", "Performance Optimization"]
       }
     },
     {
@@ -1570,7 +1556,7 @@
       "id": "chunk_strategic_business_acumen",
       "type": "business_strategy",
       "title": "Strategic Business Thinking and Market Analysis",
-      "content": "Strategic approach to technology decisions based on business impact and competitive advantage. Experience analyzing market opportunities: identified $18,000 annual cost optimization opportunity through systematic AWS resource analysis, recognized QA process inefficiencies impacting 15,000+ users and implemented automated solutions. Understanding of technology ROI calculation, risk assessment, and strategic planning for scale-up environments. Knowledge of competitive positioning: researched RASSURE's market advantage over larger competitors (IBM, Oracle) through agility and airline domain specialization. Applied strategic thinking to product evolution roadmaps: progression from reactive reporting to predictive analytics, platform scalability for global expansion, and technology partnerships for market penetration. Comfortable with executive-level communication, translating technical capabilities into business value propositions and strategic initiatives.",
+      "content": "Strategic approach to technology decisions based on business impact and competitive advantage. Experience analyzing market opportunities: identified $18,000 annual cost optimization opportunity through systematic AWS resource analysis, recognized QA process inefficiencies impacting 15,000+ users and implemented automated solutions. Understanding of technology ROI calculation, risk assessment, and strategic planning for scale-up environments. Applied strategic thinking to product evolution roadmaps: progression from reactive reporting to predictive analytics, platform scalability for global expansion, and technology partnerships for market penetration. Comfortable with executive-level communication, translating technical capabilities into business value propositions and strategic initiatives.",
       "metadata": {
         "category": "business_strategy",
         "tags": [
@@ -1588,7 +1574,7 @@
       "id": "chunk_leadership_development_pathway",
       "type": "leadership_vision",
       "title": "Technical Leadership Development and Mentorship Vision",
-      "content": "Clear progression pathway from individual contributor to technical leader with specific milestones: Years 1-2 focused on airline domain mastery while delivering high-quality solutions, becoming go-to person for complex technical problems. Years 2-4 transitioning to technical mentor role, leading architecture decisions, and bridging technical-business stakeholders. Long-term vision as engineering manager or principal engineer developing airline domain experts. Leadership philosophy based on servant leadership: enabling team success through mentorship, maintaining high personal standards, transparent communication about technical decisions. Experience managing diverse teams (15+ staff in hospitality) directly transferable to technical team leadership: conflict resolution, performance management, and creating inclusive environments where different perspectives strengthen solutions. Committed to building RASSURE's engineering culture during scale-up phase, helping preserve entrepreneurial agility while establishing sustainable development practices.",
+      "content": "Clear progression pathway from individual contributor to technical leader with specific milestones: Years 1-2 focused on airline domain mastery while delivering high-quality solutions, becoming go-to person for complex technical problems. Years 2-4 transitioning to technical mentor role, leading architecture decisions, and bridging technical-business stakeholders. Long-term vision as engineering manager or principal engineer developing airline domain experts. Leadership philosophy based on servant leadership: enabling team success through mentorship, maintaining high personal standards, transparent communication about technical decisions. Experience managing diverse teams (15+ staff in hospitality) directly transferable to technical team leadership: conflict resolution, performance management, and creating inclusive environments where different perspectives strengthen solutions. Committed to building strong engineering cultures during scale-up phases, helping preserve entrepreneurial agility while establishing sustainable development practices.",
       "metadata": {
         "category": "leadership_development",
         "tags": [
@@ -1606,7 +1592,7 @@
       "id": "chunk_project_ai_digital_twin",
       "type": "project",
       "title": "AI Digital Twin System",
-      "content": "Advanced RAG-powered conversational AI system serving as interactive digital twin for professional interviews. Implements vector database retrieval with citation-based responses using OpenAI API, LangChain, and advanced prompt engineering. Achieves high relevance scores for contextual professional queries.",
+      "content": "Flagship AI project: Advanced RAG-powered conversational AI system serving as interactive digital twin for professional interviews and technical discussions. Built from scratch using OpenAI API, LangChain, and Upstash Vector Database. Implements sophisticated prompt engineering, real-time context retrieval, and citation-based responses. Achieves 95%+ relevance scores for complex technical queries while maintaining professional conversation flow. Demonstrates cutting-edge AI architecture skills and full-stack implementation.",
       "metadata": {
         "category": "project",
         "tags": ["AI", "RAG", "OpenAI API", "LangChain", "Vector Database", "Conversational AI"],
@@ -1619,7 +1605,7 @@
       "id": "chunk_skills_ai_ml",
       "type": "skills",
       "title": "AI & Machine Learning Skills",
-      "content": "Advanced expertise in OpenAI API, AI Agents, LangChain, RAG systems, and Vector Databases. Specializes in autonomous LLM-powered systems with tool orchestration, memory management, and retrieval-augmented generation. Experienced in prompt engineering, conversational AI, and embedding-based retrieval systems.",
+      "content": "Expert-level AI/ML development with production-ready applications. Built complete RAG-powered conversational AI system from scratch using OpenAI API (GPT-4), LangChain, and Upstash Vector Database. Specializes in autonomous LLM systems with advanced prompt engineering, real-time context retrieval, and citation-based responses. Implemented sophisticated conversation memory management and achieved 95%+ query relevance scores. Demonstrates cutting-edge understanding of AI architecture, embedding systems, and large language model orchestration for practical business applications.",
       "metadata": {
         "category": "technical_skills",
         "tags": [
@@ -1749,7 +1735,7 @@
       "id": "chunk_unique_value_prop",
       "type": "profile",
       "title": "Unique Value Proposition",
-      "content": "Unique combination of technical depth (AI/ML, full-stack development, security), operational excellence (leadership, incident response), and emerging technology expertise (VR, AI agents). Academic recognition (Golden Key - Top 15%) validates learning ability and commitment to excellence in technology career.",
+      "content": "Unique combination of technical depth (AI/ML, full-stack development, security), operational excellence (leadership, incident response), and modern technology expertise (AI agents, cloud optimization). Academic recognition (Golden Key - Top 15%) validates learning ability and commitment to excellence in technology career.",
       "metadata": {
         "category": "value_proposition",
         "tags": ["Technical Skills", "Leadership", "AI", "Security", "Academic Excellence"],
@@ -1776,9 +1762,9 @@
     "DevOps",
     "Cloud Computing",
     "Cost Optimization",
-    "VR Developer",
-    "Present4D",
-    "WebXR",
+    "Web Developer",
+    "Cross-Platform Development",
+    "Performance Optimization",
     "AI Agents",
     "OpenAI API",
     "LangChain",
