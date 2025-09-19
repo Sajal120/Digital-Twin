@@ -403,8 +403,8 @@ async function generatePortfolioResponse(
 
 // Extract the keyword-based responses into a separate function for better organization
 function getKeywordBasedResponse(message: string, conversationHistory: any[]): string {
-  // This simulates responses based on keywords - in production this would use your RAG system
-  // You could integrate with Upstash Vector or other vector databases here
+  // Only use these as absolute fallbacks when enhanced RAG is not available
+  // Most "what is" questions should be handled by enhanced RAG for personalized responses
 
   // Achievements - prioritize this before other matches
   if (
@@ -442,36 +442,20 @@ What would you like to know about me? I'd be happy to chat about my professional
 Feel free to ask me anything specific like "What's your experience with AI/ML?" or "Tell me about your recent projects" or "What companies have you worked for?" I'm here to chat and answer any questions you might have!`
   }
 
-  // React definition specific
+  // React definition specific - Use enhanced RAG instead of hardcoded response
   if (
     message.includes('what is react') ||
-    (message.includes('react') && !message.includes('project'))
+    message.includes('react ky') ||
+    message.includes('react definition') ||
+    (message.includes('react') && !message.includes('project') && !message.includes('experience'))
   ) {
-    return `React is a popular JavaScript library for building user interfaces, especially for web applications. It was created by Facebook and is now maintained by Meta and the open-source community.
-
-Key features of React:
-&bull; Component-based architecture - build reusable UI components
-&bull; Virtual DOM - efficient updates and rendering
-&bull; JSX syntax - write HTML-like code in JavaScript
-&bull; One-way data flow - predictable state management
-&bull; Large ecosystem with tons of libraries and tools
-
-I use React extensively in my projects! This entire portfolio website you're chatting with is built using React with Next.js. React makes it easy to create interactive user interfaces like this chat system, with components for messages, input fields, and real-time updates.
-
-What I love about React is how it breaks down complex UIs into manageable, reusable components. Combined with modern tools like TypeScript and Next.js, it's perfect for building professional web applications.
-
-Would you like to know more about how I use React in my projects, or are you interested in learning React development?`
+    // Let enhanced RAG handle this instead of hardcoded response
+    return "I work extensively with React in my projects, including this portfolio chatbot! It's a JavaScript library for building user interfaces that I use with Next.js for full-stack development."
   }
 
   // Node.js specific question
   if (message.includes('node') && !message.includes('node.js')) {
-    return `Node.js is a JavaScript runtime built on Chrome's V8 JavaScript engine that allows you to run JavaScript on the server side. It's particularly great for building scalable web applications and APIs.
-
-I work with Node.js regularly, especially for backend development and API creation. In fact, this portfolio chatbot is built using Next.js, which runs on Node.js! I use it for building REST APIs, handling database connections, and creating full-stack applications.
-
-Node.js is excellent for real-time applications, microservices, and situations where you want to use JavaScript across your entire tech stack. Its event-driven, non-blocking I/O model makes it efficient for handling concurrent requests.
-
-Are you interested in learning more about how I use Node.js in my projects, or do you have specific questions about Node.js development?`
+    return "I use Node.js regularly for backend development and APIs. This portfolio chatbot runs on Next.js which is built on Node.js!"
   }
 
   // React projects specific
@@ -733,6 +717,8 @@ I've had opportunities to speak at local meetups and contribute to open-source p
 My approach has always been to combine strong technical skills with a genuine passion for learning and helping others grow in their careers. The tech field moves so fast, but that's what keeps it exciting and challenging!`
   }
 
+  // Technical definitions handled by Enhanced RAG - these are fallbacks only
+  /*
   if (message.includes('what is postgresql') || message.includes('postgres definition')) {
     return `PostgreSQL (often called Postgres) is a powerful, open-source relational database management system. It's known for its reliability, feature robustness, and performance.
 
@@ -1004,6 +990,8 @@ If you have any other questions about my experience, projects, or anything else,
 
 And if you're interested in potentially working together or just want to continue the conversation, don't hesitate to reach out. I'm always excited to connect with people who are passionate about technology and innovation.`
   }
+
+  */
 
   // Default response for unrecognized queries
   return `That's a great question! I'd love to tell you more about whatever you're curious about.

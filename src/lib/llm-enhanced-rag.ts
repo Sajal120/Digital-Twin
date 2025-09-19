@@ -73,6 +73,17 @@ export async function enhanceQuery(originalQuery: string): Promise<string> {
     return originalQuery
   }
 
+  // Handle simple questions directly without over-enhancement
+  const simpleGreetings = ['hi', 'hello', 'hey', 'naam', 'name', 'who are you', "what's your name"]
+  const isSimpleQuestion = simpleGreetings.some((greeting) =>
+    originalQuery.toLowerCase().includes(greeting),
+  )
+
+  if (isSimpleQuestion) {
+    console.log('Simple question detected, minimal enhancement')
+    return originalQuery
+  }
+
   const enhancementPrompt = `
 You are an interview preparation assistant that improves search queries to find relevant professional information.
 
@@ -166,44 +177,23 @@ export async function formatForInterview(
     return "I don't have specific information about that topic in my knowledge base. Could you ask about something more specific, like my technical skills, projects, or work experience?"
   }
 
-  const contextualPrompt = interviewContext
-    ? `You are preparing someone for a ${interviewContext} interview.`
-    : 'You are an expert interview coach preparing someone for a professional interview.'
-
   const formattingPrompt = `
-${contextualPrompt}
+You are Sajal Basnet responding naturally to a question about your background.
 
 Question: "${originalQuestion}"
 
-Professional Background Data:
+Your Professional Information:
 ${context}
 
-IMPORTANT: Only reference accurate information from the provided data. Sajal's key strengths and experience include:
-- AI and Machine Learning projects (AI Digital Twin, RAG systems, conversational AI) - PRIMARY FOCUS
-- Full-stack development with modern technologies (React, Next.js, Python, JavaScript)
-- AI-powered portfolio chatbot (current major project showcasing technical skills)
-- Software Developer Intern at Aubot (brief 4-month experience, minimal emphasis)
-- Web development contract work with performance optimization
-- Personal projects demonstrating AI/ML capabilities and innovation
-
-PRIORITIZE AI/ML expertise, full-stack development skills, and innovative project work. The AI Digital Twin and chatbot projects demonstrate more technical depth than the internship.
-
-IMPORTANT: Do NOT mention "RASSURE" or any specific company names unless they are explicitly mentioned in the provided data (like Aubot, edgedVR, Kimpton). Keep responses generic and applicable to any software development role.
-
-Create a natural, conversational response that:
-- Directly answers the specific question asked
-- Keeps response under 100 words (1-2 paragraphs maximum)  
-- Uses conversational, friendly tone like talking to a colleague
-- Includes 1-2 specific examples with concrete details and numbers
-- Prioritizes AI/ML projects, chatbot development, and innovative technical work
-- Highlights full-stack development and modern technology skills
-- Mentions only real companies, technologies, and experiences from the data
-- Avoids repetitive information and generic statements
-- Sounds like Sajal speaking naturally in first person
-- Focuses on technical innovation and AI expertise rather than basic internship tasks
-- Emphasizes project ownership and technical leadership
-
-Format as a natural conversation response, not a formal presentation.
+Respond as Sajal would naturally, using the information provided above:
+- Answer the specific question directly and conversationally
+- Keep response under 50 words maximum (1-2 sentences)
+- Sound friendly and natural, like talking to someone you just met
+- Use "I" statements naturally without quotes around the response
+- Stay focused only on the information provided above
+- Don't mention environmental conservation, sustainability, or carbon footprint unless it's actually in your data
+- Don't give interview advice - just answer the question
+- Be logical and stick to your actual background
 
 Response:
   `
@@ -212,8 +202,8 @@ Response:
     const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: formattingPrompt }],
       model: 'llama-3.1-8b-instant', // Updated to available model
-      temperature: 0.7, // Higher creativity for natural responses
-      max_tokens: 150, // Reduced for more concise responses
+      temperature: 0.5, // Reduced temperature for more consistent responses
+      max_tokens: 100, // Reduced for concise responses
     })
 
     const formattedResponse = completion.choices[0]?.message?.content?.trim()
@@ -573,6 +563,27 @@ async function makeSearchDecision(
   topicsDiscussed: string[] = [],
   isFollowUp: boolean = false,
 ): Promise<AgenticDecision> {
+  // Handle simple name questions directly
+  const simpleNamePatterns = [
+    /^naam\s+k\s*[\?\.]?\s*ho$/i,
+    /^what\s+(is\s+)?your\s+name\s*[\?\.]?$/i,
+    /^tell\s+me\s+your\s+name\s*[\?\.]?$/i,
+    /^who\s+are\s+you\s*[\?\.]?$/i,
+    /^hi$/i,
+    /^hello$/i,
+    /^hey$/i,
+  ]
+
+  if (simpleNamePatterns.some((pattern) => pattern.test(userQuestion.trim()))) {
+    console.log('Simple name/greeting question detected, responding directly')
+    return {
+      action: 'DIRECT',
+      reasoning:
+        'Simple name or greeting question - can be answered directly without database search',
+      confidence: 95,
+    }
+  }
+
   if (!process.env.GROQ_API_KEY) {
     // Default to search if no LLM available
     return {
@@ -717,6 +728,35 @@ async function generateDirectResponse(
   interviewType: InterviewContextType,
   topicsDiscussed: string[] = [],
 ): Promise<string> {
+  // Handle simple name/greeting questions directly without LLM
+  const simpleNamePatterns = [
+    /^naam\s+k\s*[\?\.]?\s*ho$/i,
+    /^what\s+(is\s+)?your\s+name\s*[\?\.]?$/i,
+    /^tell\s+me\s+your\s+name\s*[\?\.]?$/i,
+    /^who\s+are\s+you\s*[\?\.]?$/i,
+  ]
+
+  const greetingPatterns = [/^hi$/i, /^hello$/i, /^hey$/i]
+  
+  const contactPatterns = [
+    /how\s+can\s+i\s+contact\s+you/i,
+    /how\s+to\s+reach\s+you/i,
+    /contact\s+information/i,
+    /get\s+in\s+touch/i
+  ]
+
+  if (simpleNamePatterns.some((pattern) => pattern.test(question.trim()))) {
+    return "My name is Sajal Basnet."
+  }
+
+  if (greetingPatterns.some((pattern) => pattern.test(question.trim()))) {
+    return "Hello! I'm Sajal, a software developer. What would you like to know?"
+  }
+  
+  if (contactPatterns.some((pattern) => pattern.test(question.trim()))) {
+    return "Feel free to reach out to me on LinkedIn or through email. I'm always open to discussing new opportunities and collaborations!"
+  }
+
   if (!process.env.GROQ_API_KEY) {
     return "I'd be happy to help with that! Can you be more specific about what you'd like to know?"
   }
@@ -724,20 +764,15 @@ async function generateDirectResponse(
   const context = INTERVIEW_CONTEXTS[interviewType]
 
   const directPrompt = `
-You are Sajal's AI interview coach providing direct conversational responses.
+You are Sajal Basnet answering a question naturally in conversation.
 
 Question: "${question}"
-Interview Type: ${context.name}
-Decision Reasoning: ${reasoning}
 
-Focus Areas for this interview type: ${context.focusAreas.join(', ')}
-
-Provide a helpful, conversational response that:
-- Addresses the question directly without needing specific data lookup
-- Offers practical interview advice or general guidance
-- Maintains an encouraging, professional tone
-- Keeps response under 80 words
-- Relates to ${context.name} context when relevant
+Respond naturally as Sajal:
+- Keep it under 30 words
+- Be friendly and conversational  
+- Don't use quotation marks around your response
+- Answer logically based on what someone would ask a software developer
 
 Response:`
 
