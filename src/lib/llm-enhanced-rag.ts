@@ -737,22 +737,22 @@ async function generateDirectResponse(
   ]
 
   const greetingPatterns = [/^hi$/i, /^hello$/i, /^hey$/i]
-  
+
   const contactPatterns = [
     /how\s+can\s+i\s+contact\s+you/i,
     /how\s+to\s+reach\s+you/i,
     /contact\s+information/i,
-    /get\s+in\s+touch/i
+    /get\s+in\s+touch/i,
   ]
 
   if (simpleNamePatterns.some((pattern) => pattern.test(question.trim()))) {
-    return "My name is Sajal Basnet."
+    return 'My name is Sajal Basnet.'
   }
 
   if (greetingPatterns.some((pattern) => pattern.test(question.trim()))) {
     return "Hello! I'm Sajal, a software developer. What would you like to know?"
   }
-  
+
   if (contactPatterns.some((pattern) => pattern.test(question.trim()))) {
     return "Feel free to reach out to me on LinkedIn or through email. I'm always open to discussing new opportunities and collaborations!"
   }

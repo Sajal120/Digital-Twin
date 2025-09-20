@@ -10,6 +10,14 @@ import {
   type VectorResult,
   type InterviewContextType,
 } from '@/lib/llm-enhanced-rag'
+import { advancedAgenticRAG } from '@/lib/advanced-agentic-rag'
+import { multiHopRAG } from '@/lib/multi-hop-rag'
+import { hybridSearch, recommendSearchStrategy } from '@/lib/hybrid-search'
+import { toolUseRAG, checkToolHealth } from '@/lib/tool-use-rag'
+import { conversationMemory } from '@/lib/conversation-context'
+import { generateGitHubEnhancedResponse, isGitHubQuery } from '@/lib/github-integration'
+import { generateLinkedInEnhancedResponse, isLinkedInQuery } from '@/lib/linkedin-integration'
+import { smartLLMWithTools } from '@/lib/smart-llm-tools'
 
 export async function POST(request: NextRequest) {
   try {
@@ -157,10 +165,10 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Enhanced Portfolio Response Generation
+ * Advanced Portfolio Response Generation
  * ====================================
  *
- * Uses LLM-enhanced RAG pipeline for dramatically improved interview responses
+ * Uses the most advanced RAG pipeline with all patterns integrated
  */
 async function generateEnhancedPortfolioResponse(
   message: string,
@@ -180,14 +188,25 @@ async function generateEnhancedPortfolioResponse(
           enhancedQuery: message,
           resultsFound: 0,
           fallbackUsed: true,
+          ragPattern: 'basic_fallback',
         },
       }
     }
 
+    // Initialize conversation context and get enhanced query
+    console.log('📝 Processing with enhanced conversation context...')
+    const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
+      interviewType: interviewType || 'general',
+    })
+
+    const contextEnhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
+    console.log(`💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
+    console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
+
     // Create vector search function
     const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {
       try {
-        console.log(`Searching vector database for: "${query}"`)
+        console.log(`🔎 Vector search: "${query}"`)
 
         // Initialize Upstash Vector client
         const index = new Index({
@@ -198,7 +217,7 @@ async function generateEnhancedPortfolioResponse(
         // Query vector database
         const vectorResults = await index.query({
           data: query,
-          topK: 5, // Get more results for better context
+          topK: 8, // More results for advanced patterns
           includeMetadata: true,
           includeData: true,
         })
@@ -215,17 +234,135 @@ async function generateEnhancedPortfolioResponse(
       }
     }
 
-    // Use Agentic RAG - Let LLM decide the best approach
-    console.log('🤖 Using Agentic RAG for intelligent decision making')
-    return await agenticRAG(
-      message,
-      conversationHistory,
-      vectorSearchFunction,
-      interviewType || 'general',
-      sessionId,
-    )
+    // Determine which advanced RAG pattern to use
+    const ragPattern = await selectRAGPattern(message, contextEnhanced, sessionId)
+    console.log(`🎯 Selected RAG pattern: ${ragPattern}`)
+
+    let result: any
+    let ragPatternUsed = ragPattern
+
+    switch (ragPattern) {
+      case 'advanced_agentic':
+        console.log('🧠 Using Advanced Agentic RAG with sophisticated planning...')
+        result = await advancedAgenticRAG(message, contextEnhanced, vectorSearchFunction, sessionId)
+        break
+
+      case 'multi_hop':
+        console.log('🔄 Using Multi-hop RAG for complex query...')
+        const multiHopResult = await multiHopRAG(
+          contextEnhanced.enhancedQuery,
+          vectorSearchFunction,
+          interviewType || 'general',
+          3,
+        )
+        result = {
+          response: multiHopResult.finalResponse,
+          metadata: {
+            originalQuery: message,
+            enhancedQuery: contextEnhanced.enhancedQuery,
+            ragPattern: 'multi_hop',
+            searchSteps: multiHopResult.totalSteps,
+            resultsFound: multiHopResult.searchSteps.reduce(
+              (sum, step) => sum + step.results.length,
+              0,
+            ),
+          },
+        }
+        break
+
+      case 'hybrid_search':
+        console.log('🔍 Using Hybrid Search for comprehensive coverage...')
+        const strategy = await recommendSearchStrategy(contextEnhanced.enhancedQuery)
+        const hybridResults = await hybridSearch(
+          contextEnhanced.enhancedQuery,
+          vectorSearchFunction,
+          undefined,
+          strategy,
+        )
+
+        // Synthesize response from hybrid results
+        const hybridResponse =
+          hybridResults.results.length > 0
+            ? hybridResults.results
+                .map((r) => r.data || r.metadata?.content)
+                .filter(Boolean)
+                .slice(0, 3)
+                .join('\n\n')
+            : "I don't have specific information about that topic."
+
+        result = {
+          response: hybridResponse,
+          metadata: {
+            originalQuery: message,
+            enhancedQuery: contextEnhanced.enhancedQuery,
+            ragPattern: 'hybrid_search',
+            fusionStrategy: hybridResults.metadata.fusionStrategy,
+            resultsFound: hybridResults.results.length,
+          },
+        }
+        break
+
+      case 'tool_enhanced':
+        console.log('🛠️ Using Smart LLM with External Tools...')
+        // Get RAG results first
+        const ragResults = await vectorSearchFunction(contextEnhanced.enhancedQuery)
+
+        const smartResult = await smartLLMWithTools(
+          contextEnhanced.enhancedQuery,
+          ragResults,
+          conversationHistory || [],
+        )
+        result = {
+          response: smartResult.response,
+          metadata: {
+            originalQuery: message,
+            enhancedQuery: contextEnhanced.enhancedQuery,
+            ragPattern: 'smart_llm_tools',
+            toolsUsed: smartResult.toolsCalled.map((t) => t.tool),
+            toolResults: smartResult.toolsCalled.filter((t) => t.success),
+            reasoning: smartResult.reasoning,
+            executionTime: smartResult.executionTime,
+            resultsFound: ragResults.length,
+          },
+        }
+        break
+
+      default:
+        console.log('🤖 Using Standard Agentic RAG...')
+        const agenticResult = await agenticRAG(
+          message,
+          conversationHistory,
+          vectorSearchFunction,
+          interviewType || 'general',
+          sessionId,
+        )
+        result = agenticResult
+        ragPatternUsed = 'standard_agentic'
+        break
+    }
+
+    // Add assistant response to conversation memory
+    await conversationMemory.addMessage(sessionId, 'assistant', result.response, {
+      ragPattern: ragPatternUsed,
+      confidence: result.finalConfidence || result.metadata?.confidence,
+    })
+
+    return {
+      response: result.response,
+      metadata: {
+        ...result.metadata,
+        ragPattern: ragPatternUsed,
+        contextEnhanced: {
+          isFollowUp: contextEnhanced.isFollowUp,
+          entities: contextEnhanced.entities,
+          intent: contextEnhanced.intent,
+          confidence: contextEnhanced.confidence,
+        },
+        conversationStats: conversationMemory.getStats(),
+      },
+    }
   } catch (error) {
-    console.error('Enhanced portfolio response failed:', error)
+    console.error('Advanced portfolio response failed:', error)
 
     // Fallback to basic response
     const basicResponse = await generatePortfolioResponse(message, conversationHistory)
@@ -236,10 +373,72 @@ async function generateEnhancedPortfolioResponse(
         enhancedQuery: message,
         resultsFound: 0,
         fallbackUsed: true,
+        ragPattern: 'error_fallback',
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     }
   }
+}
+
+/**
+ * RAG Pattern Selection
+ * ====================
+ *
+ * Intelligently selects the best RAG pattern based on query characteristics
+ */
+async function selectRAGPattern(
+  message: string,
+  contextEnhanced: any,
+  sessionId: string,
+): Promise<
+  'advanced_agentic' | 'multi_hop' | 'hybrid_search' | 'tool_enhanced' | 'standard_agentic'
+> {
+  const messageLower = message.toLowerCase()
+
+  // Check for tool requirements - Force tool use for GitHub and LinkedIn queries
+  const needsGitHub = /\b(github|repository|repos|code|projects|commits)\b/i.test(message)
+  const needsLinkedIn =
+    /\b(linkedin|professional|work experience|career|employment|job history|aubot|kimpton|edgedvr|work at|experience at|certificates|certifications|credentials)\b/i.test(message)
+  const needsRealTime = /\b(current|recent|latest|now|today|this year)\b/i.test(message)
+
+  if (needsGitHub || needsLinkedIn || needsRealTime) {
+    console.log('🔧 FORCING tool_enhanced pattern for external data query')
+    return 'tool_enhanced'
+  }
+
+  // Check for complex multi-part questions
+  const isComplex =
+    messageLower.includes('and also') ||
+    (messageLower.includes('tell me about') && contextEnhanced.entities.length > 2) ||
+    messageLower.includes('comprehensive') ||
+    messageLower.includes('everything about')
+
+  if (isComplex) {
+    return 'multi_hop'
+  }
+
+  // Check for comparison or hybrid search needs
+  const needsHybrid =
+    /\b(compare|versus|vs|different|types of|various)\b/i.test(message) ||
+    contextEnhanced.entities.length > 3
+
+  if (needsHybrid) {
+    return 'hybrid_search'
+  }
+
+  // Check conversation complexity for advanced agentic
+  const conversationStats = conversationMemory.getStats()
+  const isAdvancedConversation =
+    contextEnhanced.isFollowUp &&
+    contextEnhanced.confidence > 0.8 &&
+    conversationStats.topTopics.length > 3
+
+  if (isAdvancedConversation) {
+    return 'advanced_agentic'
+  }
+
+  // Default to standard agentic
+  return 'standard_agentic'
 }
 
 async function generatePortfolioResponse(
@@ -398,15 +597,35 @@ async function generatePortfolioResponse(
 
   // Fallback to the existing keyword-based responses
   console.log('Using fallback keyword-based responses')
-  return getKeywordBasedResponse(message, conversationHistory)
+  return await getKeywordBasedResponse(message, conversationHistory)
 }
 
 // Extract the keyword-based responses into a separate function for better organization
-function getKeywordBasedResponse(message: string, conversationHistory: any[]): string {
-  // Only use these as absolute fallbacks when enhanced RAG is not available
-  // Most "what is" questions should be handled by enhanced RAG for personalized responses
+async function getKeywordBasedResponse(
+  message: string,
+  conversationHistory: any[],
+): Promise<string> {
+  // Check if this is a GitHub/project-related query first
+  if (isGitHubQuery(message)) {
+    console.log('🔍 Detected GitHub query, fetching real data...')
+    const githubResponse = await generateGitHubEnhancedResponse(message)
+    if (githubResponse) {
+      console.log('✅ Using real GitHub data for response')
+      return githubResponse
+    }
+  }
 
-  // Achievements - prioritize this before other matches
+  // Check if this is a LinkedIn/professional-related query
+  if (isLinkedInQuery(message)) {
+    console.log('🔍 Detected LinkedIn query, fetching professional data...')
+    const linkedinResponse = await generateLinkedInEnhancedResponse(message)
+    if (linkedinResponse) {
+      console.log('✅ Using real LinkedIn data for response')
+      return linkedinResponse
+    }
+  }
+
+  // Fast responses for common questions to improve performance  // Achievements - prioritize this before other matches
   if (
     message.includes('achievements') ||
     message.includes('accomplishments') ||
@@ -455,7 +674,7 @@ Feel free to ask me anything specific like "What's your experience with AI/ML?" 
 
   // Node.js specific question
   if (message.includes('node') && !message.includes('node.js')) {
-    return "I use Node.js regularly for backend development and APIs. This portfolio chatbot runs on Next.js which is built on Node.js!"
+    return 'I use Node.js regularly for backend development and APIs. This portfolio chatbot runs on Next.js which is built on Node.js!'
   }
 
   // React projects specific
@@ -594,40 +813,31 @@ This experience taught me valuable problem-solving skills for building responsiv
 I'm currently focusing more on AI development, full-stack web applications, and data analysis - areas where I see the most career opportunities right now.`
   }
 
-  // Technologies specialization specific
+  // Technologies specialization specific - Use consistent data
   if (
     message.includes('specialize in') ||
     message.includes('specialize') ||
-    (message.includes('technologies') && !message.includes('what is'))
+    message.includes('technologies') ||
+    (message.includes('what') && (message.includes('tech') || message.includes('language')))
   ) {
-    return `I specialize in building intelligent, secure applications across four key technology areas:
+    return `I specialize in modern full-stack development with a focus on four key areas: AI, Development, Security, and Support.
 
-Core Programming Languages:
-&bull; Python - My strongest language from my Aubot internship, used for automation, data processing, and AI development
-&bull; Java - Enterprise development experience with object-oriented programming and agile methodologies
-&bull; JavaScript/TypeScript - Modern web development, including this React-based portfolio chatbot
+**Core Technologies:**
+• **Languages**: TypeScript, Python, JavaScript, C#, PHP, Java
+• **Frontend**: React, Next.js, Vue.js, HTML/CSS, Tailwind CSS  
+• **Backend**: Node.js, Express, Python frameworks, REST APIs
+• **Databases**: PostgreSQL, MongoDB, SQL databases
+• **AI/ML**: TensorFlow, Natural Language Processing, Conversational AI
+• **Cloud & DevOps**: AWS, Docker, CI/CD pipelines
 
-AI & Machine Learning Technologies:
-&bull; TensorFlow for neural networks and machine learning models
-&bull; Natural Language Processing for conversational AI systems
-&bull; Conversational AI development (like this chatbot you're talking to!)
-&bull; AI integration into web applications and business solutions
+**Real Projects** (you can see these on my GitHub):
+• **Digital-Twin** - TypeScript application
+• **portfolio-app** - This AI-powered chatbot system
+• **XC3** - Python cloud management tool  
+• **my-digital-portfolio** - Cyber security demonstrator
+• **Marketplace-Website** - PHP e-commerce platform
 
-Web Development Stack:
-&bull; React & Next.js for modern, interactive user interfaces
-&bull; Node.js for backend API development and server-side JavaScript
-&bull; HTML/CSS with modern frameworks like Tailwind CSS
-&bull; Full-stack development with database integration
-
-Database & Backend:
-&bull; SQL and database design with PostgreSQL
-&bull; API development and integration
-&bull; Data analysis and automated reporting
-&bull; System administration and troubleshooting
-
-My specialty is building practical, secure applications that solve real problems. I'm particularly focused on AI integration, data-driven solutions, and creating reliable software for business use!
-
-What specific technology area interests you most?`
+I'm particularly focused on building intelligent, secure applications that solve real problems. Want to see specific examples of my work? Ask about my GitHub projects!`
   }
 
   // Skills - improved matching for variations
@@ -658,12 +868,22 @@ I focus on secure coding practices, data handling, and system reliability. My ex
 I'm continuously learning and building projects that strengthen these skills, particularly in AI integration and security-focused development.`
   }
 
-  // Projects
+  // Projects - This will now be handled by GitHub integration above, but keep as fallback
   if (
     message.includes('projects') ||
     message.includes('portfolio') ||
     message.includes('work samples')
   ) {
+    // Try to get real GitHub data
+    const githubResponse = await generateGitHubEnhancedResponse(message)
+    if (githubResponse) {
+      return (
+        githubResponse +
+        "\n\nThis AI-powered portfolio chatbot you're talking to is also one of my recent projects, built with Next.js, React, and AI integration!"
+      )
+    }
+
+    // Fallback to static response
     return `I'm really excited about the projects I'm working on! You can check out my complete portfolio on GitHub at github.com/Sajal120.
 
 My current major project is this AI-powered portfolio chatbot that you're chatting with right now! It's a comprehensive full-stack application that demonstrates my skills in AI, web development, and user experience design. I'm building it with advanced conversational AI features, database integration, and modern web technologies.
