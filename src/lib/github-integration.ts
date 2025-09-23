@@ -1,10 +1,13 @@
 /**
- * Direct GitHub Integration Service
- * ================================
+ * GitHub Integration Service with OAuth Support
+ * ============================================
  *
- * This service directly fetches real data from Sajal120's GitHub profile
- * and integrates it into chat responses for a more authentic experience.
+ * This service integrates GitHub data into chat responses using both:
+ * 1. OAuth authentication for personalized responses
+ * 2. Public API access for general profile information
  */
+
+import { githubService as githubOAuthService } from './github-service'
 
 export interface GitHubRepository {
   name: string
@@ -15,8 +18,8 @@ export interface GitHubRepository {
   updated_at: string
   html_url: string
   topics: string[]
-  size: number
-  private: boolean
+  size?: number
+  private?: boolean
 }
 
 export interface GitHubProfile {
@@ -30,106 +33,96 @@ export interface GitHubProfile {
   following: number
   public_repos: number
   created_at: string
-  updated_at: string
+  updated_at?: string
   avatar_url: string
   html_url: string
 }
 
-class GitHubService {
-  private readonly username = 'Sajal120'
+class GitHubIntegrationService {
+  private readonly username = process.env.GITHUB_USERNAME || 'Sajal120'
   private readonly baseUrl = 'https://api.github.com'
   private readonly headers: HeadersInit
 
   constructor() {
     this.headers = {
       Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'Portfolio-Chat-Bot',
-    }
-
-    // Add token if available (for higher rate limits)
-    if (process.env.GITHUB_TOKEN) {
-      this.headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`
+      'User-Agent': 'Digital-Twin-Portfolio-Bot',
     }
   }
 
   /**
-   * Fetch user profile information
+   * Fetch user profile using OAuth service or public API
    */
-  async getProfile(): Promise<GitHubProfile | null> {
+  async getProfile(accessToken?: string): Promise<GitHubProfile | null> {
     try {
       console.log('🔍 Fetching GitHub profile for:', this.username)
 
-      const response = await fetch(`${this.baseUrl}/users/${this.username}`, {
-        headers: this.headers,
-        next: { revalidate: 300 }, // Cache for 5 minutes
-      })
-
-      if (!response.ok) {
-        console.error('GitHub API error:', response.status, response.statusText)
-        return null
-      }
-
-      const data = await response.json()
-      console.log('✅ Successfully fetched GitHub profile')
-
-      return {
-        name: data.name || this.username,
-        bio: data.bio || '',
-        location: data.location || '',
-        email: data.email,
-        blog: data.blog || '',
-        company: data.company,
-        followers: data.followers || 0,
-        following: data.following || 0,
-        public_repos: data.public_repos || 0,
-        created_at: data.created_at || '',
-        updated_at: data.updated_at || '',
-        avatar_url: data.avatar_url || '',
-        html_url: data.html_url || `https://github.com/${this.username}`,
+      if (accessToken) {
+        // Use OAuth service for authenticated requests
+        const profile = await githubOAuthService.getProfile(accessToken)
+        if (!profile) return null
+        
+        return {
+          name: profile.name || this.username,
+          bio: profile.bio || '',
+          location: profile.location || '',
+          email: profile.email || null,
+          blog: profile.blog || '',
+          company: profile.company,
+          followers: profile.followers || 0,
+          following: profile.following || 0,
+          public_repos: profile.publicRepos || 0,
+          created_at: profile.createdAt || '',
+          avatar_url: profile.avatarUrl || '',
+          html_url: profile.htmlUrl || `https://github.com/${this.username}`,
+        }
+      } else {
+        // Use public API for non-authenticated requests  
+        const profile = await githubOAuthService.getProfile(undefined, this.username)
+        if (!profile) return null
+        
+        return {
+          name: profile.name || this.username,
+          bio: profile.bio || '',
+          location: profile.location || '',
+          email: null, // Email not available in public API
+          blog: profile.blog || '',
+          company: profile.company,
+          followers: profile.followers || 0,
+          following: profile.following || 0,
+          public_repos: profile.publicRepos || 0,
+          created_at: profile.createdAt || '',
+          avatar_url: profile.avatarUrl || '',
+          html_url: profile.htmlUrl || `https://github.com/${this.username}`,
+        }
       }
     } catch (error) {
       console.error('Failed to fetch GitHub profile:', error)
       return null
     }
   }
-
   /**
-   * Fetch user repositories
+   * Fetch user repositories using OAuth service or public API
    */
-  async getRepositories(limit: number = 10): Promise<GitHubRepository[]> {
+  async getRepositories(limit: number = 10, accessToken?: string): Promise<GitHubRepository[]> {
     try {
       console.log('🔍 Fetching GitHub repositories for:', this.username)
 
-      const response = await fetch(
-        `${this.baseUrl}/users/${this.username}/repos?sort=updated&per_page=${limit}&type=public`,
-        {
-          headers: this.headers,
-          next: { revalidate: 300 }, // Cache for 5 minutes
-        },
-      )
+      const repos = await githubOAuthService.getRepositories(accessToken, this.username, limit)
+      console.log(`✅ Successfully fetched ${repos.length} repositories`)
 
-      if (!response.ok) {
-        console.error('GitHub API error:', response.status, response.statusText)
-        return []
-      }
-
-      const data = await response.json()
-      console.log(`✅ Successfully fetched ${data.length} repositories`)
-
-      return data.map(
-        (repo: any): GitHubRepository => ({
-          name: repo.name || '',
-          description: repo.description || 'No description available',
-          language: repo.language || 'Unknown',
-          stars: repo.stargazers_count || 0,
-          forks: repo.forks_count || 0,
-          updated_at: repo.updated_at || '',
-          html_url: repo.html_url || '',
-          topics: repo.topics || [],
-          size: repo.size || 0,
-          private: repo.private || false,
-        }),
-      )
+      return repos.map((repo: any) => ({
+        name: repo.name,
+        description: repo.description || 'No description available',
+        language: repo.language || 'Unknown',
+        stars: repo.stars,
+        forks: repo.forks,
+        updated_at: repo.updatedAt,
+        html_url: repo.url,
+        topics: repo.topics || [],
+        size: 0, // Not available in new service
+        private: repo.isPrivate || false,
+      }))
     } catch (error) {
       console.error('Failed to fetch GitHub repositories:', error)
       return []
@@ -137,48 +130,38 @@ class GitHubService {
   }
 
   /**
-   * Get a specific repository by name
+   * Get recent GitHub activity
    */
-  async getRepository(repoName: string): Promise<GitHubRepository | null> {
+  async getRecentActivity(limit: number = 5, accessToken?: string): Promise<any[]> {
     try {
-      console.log('🔍 Fetching specific repository:', repoName)
-
-      const response = await fetch(`${this.baseUrl}/repos/${this.username}/${repoName}`, {
-        headers: this.headers,
-        next: { revalidate: 300 },
-      })
-
-      if (!response.ok) {
-        console.error('GitHub API error:', response.status, response.statusText)
-        return null
-      }
-
-      const repo = await response.json()
-      console.log('✅ Successfully fetched repository:', repoName)
-
-      return {
-        name: repo.name || '',
-        description: repo.description || 'No description available',
-        language: repo.language || 'Unknown',
-        stars: repo.stargazers_count || 0,
-        forks: repo.forks_count || 0,
-        updated_at: repo.updated_at || '',
-        html_url: repo.html_url || '',
-        topics: repo.topics || [],
-        size: repo.size || 0,
-        private: repo.private || false,
-      }
+      console.log('🔍 Fetching GitHub activity for:', this.username)
+      const activities = await githubOAuthService.getRecentActivity(accessToken, this.username, limit)
+      console.log(`✅ Successfully fetched ${activities.length} activities`)
+      return activities
     } catch (error) {
-      console.error('Failed to fetch repository:', error)
-      return null
+      console.error('Failed to fetch GitHub activity:', error)
+      return []
+    }
+  }
+
+  /**
+   * Get programming language statistics
+   */
+  async getLanguageStats(accessToken?: string) {
+    try {
+      const stats = await githubOAuthService.getLanguageStats(accessToken, this.username)
+      return stats
+    } catch (error) {
+      console.error('Failed to fetch language stats:', error)
+      return []
     }
   }
 
   /**
    * Generate a formatted response about GitHub profile
    */
-  async generateProfileResponse(): Promise<string> {
-    const profile = await this.getProfile()
+  async generateProfileResponse(accessToken?: string): Promise<string> {
+    const profile = await this.getProfile(accessToken)
 
     if (!profile) {
       return "I'm having trouble accessing my GitHub profile right now, but you can check it out directly at https://github.com/Sajal120"
@@ -205,8 +188,8 @@ Would you like to see details about any specific projects or repositories?`
   /**
    * Generate a formatted response about repositories
    */
-  async generateRepositoriesResponse(limit: number = 6): Promise<string> {
-    const repos = await this.getRepositories(limit)
+  async generateRepositoriesResponse(limit: number = 6, accessToken?: string): Promise<string> {
+    const repos = await this.getRepositories(limit, accessToken)
 
     if (repos.length === 0) {
       return "I'm having trouble accessing my repositories right now, but you can check them out directly at https://github.com/Sajal120?tab=repositories"
@@ -237,8 +220,8 @@ Would you like more details about any specific project?`
   /**
    * Search for relevant repositories based on a query
    */
-  async searchRepositories(query: string): Promise<GitHubRepository[]> {
-    const repos = await this.getRepositories(20) // Get more repos for searching
+  async searchRepositories(query: string, accessToken?: string): Promise<GitHubRepository[]> {
+    const repos = await this.getRepositories(20, accessToken) // Get more repos for searching
     const queryLower = query.toLowerCase()
 
     return repos.filter(
@@ -253,11 +236,11 @@ Would you like more details about any specific project?`
   /**
    * Generate response for specific project queries
    */
-  async generateProjectResponse(query: string): Promise<string> {
-    const relevantRepos = await this.searchRepositories(query)
+  async generateProjectResponse(query: string, accessToken?: string): Promise<string> {
+    const relevantRepos = await this.searchRepositories(query, accessToken)
 
     if (relevantRepos.length === 0) {
-      const allRepos = await this.getRepositories(5)
+      const allRepos = await this.getRepositories(5, accessToken)
       return `I couldn't find specific projects matching "${query}", but here are some of my recent projects:\n\n${await this.formatRepositoryList(allRepos)}`
     }
 
@@ -285,6 +268,52 @@ This project demonstrates my expertise in ${repo.language} development${repo.top
   }
 
   /**
+   * Generate response about recent coding activity
+   */
+  async generateActivityResponse(limit: number = 5, accessToken?: string): Promise<string> {
+    const activities = await this.getRecentActivity(limit, accessToken)
+
+    if (activities.length === 0) {
+      return "I'm having trouble accessing my recent GitHub activity right now, but you can check it out directly at https://github.com/Sajal120"
+    }
+
+    let response = `Here's my recent GitHub activity:\n\n`
+
+    activities.forEach((activity, index) => {
+      const date = new Date(activity.date).toLocaleDateString()
+      response += `**${index + 1}. ${activity.repo}**
+  ${activity.action}: ${activity.description}
+  Date: ${date}
+  🔗 ${activity.url}
+
+`
+    })
+
+    response += `\nStay updated with my latest work at: https://github.com/Sajal120`
+    return response
+  }
+
+  /**
+   * Generate response about programming languages
+   */
+  async generateLanguageStatsResponse(accessToken?: string): Promise<string> {
+    const stats = await this.getLanguageStats(accessToken)
+
+    if (stats.length === 0) {
+      return "I'm having trouble accessing my language statistics right now, but I work with various programming languages and technologies."
+    }
+
+    let response = `Here are my programming languages based on GitHub repositories:\n\n`
+
+    stats.forEach((stat, index) => {
+      response += `**${index + 1}. ${stat.language}** - ${stat.count} repositories\n`
+    })
+
+    response += `\nI'm always learning new technologies and expanding my skill set! You can see my code across different languages at https://github.com/Sajal120`
+    return response
+  }
+
+  /**
    * Helper method to format repository list
    */
   private async formatRepositoryList(repos: GitHubRepository[]): Promise<string> {
@@ -301,7 +330,10 @@ Language: ${repo.language} | ⭐ ${repo.stars} | Last updated: ${lastUpdated}
 }
 
 // Export singleton instance
-export const githubService = new GitHubService()
+export const githubIntegration = new GitHubIntegrationService()
+
+// Backward compatibility export
+export const githubService = githubIntegration
 
 /**
  * Helper functions for use in chat responses
@@ -372,28 +404,36 @@ export function extractTechQuery(query: string): string | null {
 /**
  * Generate enhanced response with real GitHub data
  */
-export async function generateGitHubEnhancedResponse(query: string): Promise<string> {
+export async function generateGitHubEnhancedResponse(query: string, accessToken?: string): Promise<string> {
   try {
     // Check what type of GitHub info is being requested
     const queryLower = query.toLowerCase()
 
     if (queryLower.includes('profile') || queryLower.includes('about your github')) {
-      return await githubService.generateProfileResponse()
+      return await githubIntegration.generateProfileResponse(accessToken)
     }
 
     if (queryLower.includes('repositories') || queryLower.includes('all projects')) {
-      return await githubService.generateRepositoriesResponse(8)
+      return await githubIntegration.generateRepositoriesResponse(8, accessToken)
+    }
+
+    if (queryLower.includes('activity') || queryLower.includes('recent commits') || queryLower.includes('recent work')) {
+      return await githubIntegration.generateActivityResponse(5, accessToken)
+    }
+
+    if (queryLower.includes('languages') || queryLower.includes('programming languages') || queryLower.includes('tech stack')) {
+      return await githubIntegration.generateLanguageStatsResponse(accessToken)
     }
 
     // Check for specific technology queries
     const techQuery = extractTechQuery(query)
     if (techQuery) {
-      return await githubService.generateProjectResponse(techQuery)
+      return await githubIntegration.generateProjectResponse(techQuery, accessToken)
     }
 
     // General project/GitHub query
     if (isGitHubQuery(query)) {
-      return await githubService.generateRepositoriesResponse(6)
+      return await githubIntegration.generateRepositoriesResponse(6, accessToken)
     }
 
     return '' // Return empty if not a GitHub query

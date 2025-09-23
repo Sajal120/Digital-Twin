@@ -192,7 +192,11 @@ async function detectAndHandleSpecialActions(message: string, request?: NextRequ
         lowerMessage.includes('book with you') ||
         lowerMessage.includes('book a meeting') ||
         lowerMessage.includes('meeting with you') ||
-        (lowerMessage.includes('book it') && lowerMessage.includes('meeting'))) {
+        lowerMessage.includes('book it') || // Remove the meeting requirement for "book it"
+        lowerMessage.includes('yes') || // Add direct confirmation words
+        lowerMessage.includes('confirm') ||
+        lowerMessage.includes('go ahead') ||
+        lowerMessage.includes('proceed')) {
       
       if (!isAuthenticated) {
         return {
@@ -224,14 +228,14 @@ What would you like to discuss in our meeting? I'm excited to share my experienc
       // Check if this is a confirmation (user saying "yes", "confirm", etc.)
       // But NOT if it's part of the initial booking request
       const hasBookingRequest = lowerMessage.includes('book a meeting') || 
-                               lowerMessage.includes('schedule') || 
+                               lowerMessage.includes('schedule a meeting') || 
                                lowerMessage.includes('book with you') ||
-                               lowerMessage.includes('book meeting')
+                               lowerMessage.includes('book meeting with')
                                
       const isConfirmation = !hasBookingRequest && (
                            lowerMessage.includes('yes') || 
                            lowerMessage.includes('confirm') || 
-                           (lowerMessage.includes('book it') && !lowerMessage.includes('book a meeting')) || 
+                           lowerMessage.includes('book it') || 
                            lowerMessage.includes('proceed') ||
                            lowerMessage.includes('go ahead') ||
                            lowerMessage.includes('ok') ||
@@ -241,7 +245,13 @@ What would you like to discuss in our meeting? I'm excited to share my experienc
                            )
 
       // If this is a confirmation, actually create the meeting
-      if (isConfirmation && (lowerMessage.includes('meeting') || lowerMessage.includes('book'))) {
+      if (isConfirmation) {
+        console.log('🔍 Meeting confirmation detected:', { 
+          message: lowerMessage, 
+          isConfirmation, 
+          hasBookingRequest 
+        })
+        
         try {
           // Get the user's email from session
           const userEmail = session.user?.email || 'anonymous@example.com'
@@ -250,24 +260,52 @@ What would you like to discuss in our meeting? I'm excited to share my experienc
           // Use the same time parsing as before (or default)
           const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
           
-          // Create meeting description with user's request
+          // Create dynamic meeting description based on user's request
+          let meetingPurpose = ""
+          let topicsToCover = ""
+          const requestLower = message.toLowerCase()
+          
+          if (requestLower.includes('love') || requestLower.includes('relationship')) {
+            meetingPurpose = "Discussion about love, relationships, and personal connections"
+            topicsToCover = `- Love, relationships, and building meaningful connections
+- How technology impacts human relationships  
+- Work-life balance and personal fulfillment
+- Building connections in the tech industry
+- Personal experiences and insights`
+          } else if (requestLower.includes('job') || requestLower.includes('career') || requestLower.includes('opportunity')) {
+            meetingPurpose = "Career discussion and opportunity exploration"
+            topicsToCover = `- Career opportunities and job prospects
+- Experience at Aubot and QA process improvements (30% improvement achieved)
+- Technical skills and expertise
+- Potential collaboration opportunities`
+          } else if (requestLower.includes('project') || requestLower.includes('technical') || requestLower.includes('code')) {
+            meetingPurpose = "Technical project discussion"
+            topicsToCover = `- AI-powered portfolio chatbot with advanced RAG capabilities
+- Full-stack development experience with Next.js, React, and modern technologies
+- Technical project collaboration
+- Code review and architecture discussion`
+          } else {
+            meetingPurpose = `Discussion based on request: "${message}"`
+            topicsToCover = `- Discussion tailored to your specific request
+- Relevant aspects of Sajal's background and experience
+- Q&A about projects and achievements
+- Exploring connections and opportunities`
+          }
+          
           const meetingDescription = `Meeting Request from Portfolio Visitor
 
 **Requested by:** ${userName} (${userEmail})
 **Original Request:** "${message}"
 
-**Meeting Purpose:** Discussion about Sajal's background and experience
+**Meeting Purpose:** ${meetingPurpose}
 
 **Topics to Cover:**
-- AI-powered portfolio chatbot with advanced RAG capabilities
-- Full-stack development experience with Next.js, React, and modern technologies
-- Internship experience at Aubot and achievements in QA process improvement
-- Future opportunities in AI, Development, Security, and Support
+${topicsToCover}
 
 **Meeting requested through:** Digital Twin Portfolio Chatbot
 **Portfolio URL:** ${request?.url?.split('/api')[0] || 'http://localhost:3000'}
 
-Feel free to ask me anything about my technical background, projects, or career goals!
+Looking forward to our conversation!
 
 Best regards,
 Sajal Basnet`
@@ -375,11 +413,49 @@ I'm here to help once we get this sorted out! 😊`
         }
       } else {
         // First request - show confirmation dialog
+        console.log('🔍 Initial meeting request detected:', { 
+          message: lowerMessage, 
+          isConfirmation, 
+          hasBookingRequest 
+        })
+        
         const userEmail = session.user?.email || 'anonymous@example.com'
         const userName = session.user?.name || 'Anonymous User'
         
         // Parse the requested time to show in confirmation
         const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
+        
+        // Parse the user's request to create relevant agenda
+        let customAgenda = ""
+        const requestLower = message.toLowerCase()
+        
+        if (requestLower.includes('love') || requestLower.includes('relationship')) {
+          customAgenda = `- Discussion about love, relationships, and personal connections
+- How technology can impact human relationships
+- Work-life balance and personal fulfillment
+- Building meaningful connections in the tech industry`
+        } else if (requestLower.includes('job') || requestLower.includes('career') || requestLower.includes('opportunity')) {
+          customAgenda = `- Career opportunities and job prospects
+- My experience at Aubot and QA process improvements
+- Skills and technical expertise discussion
+- Potential collaboration opportunities`
+        } else if (requestLower.includes('project') || requestLower.includes('technical') || requestLower.includes('code')) {
+          customAgenda = `- Technical discussion about my projects
+- AI-powered portfolio chatbot with advanced RAG capabilities
+- Full-stack development experience with Next.js and React
+- Code review and technical collaboration`
+        } else if (requestLower.includes('business') || requestLower.includes('startup') || requestLower.includes('collaboration')) {
+          customAgenda = `- Business opportunities and collaborations
+- Startup ideas and technical implementation
+- My experience in AI, Development, Security, and Support
+- Partnership and project discussion`
+        } else {
+          // Default agenda based on their specific request
+          customAgenda = `- Discussion based on your request: "${message}"
+- Sajal's background and relevant experience
+- Q&A about projects and achievements
+- Exploring potential connections and opportunities`
+        }
         
         return {
           action: 'meeting_confirmation_needed',
@@ -392,10 +468,7 @@ I'm here to help once we get this sorted out! 😊`
 🎯 **Your Request:** "${message}"
 
 **Meeting Agenda:**
-- Discussion about Sajal's AI-powered portfolio chatbot
-- Full-stack development experience and technical skills
-- Career opportunities and potential collaboration
-- Q&A about projects and achievements
+${customAgenda}
 
 **What will happen when you confirm:**
 1. ✅ Calendar event will be created with Google Meet link

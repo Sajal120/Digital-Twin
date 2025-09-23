@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Send, Bot, User, Loader2, Sparkles } from 'lucide-react'
+import { Send, Bot, User, Loader2, Sparkles, Shield } from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton'
 
 interface Message {
   id: string
@@ -12,11 +14,13 @@ interface Message {
 }
 
 export function AIChat() {
+  const { data: session, status } = useSession()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content:
-        "Hi! I'm Sajal, and I'm excited to chat with you about my background and experience. Feel free to ask me anything about my work, skills, projects, or how we might collaborate together. What would you like to know?",
+      content: session?.user 
+        ? `Hi ${session.user.name}! I'm Sajal, and I'm excited to chat with you about my background and experience. Feel free to ask me anything about my work, skills, projects, or how we might collaborate together. What would you like to know?`
+        : "Hi! I'm Sajal, and I'm excited to chat with you about my background and experience. Sign in with Google for a personalized experience, or feel free to ask me anything about my work, skills, projects, or how we might collaborate together. What would you like to know?",
       role: 'assistant',
       timestamp: new Date('2024-01-01T12:00:00'), // Fixed timestamp to prevent hydration mismatch
     },
@@ -59,6 +63,11 @@ export function AIChat() {
           })),
           enhancedMode: true,
           interviewType: 'general', // You can change this to: 'technical', 'behavioral', 'executive'
+          user: session?.user ? {
+            name: session.user.name,
+            email: session.user.email,
+            image: session.user.image,
+          } : undefined,
         }),
       })
 
@@ -126,16 +135,57 @@ export function AIChat() {
         >
           {/* Chat Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot className="w-6 h-6" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Sajal Basnet</h3>
+                  <p className="text-sm text-blue-100">Ask me about my background</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold">Sajal Basnet</h3>
-                <p className="text-sm text-blue-100">Ask me about my background</p>
+              
+              {/* Auth Section */}
+              <div className="flex items-center space-x-2">
+                {status === 'unauthenticated' && (
+                  <div className="flex items-center space-x-2">
+                    <Shield className="w-4 h-4 text-blue-200" />
+                    <span className="text-xs text-blue-200">Sign in for personalized chat</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Auth Bar - Show when not authenticated */}
+          {status === 'unauthenticated' && (
+            <div className="bg-blue-50 border-b px-4 py-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-blue-700">
+                  Sign in with Google for a personalized chat experience
+                </p>
+                <GoogleAuthButton callbackUrl="/#ai-chat" className="text-xs" />
+              </div>
+            </div>
+          )}
+
+          {/* User Info Bar - Show when authenticated */}
+          {status === 'authenticated' && session?.user && (
+            <div className="bg-green-50 border-b px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                    <User className="w-3 h-3 text-white" />
+                  </div>
+                  <p className="text-sm text-green-700">
+                    Welcome, {session.user.name}! Enjoy your personalized chat experience.
+                  </p>
+                </div>
+                <GoogleAuthButton callbackUrl="/" className="text-xs" />
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="h-96 overflow-y-auto p-4 space-y-4">
