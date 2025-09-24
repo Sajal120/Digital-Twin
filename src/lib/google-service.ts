@@ -106,11 +106,16 @@ export class GoogleService {
 
       // Remove duplicates and filter out empty emails
       const uniqueAttendees = [...new Set(attendeeEmails.filter(email => email && email.includes('@')))]
-      console.log('📧 Meeting attendees:', uniqueAttendees)
+      console.log('📧 Meeting attendees before event creation:', uniqueAttendees)
+      console.log('📧 Attendees array for event:', uniqueAttendees.map(email => ({ email, responseStatus: 'needsAction' })))
 
       const event = {
         summary: title,
         description: description,
+        organizer: {
+          email: 'basnetsajal120@gmail.com',
+          displayName: 'Sajal Basnet'
+        },
         start: {
           dateTime: startTime.toISOString(),
           timeZone: 'America/New_York', // Adjust timezone as needed
@@ -119,7 +124,10 @@ export class GoogleService {
           dateTime: endTime.toISOString(),
           timeZone: 'America/New_York', // Adjust timezone as needed
         },
-        attendees: uniqueAttendees.map(email => ({ email })),
+        attendees: uniqueAttendees.map(email => ({
+          email,
+          responseStatus: 'needsAction' // All attendees need to respond
+        })),
         conferenceData: {
           createRequest: {
             requestId: `meet-${Date.now()}`,
@@ -142,9 +150,13 @@ export class GoogleService {
         calendarId: 'primary',
         requestBody: event,
         conferenceDataVersion: 1,
+        sendNotifications: true, // Ensure email invitations are sent to all attendees
+        sendUpdates: 'all' // Send updates to all attendees
       })
 
       console.log('✅ Google Service - Calendar event created:', result.data.id)
+      console.log('📧 Event attendees in created event:', result.data.attendees)
+      console.log('👤 Event organizer in created event:', result.data.organizer)
       const meetLink = result.data.conferenceData?.entryPoints?.[0]?.uri || null
 
       return {

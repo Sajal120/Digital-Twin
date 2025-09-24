@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
  * 
  * Detects when user wants to book a meeting or perform special actions
  */
-async function detectAndHandleSpecialActions(message: string, request?: NextRequest) {
+async function detectAndHandleSpecialActions(message: string, conversationHistory: any[], request?: NextRequest) {
   const lowerMessage = message.toLowerCase()
   
   try {
@@ -186,13 +186,179 @@ async function detectAndHandleSpecialActions(message: string, request?: NextRequ
     const session = await getServerSession(authOptions)
     const isAuthenticated = !!(session && session.user)
 
+    // Check for meeting confirmation first (standalone confirmation messages)
+    const isStandaloneConfirmation = (
+      lowerMessage.includes('confirm the meeting') ||
+      lowerMessage.includes('yes, book it') ||
+      lowerMessage.includes('go ahead and schedule') ||
+      lowerMessage.includes('proceed with booking') ||
+      (lowerMessage.includes('confirm') && lowerMessage.includes('meeting')) ||
+      (lowerMessage.includes('yes') && (lowerMessage.includes('meeting') || lowerMessage.includes('book'))) ||
+      lowerMessage.includes('book it') ||
+      lowerMessage.includes('schedule it')
+    )
+
+    // Handle standalone confirmations
+    if (isStandaloneConfirmation && isAuthenticated) {
+      try {
+        // Get the user's email from session
+        const userEmail = session.user?.email || 'anonymous@example.com'
+        const userName = session.user?.name || 'Anonymous User'
+        
+        // For confirmations, we need to use the original request time, not the confirmation message
+        // Check if we have conversation history to get the original request
+        let originalRequest = message // fallback to current message
+        if (conversationHistory && conversationHistory.length > 0) {
+          // Look for the most recent message that contains a date/time request
+          for (let i = conversationHistory.length - 1; i >= 0; i--) {
+            const historyMessage = conversationHistory[i];
+            if (historyMessage.role === 'user' && 
+                (historyMessage.content.includes('book') || historyMessage.content.includes('meeting')) &&
+                (historyMessage.content.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}/) || 
+                 historyMessage.content.includes('am') || historyMessage.content.includes('pm') ||
+                 historyMessage.content.includes('tomorrow') || historyMessage.content.includes('monday') ||
+                 historyMessage.content.includes('tuesday') || historyMessage.content.includes('wednesday') ||
+                 historyMessage.content.includes('thursday') || historyMessage.content.includes('friday'))) {
+              originalRequest = historyMessage.content;
+              console.log('🕐 Found original request in history:', originalRequest);
+              break;
+            }
+          }
+        }
+        
+        // Parse time from the original request, not the confirmation message
+        const { start, end } = googleService.parseDateTime(originalRequest)
+        console.log('🕐 Confirmation using parsed time:', { originalRequest, start: start.toLocaleString(), end: end.toLocaleString() });
+        
+        // Create meeting description with user's request
+        const meetingDescription = `Meeting Request from Portfolio Visitor
+
+**Requested by:** ${userName} (${userEmail})
+**Original Request:** "${message}"
+
+**Meeting Purpose:** Discussion about Sajal's background and experience
+
+**Topics to Cover:**
+- AI-powered portfolio chatbot with advanced RAG capabilities
+- Full-stack development experience with Next.js, React, and modern technologies
+- Internship experience at Aubot and achievements in QA process improvement
+- Future opportunities in AI, Development, Security, and Support
+
+**Meeting requested through:** Digital Twin Portfolio Chatbot
+**Portfolio URL:** ${request?.url?.split('/api')[0] || 'http://localhost:3000'}
+
+Feel free to ask me anything about my technical background, projects, or career goals!
+
+Best regards,
+Sajal Basnet`
+
+        const meetingResult = await googleService.createMeeting(
+          `Portfolio Meeting: ${userName} & Sajal Basnet`,
+          meetingDescription,
+          start,
+          end,
+          [userEmail, 'basnetsajal120@gmail.com'] // Invite both the user and the organizer
+        )
+        
+        // Send you a separate email notification about the meeting request
+        try {
+          await googleService.sendEmail(
+            'basnetsajal120@gmail.com',
+            `New Meeting Request: ${userName}`,
+            `Hi Sajal,
+
+You have a new meeting request from your Digital Twin Portfolio!
+
+**Meeting Details:**
+👤 **Visitor:** ${userName} (${userEmail})
+📅 **Requested Time:** ${start.toLocaleString()}
+💬 **Their Original Request:** "${originalRequest}"
+🔗 **Meet Link:** ${meetingResult.meetLink}
+📎 **Calendar Event:** ${meetingResult.eventUrl}
+
+**What they want to discuss:**
+Based on their request, they're interested in learning more about your work, particularly your AI portfolio chatbot, development experience, and career opportunities.
+
+**Next Steps:**
+- The meeting has been automatically added to your calendar
+- ${userName} will receive a calendar invite
+- You can prepare talking points about your projects and experience
+
+**Portfolio Context:**
+This meeting was booked through your AI-powered portfolio chatbot, demonstrating the effectiveness of your automated lead generation system!
+
+Best regards,
+Your Digital Twin Assistant`
+          )
+        } catch (emailError) {
+          console.error('Failed to send notification email to Sajal:', emailError)
+          // Continue even if email fails
+        }
+
+        if (meetingResult.success) {
+          return {
+            action: 'meeting_created',
+            response: `🎉 Perfect! Your meeting has been confirmed and booked!
+
+📅 **Meeting Confirmed:**
+📝 **Title:** Portfolio Meeting: ${userName} & Sajal Basnet
+⏰ **Time:** ${new Date(meetingResult.startTime).toLocaleString()}
+🔗 **Google Meet Link:** [Join Meeting](${meetingResult.meetLink})
+📎 **Calendar Event:** [View in Calendar](${meetingResult.eventUrl})
+
+**📧 Meeting Organization:**
+👨‍💼 **Organizer:** Sajal Basnet (basnetsajal120@gmail.com) - Meeting host & receives calendar invite
+👤 **Attendee:** You (${userEmail}) - Will receive calendar invite
+
+**📩 Notifications Sent:**
+✅ Calendar invite sent to you (${userEmail})
+✅ Calendar invite sent to Sajal (basnetsajal120@gmail.com)
+✅ Meeting notification email sent to Sajal with your request details
+✅ Sajal will prepare for your discussion based on: "${originalRequest}"
+
+**What we'll discuss:**
+- My AI-powered portfolio chatbot project
+- Full-stack development experience
+- My achievements at Aubot (30% QA improvement)
+- Career opportunities in AI, Development, Security & Support
+- Your specific questions and interests
+
+You'll receive a calendar invite shortly from Sajal. I'm looking forward to our conversation! 🚀
+
+Feel free to ask me anything before our meeting!`,
+            meetingData: meetingResult
+          }
+        } else {
+          throw new Error('Failed to create meeting')
+        }
+        
+      } catch (error) {
+        console.error('Meeting creation error:', error)
+        return {
+          action: 'meeting_error',
+          response: `I encountered an issue while trying to book the meeting. This might be due to:
+
+1. **Calendar permissions** - Please make sure you've granted calendar access
+2. **Invalid date/time** - Could you specify a clearer date and time?
+
+Please try:
+- "Book a meeting for Monday at 2 PM"
+- "Schedule a meeting for next Wednesday afternoon"  
+- "Book a meeting for tomorrow at 10 AM"
+
+You can also try signing in again with Google to refresh permissions: /api/auth/signin/google
+
+I'm here to help once we get this sorted out! 😊`
+        }
+      }
+    }
+
     // Meeting booking detection - Two-step process
     if (lowerMessage.includes('book meeting') || 
         lowerMessage.includes('schedule meeting') || 
         lowerMessage.includes('book with you') ||
         lowerMessage.includes('book a meeting') ||
-        lowerMessage.includes('meeting with you') ||
-        (lowerMessage.includes('book it') && lowerMessage.includes('meeting'))) {
+        lowerMessage.includes('meeting with you')) {
       
       if (!isAuthenticated) {
         return {
@@ -221,169 +387,17 @@ What would you like to discuss in our meeting? I'm excited to share my experienc
         }
       }
 
-      // Check if this is a confirmation (user saying "yes", "confirm", etc.)
-      // But NOT if it's part of the initial booking request
-      const hasBookingRequest = lowerMessage.includes('book a meeting') || 
-                               lowerMessage.includes('schedule') || 
-                               lowerMessage.includes('book with you') ||
-                               lowerMessage.includes('book meeting')
-                               
-      const isConfirmation = !hasBookingRequest && (
-                           lowerMessage.includes('yes') || 
-                           lowerMessage.includes('confirm') || 
-                           (lowerMessage.includes('book it') && !lowerMessage.includes('book a meeting')) || 
-                           lowerMessage.includes('proceed') ||
-                           lowerMessage.includes('go ahead') ||
-                           lowerMessage.includes('ok') ||
-                           lowerMessage.includes('okay') ||
-                           lowerMessage.includes('sure') ||
-                           lowerMessage.includes('definitely')
-                           )
-
-      // If this is a confirmation, actually create the meeting
-      if (isConfirmation && (lowerMessage.includes('meeting') || lowerMessage.includes('book'))) {
-        try {
-          // Get the user's email from session
-          const userEmail = session.user?.email || 'anonymous@example.com'
-          const userName = session.user?.name || 'Anonymous User'
-          
-          // Use the same time parsing as before (or default)
-          const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
-          
-          // Create meeting description with user's request
-          const meetingDescription = `Meeting Request from Portfolio Visitor
-
-**Requested by:** ${userName} (${userEmail})
-**Original Request:** "${message}"
-
-**Meeting Purpose:** Discussion about Sajal's background and experience
-
-**Topics to Cover:**
-- AI-powered portfolio chatbot with advanced RAG capabilities
-- Full-stack development experience with Next.js, React, and modern technologies
-- Internship experience at Aubot and achievements in QA process improvement
-- Future opportunities in AI, Development, Security, and Support
-
-**Meeting requested through:** Digital Twin Portfolio Chatbot
-**Portfolio URL:** ${request?.url?.split('/api')[0] || 'http://localhost:3000'}
-
-Feel free to ask me anything about my technical background, projects, or career goals!
-
-Best regards,
-Sajal Basnet`
-
-          const meetingResult = await googleService.createMeeting(
-            `Portfolio Meeting: ${userName} & Sajal Basnet`,
-            meetingDescription,
-            start,
-            end,
-            [userEmail] // Only invite the user, you're the organizer automatically
-          )
-          
-          // Send you a separate email notification about the meeting request
-          try {
-            await googleService.sendEmail(
-              'basnetsajal120@gmail.com',
-              `New Meeting Request: ${userName}`,
-              `Hi Sajal,
-
-You have a new meeting request from your Digital Twin Portfolio!
-
-**Meeting Details:**
-👤 **Visitor:** ${userName} (${userEmail})
-📅 **Requested Time:** ${start.toLocaleString()}
-💬 **Their Message:** "${message}"
-🔗 **Meet Link:** ${meetingResult.meetLink}
-📎 **Calendar Event:** ${meetingResult.eventUrl}
-
-**What they want to discuss:**
-Based on their request, they're interested in learning more about your work, particularly your AI portfolio chatbot, development experience, and career opportunities.
-
-**Next Steps:**
-- The meeting has been automatically added to your calendar
-- ${userName} will receive a calendar invite
-- You can prepare talking points about your projects and experience
-
-**Portfolio Context:**
-This meeting was booked through your AI-powered portfolio chatbot, demonstrating the effectiveness of your automated lead generation system!
-
-Best regards,
-Your Digital Twin Assistant`
-            )
-          } catch (emailError) {
-            console.error('Failed to send notification email to Sajal:', emailError)
-            // Continue even if email fails
-          }
-
-          if (meetingResult.success) {
-            const userEmail = session.user?.email || 'the meeting requestor'
-            const userName = session.user?.name || 'Anonymous User'
-            
-            return {
-              action: 'meeting_created',
-              response: `🎉 Perfect! Your meeting has been confirmed and booked!
-
-📅 **Meeting Confirmed:**
-📝 **Title:** Portfolio Meeting: ${userName} & Sajal Basnet
-⏰ **Time:** ${new Date(meetingResult.startTime).toLocaleString()}
-🔗 **Google Meet Link:** [Join Meeting](${meetingResult.meetLink})
-📎 **Calendar Event:** [View in Calendar](${meetingResult.eventUrl})
-
-**📧 Meeting Organization:**
-👨‍💼 **Organizer:** Sajal Basnet (basnetsajal120@gmail.com) - Meeting host
-👤 **Attendee:** You (${userEmail}) - Will receive calendar invite
-
-**📩 Notifications Sent:**
-✅ Calendar invite sent to you (${userEmail})
-✅ Meeting notification sent to Sajal with your request details
-✅ Sajal will prepare for your discussion based on: "${message}"
-
-**What we'll discuss:**
-- My AI-powered portfolio chatbot project
-- Full-stack development experience
-- My achievements at Aubot (30% QA improvement)
-- Career opportunities in AI, Development, Security & Support
-- Your specific questions and interests
-
-You'll receive a calendar invite shortly from Sajal. I'm looking forward to our conversation! 🚀
-
-Feel free to ask me anything before our meeting!`,
-              meetingData: meetingResult
-            }
-          } else {
-            throw new Error('Failed to create meeting')
-          }
-          
-        } catch (error) {
-          console.error('Meeting creation error:', error)
-          return {
-            action: 'meeting_error',
-            response: `I encountered an issue while trying to book the meeting. This might be due to:
-
-1. **Calendar permissions** - Please make sure you've granted calendar access
-2. **Invalid date/time** - Could you specify a clearer date and time?
-
-Please try:
-- "Book a meeting for Monday at 2 PM"
-- "Schedule a meeting for next Wednesday afternoon"  
-- "Book a meeting for tomorrow at 10 AM"
-
-You can also try signing in again with Google to refresh permissions: /api/auth/signin/google
-
-I'm here to help once we get this sorted out! 😊`
-          }
-        }
-      } else {
-        // First request - show confirmation dialog
-        const userEmail = session.user?.email || 'anonymous@example.com'
-        const userName = session.user?.name || 'Anonymous User'
-        
-        // Parse the requested time to show in confirmation
-        const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
-        
-        return {
-          action: 'meeting_confirmation_needed',
-          response: `📅 I'd be happy to schedule a meeting for you!
+      // If not a confirmation, show the initial confirmation dialog
+      // First request - show confirmation dialog
+      const userEmail = session.user?.email || 'anonymous@example.com'
+      const userName = session.user?.name || 'Anonymous User'
+      
+      // Parse the requested time to show in confirmation
+      const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
+      
+      return {
+        action: 'meeting_confirmation_needed',
+        response: `📅 I'd be happy to schedule a meeting for you!
 
 **Meeting Details to Confirm:**
 👤 **Your Name:** ${userName}
@@ -413,14 +427,15 @@ I'm here to help once we get this sorted out! 😊`
 - "Tomorrow at 10 AM would be better"
 
 Would you like me to proceed with booking this meeting? 🚀`,
-          needsConfirmation: true,
-          proposedTime: {
-            start: start.toISOString(),
-            end: end.toISOString()
-          }
+        needsConfirmation: true,
+        proposedTime: {
+          start: start.toISOString(),
+          end: end.toISOString()
         }
       }
-    }    // Email detection and sending - More flexible patterns
+    }
+
+    // Email detection and sending - More flexible patterns
     if (lowerMessage.includes('send email') || 
         lowerMessage.includes('email me') || 
         lowerMessage.includes('send an email') ||
@@ -544,7 +559,7 @@ async function generateEnhancedPortfolioResponse(
   try {
     // First, check for special actions like meeting booking
     console.log('🔍 Checking for special actions...')
-    const specialAction = await detectAndHandleSpecialActions(message, request)
+    const specialAction = await detectAndHandleSpecialActions(message, conversationHistory, request)
     if (specialAction) {
       console.log(`🎯 Special action detected: ${specialAction.action}`)
       return {
