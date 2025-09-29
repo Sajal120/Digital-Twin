@@ -18,6 +18,7 @@
  */
 
 import Groq from 'groq-sdk'
+import { safeJsonParse } from './json-utils'
 import { conversationMemory, type ConversationMessage } from './conversation-context'
 import { ragAnalytics, type RAGPerformanceMetrics } from './rag-analytics'
 
@@ -663,16 +664,31 @@ Decision:`
       throw new Error('Empty response from LLM')
     }
 
-    // Parse JSON response
-    const decision = JSON.parse(responseContent)
+    // Parse JSON response with fallback
+    const parseResult = safeJsonParse(responseContent, {
+      action: 'SEARCH',
+      reasoning: 'No reasoning provided',
+      confidence: 75,
+      searchQuery: undefined,
+    })
+
+    const decision = parseResult.data || {
+      action: 'SEARCH',
+      reasoning: 'No reasoning provided',
+      confidence: 75,
+      searchQuery: undefined,
+    }
 
     // Validate the decision format
-    if (!['SEARCH', 'DIRECT', 'CLARIFY'].includes(decision.action)) {
-      throw new Error(`Invalid action: ${decision.action}`)
+    const validActions = ['SEARCH', 'DIRECT', 'CLARIFY']
+    const action = validActions.includes(decision.action) ? decision.action as 'SEARCH' | 'DIRECT' | 'CLARIFY' : 'SEARCH'
+    
+    if (!validActions.includes(decision.action)) {
+      console.warn(`Invalid action: ${decision.action}, defaulting to SEARCH`)
     }
 
     return {
-      action: decision.action,
+      action,
       reasoning: decision.reasoning || 'No reasoning provided',
       confidence: Math.max(0, Math.min(100, decision.confidence || 75)),
       searchQuery: decision.searchQuery,
@@ -764,17 +780,29 @@ async function generateDirectResponse(
   const context = INTERVIEW_CONTEXTS[interviewType]
 
   const directPrompt = `
-You are Sajal Basnet answering a question naturally in conversation.
+You are Sajal Basnet, a software developer from Nepal. Answer this question naturally and factually.
 
 Question: "${question}"
+Reasoning for direct response: ${reasoning}
+Topics already discussed: ${topicsDiscussed.join(', ')}
 
-Respond naturally as Sajal:
-- Keep it under 30 words
-- Be friendly and conversational  
-- Don't use quotation marks around your response
-- Answer logically based on what someone would ask a software developer
+Important guidelines:
+- ONLY state facts you can be certain about
+- Don't exaggerate achievements or experience  
+- Don't make up specific details about projects or companies
+- Keep responses brief and natural (under 30 words)
+- Be conversational but accurate
+- If you don't have specific information, keep the response general
+- Don't use quotation marks in your response
 
-Response:`
+Basic facts you can reference:
+- Name: Sajal Basnet
+- Background: Computer Science student from Nepal
+- Location: Currently in Sydney, Australia  
+- Focus: Software development, AI, and technology
+- Languages: English, Nepali, some Hindi
+
+Respond naturally as Sajal:`
 
   try {
     const completion = await groq.chat.completions.create({

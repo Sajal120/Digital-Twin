@@ -16,6 +16,7 @@
  */
 
 import Groq from 'groq-sdk'
+import { parseAnalysisResponse, parseTopicsResponse, safeJsonParse } from './json-utils'
 
 // Initialize Groq client
 const groq = new Groq({
@@ -230,13 +231,7 @@ Analysis:`
 
       const responseContent = completion.choices[0]?.message?.content?.trim()
       if (responseContent) {
-        const analysis = JSON.parse(responseContent)
-        return {
-          entities: analysis.entities || [],
-          intent: analysis.intent || 'general_inquiry',
-          confidence: (analysis.confidence || 60) / 100,
-          followUpTo: analysis.followUpTo,
-        }
+        return parseAnalysisResponse(responseContent)
       }
     } catch (error) {
       console.error('Message analysis failed:', error)
@@ -408,25 +403,23 @@ Topics:`
 
       const responseContent = completion.choices[0]?.message?.content?.trim()
       if (responseContent) {
-        const newTopics = JSON.parse(responseContent)
-        if (Array.isArray(newTopics)) {
-          newTopics.forEach((topic) => {
-            if (
-              typeof topic === 'string' &&
-              !context.topicsDiscussed.some(
-                (existing) =>
-                  existing.toLowerCase().includes(topic.toLowerCase()) ||
-                  topic.toLowerCase().includes(existing.toLowerCase()),
-              )
-            ) {
-              context.topicsDiscussed.push(topic)
-            }
-          })
-
-          // Keep only last 20 topics for memory efficiency
-          if (context.topicsDiscussed.length > 20) {
-            context.topicsDiscussed = context.topicsDiscussed.slice(-20)
+        const newTopics = parseTopicsResponse(responseContent)
+        
+        newTopics.forEach((topic) => {
+          if (
+            !context.topicsDiscussed.some(
+              (existing) =>
+                existing.toLowerCase().includes(topic.toLowerCase()) ||
+                topic.toLowerCase().includes(existing.toLowerCase()),
+            )
+          ) {
+            context.topicsDiscussed.push(topic)
           }
+        })
+
+        // Keep only last 20 topics for memory efficiency
+        if (context.topicsDiscussed.length > 20) {
+          context.topicsDiscussed = context.topicsDiscussed.slice(-20)
         }
       }
     } catch (error) {
@@ -690,16 +683,23 @@ Enhancement:`
       const responseContent = completion.choices[0]?.message?.content?.trim()
 
       if (responseContent) {
-        const result = JSON.parse(responseContent)
+        const result = safeJsonParse(responseContent, {
+          enhancedQuery: currentQuery,
+          isFollowUp: false,
+          contextUsed: 'Context analysis applied',
+          entities: [],
+          intent: 'general_inquiry',
+          confidence: 70,
+        })
 
         return {
-          enhancedQuery: result.enhancedQuery || currentQuery,
+          enhancedQuery: result.data?.enhancedQuery || currentQuery,
           originalQuery: currentQuery,
-          isFollowUp: result.isFollowUp || false,
-          contextUsed: result.contextUsed || 'Context analysis applied',
-          entities: result.entities || [],
-          intent: result.intent || 'general_inquiry',
-          confidence: (result.confidence || 70) / 100,
+          isFollowUp: result.data?.isFollowUp || false,
+          contextUsed: result.data?.contextUsed || 'Context analysis applied',
+          entities: result.data?.entities || [],
+          intent: result.data?.intent || 'general_inquiry',
+          confidence: (result.data?.confidence || 70) / 100,
           relevantHistory,
           branchContext: currentBranch,
         }

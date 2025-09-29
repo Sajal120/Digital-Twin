@@ -3,11 +3,11 @@
  * ============================
  *
  * This service provides LinkedIn profile data for Sajal Basnet's portfolio.
- * Since LinkedIn's    recommendations: 3,
-    profileUrl: "https://www.linkedin.com/in/sajal-basnet-7926aa188/"
-  }I requires special permissions, this uses structured data
- * that can be easily updated to reflect real LinkedIn information.
+ * It supports both OAuth authenticated access to real LinkedIn data and
+ * structured static data for fallback scenarios.
  */
+
+import { linkedinOAuthService, requiresLinkedInAuth, generateAuthPrompt } from '@/lib/linkedin-service'
 
 export interface LinkedInExperience {
   company: string
@@ -216,12 +216,66 @@ Always eager to collaborate on innovative projects and contribute to the growing
   }
 
   /**
-   * Generate formatted LinkedIn profile response
+   * Try to fetch real LinkedIn data from authenticated API
    */
-  async generateProfileResponse(): Promise<string> {
+  async fetchRealLinkedInData(accessToken?: string): Promise<any> {
+    if (!accessToken) {
+      return null
+    }
+
+    try {
+      const profile = await linkedinOAuthService.getProfile(accessToken)
+      const email = await linkedinOAuthService.getEmailAddress(accessToken)
+      
+      return {
+        name: `${profile.firstName} ${profile.lastName}`,
+        headline: profile.headline || 'Professional at LinkedIn',
+        location: 'Location from LinkedIn API',
+        about: profile.summary || 'Professional summary from LinkedIn',
+        profilePicture: profile.profilePicture,
+        publicProfileUrl: profile.publicProfileUrl,
+        email: email,
+        realData: true,
+        authenticatedAt: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Failed to fetch real LinkedIn data:', error)
+      return null
+    }
+  }
+
+  /**
+   * Generate formatted LinkedIn profile response with real data if available
+   */
+  async generateProfileResponse(accessToken?: string): Promise<string> {
+    // Try to get real LinkedIn data first
+    const realData = await this.fetchRealLinkedInData(accessToken)
+    
+    if (realData) {
+      return `Here's my current LinkedIn profile information (authenticated data):
+
+**${realData.name}**
+${realData.headline}
+📍 ${realData.location}
+
+**Professional Summary:**
+${realData.about}
+
+**Profile Picture:** ${realData.profilePicture ? '✅ Available' : '❌ Not available'}
+**Public Profile:** ${realData.publicProfileUrl || 'Available on LinkedIn'}
+**Email:** ${realData.email ? '✅ Available' : '❌ Not shared'}
+
+*This is live data from LinkedIn API, authenticated on ${new Date(realData.authenticatedAt).toLocaleString()}*
+
+Want to connect? Find me at: ${realData.publicProfileUrl || this.profileData.profileUrl}
+
+Would you like to know more about my specific experience or any particular role?`
+    }
+
+    // Fall back to static data
     const profile = this.profileData
 
-    return `Here's my LinkedIn profile information:
+    return `Here's my LinkedIn profile information (static data):
 
 **${profile.name}**
 ${profile.headline}
@@ -244,6 +298,8 @@ ${Object.entries(profile.endorsements)
   .join('\n')}
 
 Want to connect? Find me at: ${profile.profileUrl}
+
+*For real-time data, you can authenticate with LinkedIn OAuth.*
 
 Would you like to know more about my specific experience or any particular role?`
   }
@@ -425,12 +481,17 @@ export function extractLinkedInQuery(query: string): string | null {
 /**
  * Generate enhanced response with real LinkedIn data
  */
-export async function generateLinkedInEnhancedResponse(query: string): Promise<string> {
+export async function generateLinkedInEnhancedResponse(query: string, accessToken?: string): Promise<string> {
   try {
     const queryLower = query.toLowerCase()
 
+    // Check if user is asking for real-time/authenticated data
+    if (requiresLinkedInAuth(query) && !accessToken) {
+      return generateAuthPrompt()
+    }
+
     if (queryLower.includes('profile') || queryLower.includes('linkedin')) {
-      return await linkedinService.generateProfileResponse()
+      return await linkedinService.generateProfileResponse(accessToken)
     }
 
     if (
@@ -445,6 +506,10 @@ export async function generateLinkedInEnhancedResponse(query: string): Promise<s
       return await linkedinService.generateSkillsResponse()
     }
 
+    if (queryLower.includes('certificates') || queryLower.includes('certification')) {
+      return await linkedinService.generateCertificatesResponse()
+    }
+
     // Check for specific experience queries
     const specificQuery = extractLinkedInQuery(query)
     if (specificQuery) {
@@ -453,12 +518,14 @@ export async function generateLinkedInEnhancedResponse(query: string): Promise<s
 
     // General professional query
     if (isLinkedInQuery(query)) {
-      return await linkedinService.generateProfileResponse()
+      return await linkedinService.generateProfileResponse(accessToken)
     }
 
     return '' // Return empty if not a LinkedIn query
   } catch (error) {
     console.error('LinkedIn integration error:', error)
-    return `You can find my professional profile and experience on LinkedIn. I'd be happy to discuss my background in person!`
+    return `You can find my professional profile and experience on LinkedIn. For real-time data, you can authenticate with your LinkedIn account!
+
+Static profile: ${linkedinOAuthService.getStaticProfileInfo().profileUrl}`
   }
 }

@@ -4,7 +4,8 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+// Temporarily commented out to fix build issue
+// import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface RAGResponseFeedbackProps {
   queryId?: string
@@ -108,21 +109,18 @@ export default function RAGResponseFeedback({
         )}
 
         {metadata?.agenticDecision && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Badge
-                  className={`text-xs ${getDecisionColor(metadata.agenticDecision)}`}
-                  variant="secondary"
-                >
-                  {metadata.agenticDecision}
-                </Badge>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{getDecisionDescription(metadata.agenticDecision)}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="relative group">
+            <Badge
+              className={`text-xs ${getDecisionColor(metadata.agenticDecision)}`}
+              variant="secondary"
+            >
+              {metadata.agenticDecision}
+            </Badge>
+            {/* Temporarily simplified tooltip - will fix in future update */}
+            <div className="absolute hidden group-hover:block bg-black text-white text-xs rounded p-2 bottom-full mb-2 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10">
+              {getDecisionDescription(metadata.agenticDecision)}
+            </div>
+          </div>
         )}
       </div>
     )

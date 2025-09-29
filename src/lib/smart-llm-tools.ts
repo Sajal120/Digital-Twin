@@ -128,6 +128,7 @@ export async function smartLLMWithTools(
   query: string,
   ragResults: any[] = [],
   conversationHistory: any[] = [],
+  accessToken?: string,
 ): Promise<{
   response: string
   toolsCalled: ToolCall[]
@@ -157,8 +158,17 @@ export async function smartLLMWithTools(
     if (toolDecision.tools.length > 0) {
       console.log(`⚡ Executing ${toolDecision.tools.length} external tools...`)
 
+      // Create tools with access token support
+      const tools = {
+        ...EXTERNAL_TOOLS,
+        linkedin_profile: {
+          ...EXTERNAL_TOOLS.linkedin_profile,
+          execute: async (params: any) => await linkedinService.generateProfileResponse(accessToken)
+        }
+      }
+
       for (const toolCall of toolDecision.tools) {
-        const tool = EXTERNAL_TOOLS[toolCall.tool]
+        const tool = tools[toolCall.tool as keyof typeof tools]
         if (tool) {
           try {
             const result = await tool.execute(toolCall.params)
@@ -280,6 +290,38 @@ Decision:`
       }
     } catch (error) {
       console.error('Failed to parse LLM tool decision:', error)
+      
+      // Try to extract JSON from the response
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          const decision = JSON.parse(jsonMatch[0])
+          return {
+            tools: decision.tools || [],
+            reasoning: decision.reasoning || 'No reasoning provided',
+          }
+        } catch (secondError) {
+          console.error('Second JSON parse attempt failed:', secondError)
+        }
+      }
+      
+      // Heuristic fallback based on content analysis
+      const tools = []
+      const lowerContent = content.toLowerCase()
+      
+      if (lowerContent.includes('github') || lowerContent.includes('repository') || lowerContent.includes('repo')) {
+        tools.push({ tool: 'github_repos', params: {} })
+      }
+      if (lowerContent.includes('project') || lowerContent.includes('work') || lowerContent.includes('experience')) {
+        if (!tools.some(t => t.tool === 'github_repos')) {
+          tools.push({ tool: 'github_repos', params: {} })
+        }
+      }
+      
+      return {
+        tools,
+        reasoning: `Heuristic: ${lowerContent.includes('github') ? 'GitHub repositories query detected' : 'General project query detected'}`,
+      }
     }
   }
 
@@ -364,7 +406,7 @@ async function synthesizeResponse(
           .join('\n')
       : 'No additional context available'
 
-  const prompt = `You are Sajal Basnet responding to a user query. Use the provided information to give a comprehensive, natural response.
+  const prompt = `You are Sajal Basnet responding to a user query. You are speaking as yourself in first person (I, me, my, mine).
 
 User Query: "${query}"
 
@@ -375,12 +417,14 @@ Additional Context (RAG):
 ${ragContext}
 
 Guidelines:
-1. Provide a natural, conversational response
-2. If tool results are available, prioritize that real data
-3. Be specific and detailed when you have concrete information
-4. Maintain a professional but friendly tone
-5. If asked about projects, showcase the real GitHub data
-6. Don't mention "tools" or "RAG" - just provide the information naturally
+1. Always respond in first person - say "I have" not "you have"
+2. You are Sajal Basnet, so speak as yourself about your own experience
+3. Provide a natural, conversational response 
+4. If tool results are available, prioritize that real data
+5. Be specific and detailed when you have concrete information
+6. Maintain a professional but friendly tone
+7. If asked about projects, showcase your real GitHub data
+8. Don't mention "tools" or "RAG" - just provide the information naturally
 
 Response:`
 

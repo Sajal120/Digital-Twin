@@ -282,101 +282,64 @@ async function decideTool(
   ragResults: VectorResult[],
   enabledTools: string[],
 ): Promise<ToolUseDecision> {
-  async function decideTool(
-    query: string,
-    ragResults: VectorResult[],
-    enabledTools: string[],
-  ): Promise<ToolUseDecision> {
-    // Fast GitHub tool detection - avoid slow LLM processing
-    const queryLower = query.toLowerCase()
+  // Fast GitHub tool detection - avoid slow LLM processing
+  const queryLower = query.toLowerCase()
 
-    // Explicit GitHub keywords that ALWAYS need tools
-    const explicitGitHubTerms = ['github', 'repositories', 'repos', 'repository']
-    const hasExplicitGitHub = explicitGitHubTerms.some((term) => queryLower.includes(term))
+  // Explicit GitHub keywords that ALWAYS need tools
+  const explicitGitHubTerms = ['github', 'repositories', 'repos', 'repository']
+  const hasExplicitGitHub = explicitGitHubTerms.some((term) => queryLower.includes(term))
 
-    // Project questions that need real data
-    const projectTerms = ['projects', 'project']
-    const actionWords = ['show', 'what', 'your', 'have', 'list', 'tell', 'display']
-    const hasProjectQuery =
-      projectTerms.some((term) => queryLower.includes(term)) &&
-      actionWords.some((word) => queryLower.includes(word))
+  // Project questions that need real data
+  const projectTerms = ['projects', 'project']
+  const actionWords = ['show', 'what', 'your', 'have', 'list', 'tell', 'display']
+  const hasProjectQuery =
+    projectTerms.some((term) => queryLower.includes(term)) &&
+    actionWords.some((word) => queryLower.includes(word))
 
-    // Exclude general conversation
-    const generalTerms = [
-      'hello',
-      'hi ',
-      'how are',
-      'who are you',
-      'about yourself',
-      'background',
-      'experience',
-      'skills',
-      'technologies',
-      'specialize',
-    ]
-    const isGeneralQuery = generalTerms.some((term) => queryLower.includes(term))
+  // Exclude general conversation
+  const generalTerms = [
+    'hello',
+    'hi ',
+    'how are',
+    'who are you',
+    'about yourself',
+    'background',
+    'experience',
+    'skills',
+    'technologies',
+    'specialize',
+  ]
+  const isGeneralQuery = generalTerms.some((term) => queryLower.includes(term))
 
-    const needsGitHubTool = (hasExplicitGitHub || hasProjectQuery) && !isGeneralQuery
+  const needsGitHubTool = (hasExplicitGitHub || hasProjectQuery) && !isGeneralQuery
 
-    if (needsGitHubTool) {
-      console.log('⚡ Fast GitHub tool selection')
+  if (needsGitHubTool) {
+    console.log('⚡ Fast GitHub tool selection')
 
-      if (queryLower.includes('profile') || queryLower.includes('about your github')) {
-        return {
-          shouldUseTool: true,
-          toolName: 'github_profile',
-          reasoning: 'GitHub profile query detected',
-          confidence: 0.9,
-          parameters: { username: 'Sajal120' },
-        }
-      }
-
+    if (queryLower.includes('profile') || queryLower.includes('about your github')) {
       return {
         shouldUseTool: true,
-        toolName: 'github_repositories',
-        reasoning: 'GitHub repositories query detected',
+        toolName: 'github_profile',
+        reasoning: 'GitHub profile query detected',
         confidence: 0.9,
-        parameters: { username: 'Sajal120', limit: 6 },
+        parameters: { username: 'Sajal120' },
       }
     }
 
-    // Skip LLM processing for faster responses - return no tool needed
     return {
-      shouldUseTool: false,
-      reasoning: 'Fast heuristic: RAG results sufficient',
-      confidence: 0.7,
+      shouldUseTool: true,
+      toolName: 'github_repositories',
+      reasoning: 'GitHub repositories query detected',
+      confidence: 0.9,
+      parameters: { username: 'Sajal120', limit: 6 },
     }
   }
 
-  try {
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: decisionPrompt }],
-      model: 'llama-3.1-8b-instant',
-      temperature: 0.3,
-      max_tokens: 300,
-    })
-
-    const responseContent = completion.choices[0]?.message?.content?.trim()
-
-    if (responseContent) {
-      const decision = JSON.parse(responseContent)
-      return {
-        shouldUseTool: decision.shouldUseTool || false,
-        toolName: decision.toolName || undefined,
-        reasoning: decision.reasoning || 'No reasoning provided',
-        confidence: Math.max(0, Math.min(100, decision.confidence || 50)) / 100,
-        parameters: decision.parameters || {},
-      }
-    }
-  } catch (error) {
-    console.error('Tool decision failed:', error)
-  }
-
-  // Fallback decision
+  // Skip LLM processing for faster responses - return no tool needed
   return {
     shouldUseTool: false,
-    reasoning: 'Unable to determine tool requirements',
-    confidence: 0.3,
+    reasoning: 'Fast heuristic: RAG results sufficient',
+    confidence: 0.7,
   }
 }
 

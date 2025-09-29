@@ -18,6 +18,10 @@ import { conversationMemory } from '@/lib/conversation-context'
 import { generateGitHubEnhancedResponse, isGitHubQuery } from '@/lib/github-integration'
 import { generateLinkedInEnhancedResponse, isLinkedInQuery } from '@/lib/linkedin-integration'
 import { smartLLMWithTools } from '@/lib/smart-llm-tools'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
+import { googleService } from '@/lib/google-service'
+import { processMultiLanguageQuery, generateMultiLanguageResponse, applySmartFiltering } from '@/lib/multi-language-rag'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,6 +53,9 @@ export async function POST(request: NextRequest) {
       interviewType,
       sessionId = 'default-session',
       enhancedMode = !!process.env.GROQ_API_KEY,
+      githubToken, // OAuth token for GitHub integration
+      user, // Google auth user information
+      tokens, // Object containing various OAuth tokens
     } = body
 
     // Handle both old format (user_id, role, content) and new portfolio format (message, conversationHistory)
@@ -95,12 +102,14 @@ export async function POST(request: NextRequest) {
         conversationHistory || [],
         interviewType as InterviewContextType,
         sessionId,
+        githubToken || tokens?.github,
+        request,
       )
       aiResponse = enhancedResult.response
       responseMetadata = enhancedResult.metadata
     } else {
       console.log('📝 Using Basic RAG fallback...')
-      aiResponse = await generatePortfolioResponse(content.toLowerCase(), conversationHistory || [])
+      aiResponse = await generatePortfolioResponse(content.toLowerCase(), conversationHistory || [], githubToken || tokens?.github, request)
     }
 
     // Try to insert the AI response into the database, but continue if it fails
@@ -165,6 +174,376 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Meeting Booking and Action Detection
+ * ===================================
+ * 
+ * Detects when user wants to book a meeting or perform special actions
+ */
+async function detectAndHandleSpecialActions(message: string, conversationHistory: any[], request?: NextRequest) {
+  const lowerMessage = message.toLowerCase()
+  
+  try {
+    // Check if user is authenticated with Google for meeting booking
+    const session = await getServerSession(authOptions)
+    const isAuthenticated = !!(session && session.user)
+
+    // Check for meeting confirmation first (standalone confirmation messages)
+    const isStandaloneConfirmation = (
+      lowerMessage.includes('confirm the meeting') ||
+      lowerMessage.includes('yes, book it') ||
+      lowerMessage.includes('go ahead and schedule') ||
+      lowerMessage.includes('proceed with booking') ||
+      (lowerMessage.includes('confirm') && lowerMessage.includes('meeting')) ||
+      (lowerMessage.includes('yes') && (lowerMessage.includes('meeting') || lowerMessage.includes('book'))) ||
+      lowerMessage.includes('book it') ||
+      lowerMessage.includes('schedule it')
+    )
+
+    // Handle standalone confirmations
+    if (isStandaloneConfirmation && isAuthenticated) {
+      try {
+        // Get the user's email from session
+        const userEmail = session.user?.email || 'anonymous@example.com'
+        const userName = session.user?.name || 'Anonymous User'
+        
+        // For confirmations, we need to use the original request time, not the confirmation message
+        // Check if we have conversation history to get the original request
+        let originalRequest = message // fallback to current message
+        if (conversationHistory && conversationHistory.length > 0) {
+          // Look for the most recent message that contains a date/time request
+          for (let i = conversationHistory.length - 1; i >= 0; i--) {
+            const historyMessage = conversationHistory[i];
+            if (historyMessage.role === 'user' && 
+                (historyMessage.content.includes('book') || historyMessage.content.includes('meeting')) &&
+                (historyMessage.content.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}/) || 
+                 historyMessage.content.includes('am') || historyMessage.content.includes('pm') ||
+                 historyMessage.content.includes('tomorrow') || historyMessage.content.includes('monday') ||
+                 historyMessage.content.includes('tuesday') || historyMessage.content.includes('wednesday') ||
+                 historyMessage.content.includes('thursday') || historyMessage.content.includes('friday'))) {
+              originalRequest = historyMessage.content;
+              console.log('🕐 Found original request in history:', originalRequest);
+              break;
+            }
+          }
+        }
+        
+        // Parse time from the original request, not the confirmation message
+        const { start, end } = googleService.parseDateTime(originalRequest)
+        console.log('🕐 Confirmation using parsed time:', { originalRequest, start: start.toLocaleString(), end: end.toLocaleString() });
+        
+        // Create meeting description with user's request
+        const meetingDescription = `Meeting Request from Portfolio Visitor
+
+**Requested by:** ${userName} (${userEmail})
+**Original Request:** "${message}"
+
+**Meeting Purpose:** Discussion about Sajal's background and experience
+
+**Topics to Cover:**
+- AI-powered portfolio chatbot with advanced RAG capabilities
+- Full-stack development experience with Next.js, React, and modern technologies
+- Internship experience at Aubot and achievements in QA process improvement
+- Future opportunities in AI, Development, Security, and Support
+
+**Meeting requested through:** Digital Twin Portfolio Chatbot
+**Portfolio URL:** ${request?.url?.split('/api')[0] || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}
+
+Feel free to ask me anything about my technical background, projects, or career goals!
+
+Best regards,
+Sajal Basnet`
+
+        const meetingResult = await googleService.createMeeting(
+          `Portfolio Meeting: ${userName} & Sajal Basnet`,
+          meetingDescription,
+          start,
+          end,
+          [userEmail, 'basnetsajal120@gmail.com'] // Invite both the user and the organizer
+        )
+        
+        // Send you a separate email notification about the meeting request
+        try {
+          await googleService.sendEmail(
+            'basnetsajal120@gmail.com',
+            `New Meeting Request: ${userName}`,
+            `Hi Sajal,
+
+You have a new meeting request from your Digital Twin Portfolio!
+
+**Meeting Details:**
+👤 **Visitor:** ${userName} (${userEmail})
+📅 **Requested Time:** ${start.toLocaleString()}
+💬 **Their Original Request:** "${originalRequest}"
+🔗 **Meet Link:** ${meetingResult.meetLink}
+📎 **Calendar Event:** ${meetingResult.eventUrl}
+
+**What they want to discuss:**
+Based on their request, they're interested in learning more about your work, particularly your AI portfolio chatbot, development experience, and career opportunities.
+
+**Next Steps:**
+- The meeting has been automatically added to your calendar
+- ${userName} will receive a calendar invite
+- You can prepare talking points about your projects and experience
+
+**Portfolio Context:**
+This meeting was booked through your AI-powered portfolio chatbot, demonstrating the effectiveness of your automated lead generation system!
+
+Best regards,
+Your Digital Twin Assistant`
+          )
+        } catch (emailError) {
+          console.error('Failed to send notification email to Sajal:', emailError)
+          // Continue even if email fails
+        }
+
+        if (meetingResult.success) {
+          return {
+            action: 'meeting_created',
+            response: `🎉 Perfect! Your meeting has been confirmed and booked!
+
+📅 **Meeting Confirmed:**
+📝 **Title:** Portfolio Meeting: ${userName} & Sajal Basnet
+⏰ **Time:** ${new Date(meetingResult.startTime).toLocaleString()}
+🔗 **Google Meet Link:** [Join Meeting](${meetingResult.meetLink})
+📎 **Calendar Event:** [View in Calendar](${meetingResult.eventUrl})
+
+**📧 Meeting Organization:**
+👨‍💼 **Organizer:** Sajal Basnet (basnetsajal120@gmail.com) - Meeting host & receives calendar invite
+👤 **Attendee:** You (${userEmail}) - Will receive calendar invite
+
+**📩 Notifications Sent:**
+✅ Calendar invite sent to you (${userEmail})
+✅ Calendar invite sent to Sajal (basnetsajal120@gmail.com)
+✅ Meeting notification email sent to Sajal with your request details
+✅ Sajal will prepare for your discussion based on: "${originalRequest}"
+
+**What we'll discuss:**
+- My AI-powered portfolio chatbot project
+- Full-stack development experience
+- My achievements at Aubot (30% QA improvement)
+- Career opportunities in AI, Development, Security & Support
+- Your specific questions and interests
+
+You'll receive a calendar invite shortly from Sajal. I'm looking forward to our conversation! 🚀
+
+Feel free to ask me anything before our meeting!`,
+            meetingData: meetingResult
+          }
+        } else {
+          throw new Error('Failed to create meeting')
+        }
+        
+      } catch (error) {
+        console.error('Meeting creation error:', error)
+        return {
+          action: 'meeting_error',
+          response: `I encountered an issue while trying to book the meeting. This might be due to:
+
+1. **Calendar permissions** - Please make sure you've granted calendar access
+2. **Invalid date/time** - Could you specify a clearer date and time?
+
+Please try:
+- "Book a meeting for Monday at 2 PM"
+- "Schedule a meeting for next Wednesday afternoon"  
+- "Book a meeting for tomorrow at 10 AM"
+
+You can also try signing in again with Google to refresh permissions: /api/auth/signin/google
+
+I'm here to help once we get this sorted out! 😊`
+        }
+      }
+    }
+
+    // Meeting booking detection - Two-step process
+    if (lowerMessage.includes('book meeting') || 
+        lowerMessage.includes('schedule meeting') || 
+        lowerMessage.includes('book with you') ||
+        lowerMessage.includes('book a meeting') ||
+        lowerMessage.includes('meeting with you')) {
+      
+      if (!isAuthenticated) {
+        return {
+          action: 'book_meeting_auth_needed',
+          response: `I'd be happy to help you book a meeting! 🗓️ 
+
+To schedule a meeting, I can create a Google Calendar event with a Meet link and send you the details. 
+
+**To get started:**
+1. Click the "Sign in with Google" button to authenticate
+2. Grant calendar permissions 
+3. Then tell me your preferred date and time!
+
+Once authenticated, I can:
+✅ Create calendar events with Google Meet links
+✅ Send calendar invites
+✅ Schedule meetings based on your preferences
+
+What would you like to discuss in our meeting? I'm excited to share my experience with:
+- AI-powered portfolio chatbot development
+- Full-stack development with Next.js and React
+- My internship experience at Aubot
+- Future opportunities in AI, Development, Security, and Support`,
+          needsAuth: true,
+          authUrl: '/api/auth/signin/google'
+        }
+      }
+
+      // If not a confirmation, show the initial confirmation dialog
+      // First request - show confirmation dialog
+      const userEmail = session.user?.email || 'anonymous@example.com'
+      const userName = session.user?.name || 'Anonymous User'
+      
+      // Parse the requested time to show in confirmation
+      const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
+      
+      return {
+        action: 'meeting_confirmation_needed',
+        response: `📅 I'd be happy to schedule a meeting for you!
+
+**Meeting Details to Confirm:**
+👤 **Your Name:** ${userName}
+📧 **Your Email:** ${userEmail}
+⏰ **Proposed Time:** ${start.toLocaleString()} - ${end.toLocaleString()}
+🎯 **Your Request:** "${message}"
+
+**Meeting Agenda:**
+- Discussion about Sajal's AI-powered portfolio chatbot
+- Full-stack development experience and technical skills
+- Career opportunities and potential collaboration
+- Q&A about projects and achievements
+
+**What will happen when you confirm:**
+1. ✅ Calendar event will be created with Google Meet link
+2. ✅ You'll receive a calendar invite from Sajal
+3. ✅ Sajal will receive a notification with your meeting request
+4. ✅ Meeting reminders will be set automatically
+
+**To confirm and book this meeting, please reply with:**
+- "Yes, book it"
+- "Confirm the meeting"  
+- "Go ahead and schedule it"
+
+**To modify the time, say something like:**
+- "Actually, can we do Tuesday at 3 PM instead?"
+- "Tomorrow at 10 AM would be better"
+
+Would you like me to proceed with booking this meeting? 🚀`,
+        needsConfirmation: true,
+        proposedTime: {
+          start: start.toISOString(),
+          end: end.toISOString()
+        }
+      }
+    }
+
+    // Email detection and sending - More flexible patterns
+    if (lowerMessage.includes('send email') || 
+        lowerMessage.includes('email me') || 
+        lowerMessage.includes('send an email') ||
+        lowerMessage.includes('send you an email') ||
+        lowerMessage.includes('send you email') ||
+        lowerMessage.includes('email you') ||
+        lowerMessage.includes('send email to you') ||
+        (lowerMessage.includes('send') && lowerMessage.includes('email')) ||
+        (lowerMessage.includes('email') && (lowerMessage.includes('to you') || lowerMessage.includes('you')))) {
+      
+      if (!isAuthenticated) {
+        return {
+          action: 'email_auth_needed',
+          response: `I'd be happy to help you send an email! 📧
+
+To send emails, I need access to your Gmail account.
+
+**To get started:**
+1. Click the "Sign in with Google" button to authenticate
+2. Grant Gmail permissions 
+3. Then tell me what you'd like to say!
+
+Once authenticated, I can send emails on your behalf through Gmail.
+
+What would you like to include in your email?`,
+          needsAuth: true,
+          authUrl: '/api/auth/signin/google'
+        }
+      }
+
+      // If authenticated, send the email
+      try {
+        const emailResult = await googleService.sendEmail(
+          'basnetsajal120@gmail.com', // Your email
+          'Message from Digital Twin Portfolio Visitor',
+          `Hello Sajal,
+
+Someone visited your AI-powered Digital Twin portfolio and wanted to reach out!
+
+**Message:** ${message}
+
+**Context:** This message was sent through your portfolio chatbot's email integration.
+
+**About your portfolio:** The visitor was impressed with:
+- Your AI-powered portfolio chatbot with advanced RAG capabilities
+- Your full-stack development experience with Next.js and React
+- Your internship achievements at Aubot (30% QA process improvement)
+- Your focus on AI, Development, Security, and Support
+
+They're interested in connecting with you!
+
+Best regards,
+Your Digital Twin Chatbot
+Portfolio: ${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}`
+        )
+
+        if (emailResult.success) {
+          return {
+            action: 'email_sent',
+            response: `📧 Email sent successfully!
+
+**Email Details:**
+📤 **To:** basnetsajal120@gmail.com
+📝 **Subject:** Message from Digital Twin Portfolio Visitor
+✅ **Status:** Delivered successfully
+
+Your message has been sent to Sajal! He typically responds within 24 hours.
+
+**What was sent:**
+- Your message: "${message}"
+- Context about your interest in his work
+- Information about his portfolio and achievements
+
+Feel free to continue exploring the portfolio or ask me more questions! 🚀`,
+            emailData: emailResult
+          }
+        } else {
+          throw new Error('Failed to send email')
+        }
+        
+      } catch (error) {
+        console.error('Email sending error:', error)
+        return {
+          action: 'email_error',
+          response: `I encountered an issue while trying to send the email. This might be due to:
+
+1. **Gmail permissions** - Please make sure you've granted email access
+2. **Authentication expired** - Try signing in again with Google
+
+Please try:
+- Signing in again with Google: /api/auth/signin/google
+- Making sure you granted Gmail permissions during sign-in
+
+I'm here to help once we get this sorted out! 📧`
+        }
+      }
+    }
+
+  } catch (error) {
+    console.error('Special action detection error:', error)
+    return null
+  }
+
+  return null
+}
+
+/**
  * Advanced Portfolio Response Generation
  * ====================================
  *
@@ -175,12 +554,31 @@ async function generateEnhancedPortfolioResponse(
   conversationHistory: any[],
   interviewType?: InterviewContextType,
   sessionId: string = 'default-session',
+  githubToken?: string,
+  request?: NextRequest,
 ): Promise<{ response: string; metadata: any }> {
   try {
+    // First, check for special actions like meeting booking
+    console.log('🔍 Checking for special actions...')
+    const specialAction = await detectAndHandleSpecialActions(message, conversationHistory, request)
+    if (specialAction) {
+      console.log(`🎯 Special action detected: ${specialAction.action}`)
+      return {
+        response: specialAction.response,
+        metadata: {
+          action: specialAction.action,
+          needsAuth: specialAction.needsAuth || false,
+          ragPattern: 'special_action',
+          meetingData: specialAction.meetingData,
+          authUrl: specialAction.authUrl
+        }
+      }
+    }
+
     // Check if Upstash Vector is available
     if (!process.env.UPSTASH_VECTOR_REST_URL || !process.env.UPSTASH_VECTOR_REST_TOKEN) {
       console.log('Upstash credentials not available, falling back to basic response')
-      const basicResponse = await generatePortfolioResponse(message, conversationHistory)
+      const basicResponse = await generatePortfolioResponse(message, conversationHistory, undefined, request)
       return {
         response: basicResponse,
         metadata: {
@@ -203,7 +601,20 @@ async function generateEnhancedPortfolioResponse(
     console.log(`💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
     console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
 
-    // Create vector search function
+    // Multi-language processing
+    console.log('🌍 Processing multi-language query...')
+    
+    const multiLanguageResult = await processMultiLanguageQuery(
+      message,
+      contextEnhanced,
+      sessionId
+    )
+    
+    console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
+    console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
+    console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
+
+    // Create vector search function with smart filtering
     const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {
       try {
         console.log(`🔎 Vector search: "${query}"`)
@@ -217,26 +628,35 @@ async function generateEnhancedPortfolioResponse(
         // Query vector database
         const vectorResults = await index.query({
           data: query,
-          topK: 8, // More results for advanced patterns
+          topK: 12, // Increased for better filtering
           includeMetadata: true,
           includeData: true,
         })
 
         // Convert to our VectorResult format
-        return vectorResults.map((result) => ({
+        const results = vectorResults.map((result) => ({
           score: result.score,
           data: result.data as string,
           metadata: result.metadata,
         }))
+
+        // Apply smart filtering based on language and context
+        return await applySmartFiltering(
+          results,
+          multiLanguageResult.languageContext,
+          query
+        )
       } catch (error) {
         console.error('Vector search failed:', error)
         return []
       }
     }
 
-    // Determine which advanced RAG pattern to use
-    const ragPattern = await selectRAGPattern(message, contextEnhanced, sessionId)
-    console.log(`🎯 Selected RAG pattern: ${ragPattern}`)
+    // Use the selected RAG pattern from multi-language analysis
+    const ragPattern = multiLanguageResult.selectedPattern.pattern
+    const searchQuery = multiLanguageResult.selectedPattern.searchQuery
+
+    console.log(`🎯 Executing RAG pattern: ${ragPattern}`)
 
     let result: any
     let ragPatternUsed = ragPattern
@@ -244,13 +664,13 @@ async function generateEnhancedPortfolioResponse(
     switch (ragPattern) {
       case 'advanced_agentic':
         console.log('🧠 Using Advanced Agentic RAG with sophisticated planning...')
-        result = await advancedAgenticRAG(message, contextEnhanced, vectorSearchFunction, sessionId)
+        result = await advancedAgenticRAG(searchQuery, contextEnhanced, vectorSearchFunction, sessionId)
         break
 
       case 'multi_hop':
         console.log('🔄 Using Multi-hop RAG for complex query...')
         const multiHopResult = await multiHopRAG(
-          contextEnhanced.enhancedQuery,
+          searchQuery,
           vectorSearchFunction,
           interviewType || 'general',
           3,
@@ -259,7 +679,7 @@ async function generateEnhancedPortfolioResponse(
           response: multiHopResult.finalResponse,
           metadata: {
             originalQuery: message,
-            enhancedQuery: contextEnhanced.enhancedQuery,
+            enhancedQuery: searchQuery,
             ragPattern: 'multi_hop',
             searchSteps: multiHopResult.totalSteps,
             resultsFound: multiHopResult.searchSteps.reduce(
@@ -272,9 +692,9 @@ async function generateEnhancedPortfolioResponse(
 
       case 'hybrid_search':
         console.log('🔍 Using Hybrid Search for comprehensive coverage...')
-        const strategy = await recommendSearchStrategy(contextEnhanced.enhancedQuery)
+        const strategy = await recommendSearchStrategy(searchQuery)
         const hybridResults = await hybridSearch(
-          contextEnhanced.enhancedQuery,
+          searchQuery,
           vectorSearchFunction,
           undefined,
           strategy,
@@ -294,7 +714,7 @@ async function generateEnhancedPortfolioResponse(
           response: hybridResponse,
           metadata: {
             originalQuery: message,
-            enhancedQuery: contextEnhanced.enhancedQuery,
+            enhancedQuery: searchQuery,
             ragPattern: 'hybrid_search',
             fusionStrategy: hybridResults.metadata.fusionStrategy,
             resultsFound: hybridResults.results.length,
@@ -305,18 +725,22 @@ async function generateEnhancedPortfolioResponse(
       case 'tool_enhanced':
         console.log('🛠️ Using Smart LLM with External Tools...')
         // Get RAG results first
-        const ragResults = await vectorSearchFunction(contextEnhanced.enhancedQuery)
+        const ragResults = await vectorSearchFunction(searchQuery)
+
+        // Get LinkedIn access token if available
+        const linkedinToken = request?.cookies.get('linkedin-token')?.value
 
         const smartResult = await smartLLMWithTools(
-          contextEnhanced.enhancedQuery,
+          searchQuery,
           ragResults,
           conversationHistory || [],
+          linkedinToken,
         )
         result = {
           response: smartResult.response,
           metadata: {
             originalQuery: message,
-            enhancedQuery: contextEnhanced.enhancedQuery,
+            enhancedQuery: searchQuery,
             ragPattern: 'smart_llm_tools',
             toolsUsed: smartResult.toolsCalled.map((t) => t.tool),
             toolResults: smartResult.toolsCalled.filter((t) => t.success),
@@ -347,11 +771,38 @@ async function generateEnhancedPortfolioResponse(
       confidence: result.finalConfidence || result.metadata?.confidence,
     })
 
+    // Generate multi-language response if needed
+    const multiLanguageResponse = await generateMultiLanguageResponse(
+      result,
+      multiLanguageResult.languageContext,
+      message,
+      sessionId,
+      conversationHistory
+    )
+
+    // Final cleanup to ensure no quotes in response
+    let cleanResponse = multiLanguageResponse.response
+    if (cleanResponse) {
+      cleanResponse = cleanResponse
+        .replace(/^["'"\u201C\u201D\u2018\u2019]+|["'"\u201C\u201D\u2018\u2019]+$/g, '')
+        .replace(/^"(.+)"$/s, '$1')
+        .replace(/^'(.+)'$/s, '$1')
+        .replace(/^[\u201C\u201D](.+)[\u201C\u201D]$/s, '$1')
+        .trim()
+    }
+
     return {
-      response: result.response,
+      response: cleanResponse,
       metadata: {
         ...result.metadata,
         ragPattern: ragPatternUsed,
+        language: {
+          detected: multiLanguageResponse.originalLanguage,
+          response: multiLanguageResponse.responseLanguage,
+          translationUsed: multiLanguageResponse.translationUsed,
+          searchLanguage: multiLanguageResponse.searchLanguage,
+          crossLanguageSearch: multiLanguageResponse.metadata.crossLanguageSearch
+        },
         contextEnhanced: {
           isFollowUp: contextEnhanced.isFollowUp,
           entities: contextEnhanced.entities,
@@ -365,7 +816,7 @@ async function generateEnhancedPortfolioResponse(
     console.error('Advanced portfolio response failed:', error)
 
     // Fallback to basic response
-    const basicResponse = await generatePortfolioResponse(message, conversationHistory)
+    const basicResponse = await generatePortfolioResponse(message, conversationHistory, undefined, request)
     return {
       response: basicResponse,
       metadata: {
@@ -444,6 +895,8 @@ async function selectRAGPattern(
 async function generatePortfolioResponse(
   message: string,
   conversationHistory: any[],
+  githubToken?: string,
+  request?: NextRequest,
 ): Promise<string> {
   try {
     // First, try vector search from Upstash (only if environment variables are available)
@@ -597,18 +1050,20 @@ async function generatePortfolioResponse(
 
   // Fallback to the existing keyword-based responses
   console.log('Using fallback keyword-based responses')
-  return await getKeywordBasedResponse(message, conversationHistory)
+  return await getKeywordBasedResponse(message, conversationHistory, githubToken, request)
 }
 
 // Extract the keyword-based responses into a separate function for better organization
 async function getKeywordBasedResponse(
   message: string,
   conversationHistory: any[],
+  githubToken?: string,
+  request?: NextRequest,
 ): Promise<string> {
   // Check if this is a GitHub/project-related query first
   if (isGitHubQuery(message)) {
     console.log('🔍 Detected GitHub query, fetching real data...')
-    const githubResponse = await generateGitHubEnhancedResponse(message)
+    const githubResponse = await generateGitHubEnhancedResponse(message, githubToken)
     if (githubResponse) {
       console.log('✅ Using real GitHub data for response')
       return githubResponse
@@ -618,9 +1073,13 @@ async function getKeywordBasedResponse(
   // Check if this is a LinkedIn/professional-related query
   if (isLinkedInQuery(message)) {
     console.log('🔍 Detected LinkedIn query, fetching professional data...')
-    const linkedinResponse = await generateLinkedInEnhancedResponse(message)
+    
+    // Get LinkedIn access token from cookies if available
+    const linkedinToken = request?.cookies.get('linkedin-token')?.value
+    
+    const linkedinResponse = await generateLinkedInEnhancedResponse(message, linkedinToken)
     if (linkedinResponse) {
-      console.log('✅ Using real LinkedIn data for response')
+      console.log('✅ Using LinkedIn data for response')
       return linkedinResponse
     }
   }
@@ -875,7 +1334,7 @@ I'm continuously learning and building projects that strengthen these skills, pa
     message.includes('work samples')
   ) {
     // Try to get real GitHub data
-    const githubResponse = await generateGitHubEnhancedResponse(message)
+    const githubResponse = await generateGitHubEnhancedResponse(message, githubToken)
     if (githubResponse) {
       return (
         githubResponse +
