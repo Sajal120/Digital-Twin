@@ -13,6 +13,7 @@
  */
 
 import Groq from 'groq-sdk'
+import { parseSearchPlanResponse } from './json-utils'
 import type { VectorResult } from './llm-enhanced-rag'
 
 // Initialize Groq client
@@ -388,12 +389,7 @@ Search Plan:`
 
     const responseContent = completion.choices[0]?.message?.content?.trim()
     if (responseContent) {
-      const plan = JSON.parse(responseContent)
-      return {
-        strategy: plan.strategy || 'sequential',
-        steps: plan.steps || [],
-        synthesisApproach: plan.synthesisApproach || 'Combine results logically',
-      }
+      return parseSearchPlanResponse(responseContent)
     }
   } catch (error) {
     console.error('Search plan generation failed:', error)

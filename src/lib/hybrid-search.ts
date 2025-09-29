@@ -14,6 +14,7 @@
  */
 
 import type { VectorResult } from './llm-enhanced-rag'
+import { parseQueryEnhancementResponse } from './json-utils'
 import Groq from 'groq-sdk'
 
 // Initialize Groq client
@@ -235,12 +236,11 @@ Enhanced queries:`
     const responseContent = completion.choices[0]?.message?.content?.trim()
 
     if (responseContent) {
-      const enhanced = JSON.parse(responseContent)
-      return {
-        vectorQuery: enhanced.vectorQuery || query,
-        keywordQuery: enhanced.keywordQuery || query,
-        semanticQuery: enhanced.semanticQuery || query,
-      }
+      return parseQueryEnhancementResponse(responseContent, query, {
+        vectorQuery: query,
+        keywordQuery: query,
+        semanticQuery: `${query} experience skills background`,
+      })
     }
   } catch (error) {
     console.error('Query enhancement failed:', error)

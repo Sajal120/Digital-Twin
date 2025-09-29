@@ -16,6 +16,7 @@
  */
 
 import Groq from 'groq-sdk'
+import { parseAnalysisResponse, parseTopicsResponse, safeJsonParse } from './json-utils'
 
 // Initialize Groq client
 const groq = new Groq({
@@ -230,32 +231,7 @@ Analysis:`
 
       const responseContent = completion.choices[0]?.message?.content?.trim()
       if (responseContent) {
-        try {
-          const analysis = JSON.parse(responseContent)
-          return {
-            entities: analysis.entities || [],
-            intent: analysis.intent || 'general_inquiry',
-            confidence: (analysis.confidence || 60) / 100,
-            followUpTo: analysis.followUpTo,
-          }
-        } catch (parseError) {
-          console.error('JSON parse error in analyzeUserMessage:', parseError)
-          // Try to extract JSON from the response if it's embedded in text
-          const jsonMatch = responseContent.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            try {
-              const analysis = JSON.parse(jsonMatch[0])
-              return {
-                entities: analysis.entities || [],
-                intent: analysis.intent || 'general_inquiry',
-                confidence: (analysis.confidence || 60) / 100,
-                followUpTo: analysis.followUpTo,
-              }
-            } catch (secondParseError) {
-              console.error('Second JSON parse attempt failed:', secondParseError)
-            }
-          }
-        }
+        return parseAnalysisResponse(responseContent)
       }
     } catch (error) {
       console.error('Message analysis failed:', error)
@@ -427,76 +403,23 @@ Topics:`
 
       const responseContent = completion.choices[0]?.message?.content?.trim()
       if (responseContent) {
-        try {
-          const newTopics = JSON.parse(responseContent)
-          if (Array.isArray(newTopics)) {
-            newTopics.forEach((topic) => {
-              if (
-                typeof topic === 'string' &&
-                !context.topicsDiscussed.some(
-                  (existing) =>
-                    existing.toLowerCase().includes(topic.toLowerCase()) ||
-                    topic.toLowerCase().includes(existing.toLowerCase()),
-                )
-              ) {
-                context.topicsDiscussed.push(topic)
-              }
-            })
+        const newTopics = parseTopicsResponse(responseContent)
+        
+        newTopics.forEach((topic) => {
+          if (
+            !context.topicsDiscussed.some(
+              (existing) =>
+                existing.toLowerCase().includes(topic.toLowerCase()) ||
+                topic.toLowerCase().includes(existing.toLowerCase()),
+            )
+          ) {
+            context.topicsDiscussed.push(topic)
+          }
+        })
 
-            // Keep only last 20 topics for memory efficiency
-            if (context.topicsDiscussed.length > 20) {
-              context.topicsDiscussed = context.topicsDiscussed.slice(-20)
-            }
-          }
-        } catch (parseError) {
-          console.error('JSON parse error in updateTopicsDiscussed:', parseError)
-          // Try to extract JSON array from the response
-          const jsonMatch = responseContent.match(/\[[\s\S]*\]/)
-          if (jsonMatch) {
-            try {
-              const newTopics = JSON.parse(jsonMatch[0])
-              if (Array.isArray(newTopics)) {
-                newTopics.forEach((topic) => {
-                  if (
-                    typeof topic === 'string' &&
-                    !context.topicsDiscussed.some(
-                      (existing) =>
-                        existing.toLowerCase().includes(topic.toLowerCase()) ||
-                        topic.toLowerCase().includes(existing.toLowerCase()),
-                    )
-                  ) {
-                    context.topicsDiscussed.push(topic)
-                  }
-                })
-              }
-            } catch (secondParseError) {
-              console.error('Second JSON parse attempt failed for topics:', secondParseError)
-              // Fallback: extract topics from plain text
-              const lines = responseContent.split('\n')
-              const topics = lines
-                .filter(line => line.trim() && !line.includes(':'))
-                .map(line => line.replace(/^[-*•]\s*/, '').replace(/"/g, '').trim())
-                .filter(topic => topic.length > 0 && topic.length < 50)
-                .slice(0, 3)
-              
-              topics.forEach((topic) => {
-                if (
-                  !context.topicsDiscussed.some(
-                    (existing) =>
-                      existing.toLowerCase().includes(topic.toLowerCase()) ||
-                      topic.toLowerCase().includes(existing.toLowerCase()),
-                  )
-                ) {
-                  context.topicsDiscussed.push(topic)
-                }
-              })
-            }
-          }
-          
-          // Keep only last 20 topics for memory efficiency
-          if (context.topicsDiscussed.length > 20) {
-            context.topicsDiscussed = context.topicsDiscussed.slice(-20)
-          }
+        // Keep only last 20 topics for memory efficiency
+        if (context.topicsDiscussed.length > 20) {
+          context.topicsDiscussed = context.topicsDiscussed.slice(-20)
         }
       }
     } catch (error) {
@@ -760,57 +683,25 @@ Enhancement:`
       const responseContent = completion.choices[0]?.message?.content?.trim()
 
       if (responseContent) {
-        try {
-          const result = JSON.parse(responseContent)
+        const result = safeJsonParse(responseContent, {
+          enhancedQuery: currentQuery,
+          isFollowUp: false,
+          contextUsed: 'Context analysis applied',
+          entities: [],
+          intent: 'general_inquiry',
+          confidence: 70,
+        })
 
-          return {
-            enhancedQuery: result.enhancedQuery || currentQuery,
-            originalQuery: currentQuery,
-            isFollowUp: result.isFollowUp || false,
-            contextUsed: result.contextUsed || 'Context analysis applied',
-            entities: result.entities || [],
-            intent: result.intent || 'general_inquiry',
-            confidence: (result.confidence || 70) / 100,
-            relevantHistory,
-            branchContext: currentBranch,
-          }
-        } catch (parseError) {
-          console.error('JSON parse error in enhanceQueryWithContext:', parseError)
-          // Try to extract JSON from the response
-          const jsonMatch = responseContent.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            try {
-              const result = JSON.parse(jsonMatch[0])
-              return {
-                enhancedQuery: result.enhancedQuery || currentQuery,
-                originalQuery: currentQuery,
-                isFollowUp: result.isFollowUp || false,
-                contextUsed: result.contextUsed || 'Context analysis applied',
-                entities: result.entities || [],
-                intent: result.intent || 'general_inquiry',
-                confidence: (result.confidence || 70) / 100,
-                relevantHistory,
-                branchContext: currentBranch,
-              }
-            } catch (secondParseError) {
-              console.error('Second JSON parse attempt failed:', secondParseError)
-            }
-          }
-          
-          // Fallback: use the response as enhanced query if it looks like a reasonable query
-          if (responseContent.length > 0 && responseContent.length < 200) {
-            return {
-              enhancedQuery: responseContent,
-              originalQuery: currentQuery,
-              isFollowUp: false,
-              contextUsed: 'Plain text response used as enhanced query',
-              entities: [],
-              intent: 'general_inquiry',
-              confidence: 0.6,
-              relevantHistory,
-              branchContext: currentBranch,
-            }
-          }
+        return {
+          enhancedQuery: result.data?.enhancedQuery || currentQuery,
+          originalQuery: currentQuery,
+          isFollowUp: result.data?.isFollowUp || false,
+          contextUsed: result.data?.contextUsed || 'Context analysis applied',
+          entities: result.data?.entities || [],
+          intent: result.data?.intent || 'general_inquiry',
+          confidence: (result.data?.confidence || 70) / 100,
+          relevantHistory,
+          branchContext: currentBranch,
         }
       }
     } catch (error) {

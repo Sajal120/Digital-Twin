@@ -21,6 +21,7 @@ import { smartLLMWithTools } from '@/lib/smart-llm-tools'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { googleService } from '@/lib/google-service'
+import { processMultiLanguageQuery, generateMultiLanguageResponse, applySmartFiltering } from '@/lib/multi-language-rag'
 
 export async function POST(request: NextRequest) {
   try {
@@ -245,7 +246,7 @@ async function detectAndHandleSpecialActions(message: string, conversationHistor
 - Future opportunities in AI, Development, Security, and Support
 
 **Meeting requested through:** Digital Twin Portfolio Chatbot
-**Portfolio URL:** ${request?.url?.split('/api')[0] || 'http://localhost:3000'}
+**Portfolio URL:** ${request?.url?.split('/api')[0] || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}
 
 Feel free to ask me anything about my technical background, projects, or career goals!
 
@@ -489,7 +490,7 @@ They're interested in connecting with you!
 
 Best regards,
 Your Digital Twin Chatbot
-Portfolio: http://localhost:3000`
+Portfolio: ${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}`
         )
 
         if (emailResult.success) {
@@ -600,7 +601,20 @@ async function generateEnhancedPortfolioResponse(
     console.log(`💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
     console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
 
-    // Create vector search function
+    // Multi-language processing
+    console.log('🌍 Processing multi-language query...')
+    
+    const multiLanguageResult = await processMultiLanguageQuery(
+      message,
+      contextEnhanced,
+      sessionId
+    )
+    
+    console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
+    console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
+    console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
+
+    // Create vector search function with smart filtering
     const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {
       try {
         console.log(`🔎 Vector search: "${query}"`)
@@ -614,26 +628,35 @@ async function generateEnhancedPortfolioResponse(
         // Query vector database
         const vectorResults = await index.query({
           data: query,
-          topK: 8, // More results for advanced patterns
+          topK: 12, // Increased for better filtering
           includeMetadata: true,
           includeData: true,
         })
 
         // Convert to our VectorResult format
-        return vectorResults.map((result) => ({
+        const results = vectorResults.map((result) => ({
           score: result.score,
           data: result.data as string,
           metadata: result.metadata,
         }))
+
+        // Apply smart filtering based on language and context
+        return await applySmartFiltering(
+          results,
+          multiLanguageResult.languageContext,
+          query
+        )
       } catch (error) {
         console.error('Vector search failed:', error)
         return []
       }
     }
 
-    // Determine which advanced RAG pattern to use
-    const ragPattern = await selectRAGPattern(message, contextEnhanced, sessionId)
-    console.log(`🎯 Selected RAG pattern: ${ragPattern}`)
+    // Use the selected RAG pattern from multi-language analysis
+    const ragPattern = multiLanguageResult.selectedPattern.pattern
+    const searchQuery = multiLanguageResult.selectedPattern.searchQuery
+
+    console.log(`🎯 Executing RAG pattern: ${ragPattern}`)
 
     let result: any
     let ragPatternUsed = ragPattern
@@ -641,13 +664,13 @@ async function generateEnhancedPortfolioResponse(
     switch (ragPattern) {
       case 'advanced_agentic':
         console.log('🧠 Using Advanced Agentic RAG with sophisticated planning...')
-        result = await advancedAgenticRAG(message, contextEnhanced, vectorSearchFunction, sessionId)
+        result = await advancedAgenticRAG(searchQuery, contextEnhanced, vectorSearchFunction, sessionId)
         break
 
       case 'multi_hop':
         console.log('🔄 Using Multi-hop RAG for complex query...')
         const multiHopResult = await multiHopRAG(
-          contextEnhanced.enhancedQuery,
+          searchQuery,
           vectorSearchFunction,
           interviewType || 'general',
           3,
@@ -656,7 +679,7 @@ async function generateEnhancedPortfolioResponse(
           response: multiHopResult.finalResponse,
           metadata: {
             originalQuery: message,
-            enhancedQuery: contextEnhanced.enhancedQuery,
+            enhancedQuery: searchQuery,
             ragPattern: 'multi_hop',
             searchSteps: multiHopResult.totalSteps,
             resultsFound: multiHopResult.searchSteps.reduce(
@@ -669,9 +692,9 @@ async function generateEnhancedPortfolioResponse(
 
       case 'hybrid_search':
         console.log('🔍 Using Hybrid Search for comprehensive coverage...')
-        const strategy = await recommendSearchStrategy(contextEnhanced.enhancedQuery)
+        const strategy = await recommendSearchStrategy(searchQuery)
         const hybridResults = await hybridSearch(
-          contextEnhanced.enhancedQuery,
+          searchQuery,
           vectorSearchFunction,
           undefined,
           strategy,
@@ -691,7 +714,7 @@ async function generateEnhancedPortfolioResponse(
           response: hybridResponse,
           metadata: {
             originalQuery: message,
-            enhancedQuery: contextEnhanced.enhancedQuery,
+            enhancedQuery: searchQuery,
             ragPattern: 'hybrid_search',
             fusionStrategy: hybridResults.metadata.fusionStrategy,
             resultsFound: hybridResults.results.length,
@@ -702,13 +725,13 @@ async function generateEnhancedPortfolioResponse(
       case 'tool_enhanced':
         console.log('🛠️ Using Smart LLM with External Tools...')
         // Get RAG results first
-        const ragResults = await vectorSearchFunction(contextEnhanced.enhancedQuery)
+        const ragResults = await vectorSearchFunction(searchQuery)
 
         // Get LinkedIn access token if available
         const linkedinToken = request?.cookies.get('linkedin-token')?.value
 
         const smartResult = await smartLLMWithTools(
-          contextEnhanced.enhancedQuery,
+          searchQuery,
           ragResults,
           conversationHistory || [],
           linkedinToken,
@@ -717,7 +740,7 @@ async function generateEnhancedPortfolioResponse(
           response: smartResult.response,
           metadata: {
             originalQuery: message,
-            enhancedQuery: contextEnhanced.enhancedQuery,
+            enhancedQuery: searchQuery,
             ragPattern: 'smart_llm_tools',
             toolsUsed: smartResult.toolsCalled.map((t) => t.tool),
             toolResults: smartResult.toolsCalled.filter((t) => t.success),
@@ -748,11 +771,38 @@ async function generateEnhancedPortfolioResponse(
       confidence: result.finalConfidence || result.metadata?.confidence,
     })
 
+    // Generate multi-language response if needed
+    const multiLanguageResponse = await generateMultiLanguageResponse(
+      result,
+      multiLanguageResult.languageContext,
+      message,
+      sessionId,
+      conversationHistory
+    )
+
+    // Final cleanup to ensure no quotes in response
+    let cleanResponse = multiLanguageResponse.response
+    if (cleanResponse) {
+      cleanResponse = cleanResponse
+        .replace(/^["'"\u201C\u201D\u2018\u2019]+|["'"\u201C\u201D\u2018\u2019]+$/g, '')
+        .replace(/^"(.+)"$/s, '$1')
+        .replace(/^'(.+)'$/s, '$1')
+        .replace(/^[\u201C\u201D](.+)[\u201C\u201D]$/s, '$1')
+        .trim()
+    }
+
     return {
-      response: result.response,
+      response: cleanResponse,
       metadata: {
         ...result.metadata,
         ragPattern: ragPatternUsed,
+        language: {
+          detected: multiLanguageResponse.originalLanguage,
+          response: multiLanguageResponse.responseLanguage,
+          translationUsed: multiLanguageResponse.translationUsed,
+          searchLanguage: multiLanguageResponse.searchLanguage,
+          crossLanguageSearch: multiLanguageResponse.metadata.crossLanguageSearch
+        },
         contextEnhanced: {
           isFollowUp: contextEnhanced.isFollowUp,
           entities: contextEnhanced.entities,
