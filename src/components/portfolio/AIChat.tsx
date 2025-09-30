@@ -49,6 +49,26 @@ export function AIChat() {
     interactionType: currentInteractionType,
     autoPlayResponses: true,
     onError: (error) => {
+      // List of audio errors that are browser-related and shouldn't be shown to users
+      const browserAudioErrors = [
+        'blocked by browser',
+        'NotAllowedError',
+        'no supported source was found',
+        'Audio source not available',
+        'Audio playback issue',
+        'Failed to play audio',
+      ]
+
+      // Check if this is a browser-related audio issue
+      const isBrowserAudioIssue = browserAudioErrors.some((err) =>
+        error.toLowerCase().includes(err.toLowerCase()),
+      )
+
+      if (isBrowserAudioIssue) {
+        console.info('Browser audio restriction - this is normal behavior')
+        return
+      }
+
       console.error('Voice chat error:', error)
 
       // Show user-friendly error messages for common issues
@@ -62,6 +82,62 @@ export function AIChat() {
       }
     },
   })
+
+  // Function to unlock audio by user interaction
+  const unlockAudio = async () => {
+    try {
+      // Check if audio is supported
+      if (typeof Audio === 'undefined') {
+        console.warn('Audio not supported in this environment')
+        return false
+      }
+
+      // Create audio context unlock using Web Audio API instead
+      try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume()
+        }
+
+        // Create a simple silent tone
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+
+        gainNode.gain.value = 0 // Silent
+        oscillator.frequency.value = 440
+        oscillator.start()
+        oscillator.stop(audioContext.currentTime + 0.01)
+
+        console.log('✅ Audio context unlocked successfully')
+        return true
+      } catch (webAudioError) {
+        // Fallback to simple audio element
+        console.log('Web Audio API failed, trying Audio element fallback')
+
+        const audio = new Audio()
+        // Use a simple beep audio data URL that's more likely to work
+        audio.src =
+          'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoAAAAA'
+        audio.volume = 0.01
+        audio.muted = false
+
+        const playPromise = audio.play()
+        if (playPromise !== undefined) {
+          await playPromise
+        }
+
+        console.log('✅ Audio element unlocked successfully')
+        return true
+      }
+    } catch (error) {
+      console.log('⚠️ Audio unlock failed - this is normal on first page load:', error)
+      return false
+    }
+  }
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -227,22 +303,22 @@ export function AIChat() {
 
               {/* Voice Controls */}
               <div className="flex items-center space-x-2">
-                {/* Voice Status Indicators */}
-                {voiceChat.isListening && (
+                {/* Voice Status Indicators - Only show after mount */}
+                {isMounted && voiceChat.isListening && (
                   <div className="flex items-center space-x-1 text-sm bg-red-500/20 px-2 py-1 rounded">
                     <Mic className="w-4 h-4 text-red-200" />
                     <span className="text-red-200">Listening...</span>
                   </div>
                 )}
 
-                {voiceChat.audioPlayerState.isPlaying && (
+                {isMounted && voiceChat.audioPlayerState.isPlaying && (
                   <div className="flex items-center space-x-1 text-sm bg-green-500/20 px-2 py-1 rounded">
                     <Volume2 className="w-4 h-4 text-green-200" />
                     <span className="text-green-200">Speaking...</span>
                   </div>
                 )}
 
-                {voiceChat.isProcessing && (
+                {isMounted && voiceChat.isProcessing && (
                   <div className="flex items-center space-x-1 text-sm bg-orange-500/20 px-2 py-1 rounded">
                     <Loader2 className="w-4 h-4 animate-spin text-orange-200" />
                     <span className="text-orange-200">Processing...</span>
@@ -376,9 +452,10 @@ export function AIChat() {
                       </p>
                       {message.role === 'assistant' && (
                         <button
-                          onClick={() =>
+                          onClick={async () => {
+                            await unlockAudio()
                             voiceChat.playMessageAudio(message.id.replace('voice_', ''))
-                          }
+                          }}
                           className="ml-2 p-1 rounded hover:bg-gray-200 transition-colors"
                           title="Play audio"
                         >
@@ -433,8 +510,8 @@ export function AIChat() {
 
           {/* Input Form with Voice Controls */}
           <div className="border-t p-4">
-            {/* Voice Support Warning */}
-            {!voiceChat.isSupported && (
+            {/* Voice Support Warning - Only show after mount to prevent hydration mismatch */}
+            {isMounted && !voiceChat.isSupported && (
               <div className="mb-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <p className="text-sm text-amber-700">
                   🎙️ Voice input not supported in this browser. Please use Chrome, Safari, Firefox,
@@ -443,8 +520,8 @@ export function AIChat() {
               </div>
             )}
 
-            {/* Voice Error Display */}
-            {voiceChat.error && voiceChat.error.includes('Microphone permission') && (
+            {/* Voice Error Display - Only show after mount */}
+            {isMounted && voiceChat.error && voiceChat.error.includes('Microphone permission') && (
               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-red-700">
@@ -460,7 +537,7 @@ export function AIChat() {
               </div>
             )}
 
-            {voiceChat.error && voiceChat.error.includes('Network error') && (
+            {isMounted && voiceChat.error && voiceChat.error.includes('Network error') && (
               <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-orange-700">🌐 Connection issue with voice service</p>
@@ -497,29 +574,41 @@ export function AIChat() {
               {/* Voice Controls Row */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  {/* Main Voice Button */}
+                  {/* Main Voice Button - Only interactive after mount */}
                   <button
                     type="button"
-                    onClick={() =>
-                      voiceChat.isListening ? voiceChat.stopListening() : voiceChat.startListening()
-                    }
-                    disabled={!voiceChat.isSupported || isLoading}
+                    onClick={async () => {
+                      if (!isMounted) return
+
+                      // Unlock audio on first interaction
+                      await unlockAudio()
+
+                      // Then start or stop listening
+                      if (voiceChat.isListening) {
+                        voiceChat.stopListening()
+                      } else {
+                        voiceChat.startListening()
+                      }
+                    }}
+                    disabled={!isMounted || !voiceChat.isSupported || isLoading}
                     className={`p-3 rounded-full transition-all duration-200 shadow-lg ${
-                      voiceChat.isListening
+                      isMounted && voiceChat.isListening
                         ? 'bg-red-500 hover:bg-red-600 text-white scale-110'
                         : 'bg-green-600 hover:bg-green-700 text-white hover:scale-105'
-                    } ${(!voiceChat.isSupported || isLoading) && 'opacity-50 cursor-not-allowed'}`}
-                    title={voiceChat.isListening ? 'Stop listening' : 'Start voice input'}
+                    } ${(!isMounted || !voiceChat.isSupported || isLoading) && 'opacity-50 cursor-not-allowed'}`}
+                    title={
+                      isMounted && voiceChat.isListening ? 'Stop listening' : 'Start voice input'
+                    }
                   >
-                    {voiceChat.isListening ? (
+                    {isMounted && voiceChat.isListening ? (
                       <MicOff className="w-5 h-5" />
                     ) : (
                       <Mic className="w-5 h-5" />
                     )}
                   </button>
 
-                  {/* Audio Control Buttons */}
-                  {voiceChat.audioPlayerState.isPlaying && (
+                  {/* Audio Control Buttons - Only show after mount */}
+                  {isMounted && voiceChat.audioPlayerState.isPlaying && (
                     <button
                       type="button"
                       onClick={voiceChat.pauseAudio}
@@ -530,28 +619,31 @@ export function AIChat() {
                     </button>
                   )}
 
-                  {/* Voice Status Text */}
+                  {/* Voice Status Text - Only show after mount */}
                   <div className="text-sm text-gray-600">
-                    {voiceChat.isListening && (
+                    {isMounted && voiceChat.isListening && (
                       <span className="text-red-600 font-medium">🎙️ Listening...</span>
                     )}
-                    {voiceChat.isProcessing && (
+                    {isMounted && voiceChat.isProcessing && (
                       <span className="text-orange-600 font-medium">⚡ Processing...</span>
                     )}
-                    {voiceChat.audioPlayerState.isPlaying && (
+                    {isMounted && voiceChat.audioPlayerState.isPlaying && (
                       <span className="text-blue-600 font-medium">🔊 Speaking...</span>
                     )}
-                    {!voiceChat.isListening &&
+                    {isMounted &&
+                      !voiceChat.isListening &&
                       !voiceChat.isProcessing &&
                       !voiceChat.audioPlayerState.isPlaying &&
                       voiceChat.isSupported && (
                         <span className="text-gray-500">Click mic to speak or type below</span>
                       )}
-                    {voiceChat.error && voiceChat.error.includes('No speech detected') && (
-                      <span className="text-amber-600 font-medium">
-                        🎙️ No speech detected - try again
-                      </span>
-                    )}
+                    {isMounted &&
+                      voiceChat.error &&
+                      voiceChat.error.includes('No speech detected') && (
+                        <span className="text-amber-600 font-medium">
+                          🎙️ No speech detected - try again
+                        </span>
+                      )}
                   </div>
                 </div>
 

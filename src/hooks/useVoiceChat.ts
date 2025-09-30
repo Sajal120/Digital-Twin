@@ -88,6 +88,29 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
     onPlayStart: () => setState((prev) => ({ ...prev, isSpeaking: true })),
     onPlayEnd: () => setState((prev) => ({ ...prev, isSpeaking: false })),
     onError: (error) => {
+      // List of audio errors that are browser-related and shouldn't be shown to users
+      const browserAudioErrors = [
+        'blocked by browser',
+        'NotAllowedError',
+        'no supported source was found',
+        'Audio source not available',
+        'Audio playback issue',
+        'NETWORK_NO_SOURCE',
+      ]
+
+      // Check if this is a browser-related audio issue
+      const isBrowserAudioIssue = browserAudioErrors.some((err) =>
+        error.toLowerCase().includes(err.toLowerCase()),
+      )
+
+      if (isBrowserAudioIssue) {
+        console.info('Audio restricted by browser - this is normal:', error)
+        setState((prev) => ({ ...prev, isSpeaking: false }))
+        // Don't call onError callback for browser restrictions
+        return
+      }
+
+      // Only log genuine errors
       setState((prev) => ({ ...prev, error, isSpeaking: false }))
       onError?.(error)
     },
@@ -185,7 +208,14 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
 
         // Auto-play response if enabled
         if (autoPlayResponses && data.response) {
-          await audioPlayer.playText(data.response, 'alloy')
+          try {
+            // Use ElevenLabs voice cloning if available, fallback to OpenAI
+            await audioPlayer.playText(data.response, 'elevenlabs')
+          } catch (audioError) {
+            console.warn('Audio playback failed, trying fallback:', audioError)
+            // Fallback to OpenAI TTS if ElevenLabs fails
+            await audioPlayer.playText(data.response, 'alloy')
+          }
         }
       } catch (error) {
         const errorMessage = `Failed to process message: ${error}`
@@ -292,7 +322,14 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
       if (message.audioUrl) {
         return await audioPlayer.playFromUrl(message.audioUrl)
       } else if (message.role === 'assistant') {
-        return await audioPlayer.playText(message.content, 'alloy')
+        try {
+          // Use ElevenLabs voice cloning for assistant messages
+          return await audioPlayer.playText(message.content, 'elevenlabs')
+        } catch (error) {
+          console.warn('ElevenLabs playback failed, using fallback:', error)
+          // Fallback to OpenAI TTS
+          return await audioPlayer.playText(message.content, 'alloy')
+        }
       }
 
       return false

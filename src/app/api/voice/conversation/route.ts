@@ -42,13 +42,13 @@ export async function POST(request: NextRequest) {
       throw new Error('No response from OpenAI')
     }
 
-    // Generate audio response
-    const audioResponse = await generateAudioResponse(aiResponse)
+    // Note: Audio generation is handled by the frontend to avoid conflicts
+    // The frontend will make its own TTS request using the response text
 
     return NextResponse.json({
       success: true,
       response: aiResponse,
-      audioUrl: audioResponse,
+      audioUrl: null, // Let frontend handle audio generation
       interactionType: interactionType || 'general',
       timestamp: new Date().toISOString(),
       usage: response.usage,
@@ -175,7 +175,10 @@ Additional Context: ${additionalContext}`
   return prompt
 }
 
-// Generate audio response using TTS
+// Generate audio response using TTS - DISABLED
+// Audio generation is now handled entirely by the frontend to avoid conflicts
+// with blob URL creation and audio element management
+/*
 async function generateAudioResponse(text: string): Promise<string | null> {
   try {
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
@@ -200,6 +203,7 @@ async function generateAudioResponse(text: string): Promise<string | null> {
 
   return null
 }
+*/
 
 // Fallback professional context for different interaction types
 function getFallbackContext(interactionType?: string): string {
