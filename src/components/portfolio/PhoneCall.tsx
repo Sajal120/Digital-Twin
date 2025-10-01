@@ -6,8 +6,8 @@ import { Phone, PhoneCall as PhoneCallIcon, Clock, Sparkles, MessageSquare } fro
 
 export function PhoneCall() {
   const [isCallMenuOpen, setIsCallMenuOpen] = useState(false)
-  const phoneNumber = '+61256656168'
-  const formattedNumber = '+61 2 5565 6168'
+  const phoneNumber = '+61278044137'
+  const formattedNumber = '+61 2 7804 4137'
 
   const handleCallClick = () => {
     // Create tel: link for mobile devices
