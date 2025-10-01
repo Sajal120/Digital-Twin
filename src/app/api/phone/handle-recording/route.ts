@@ -46,8 +46,25 @@ export async function POST(request: NextRequest) {
     console.log('🤖 AI Response:', aiResponse.response)
 
     // Create TwiML to speak AI response and continue recording
-    // Use Say verb for reliable text-to-speech instead of serving audio files
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // Use your custom ElevenLabs voice for professional phone responses
+    const speechUrl = await generateCustomVoiceSpeech(aiResponse.response)
+    
+    const twiml = speechUrl 
+      ? `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${speechUrl}</Play>
+  <Pause length="1"/>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="30"
+    transcribe="true"
+    transcribeCallback="/api/phone/handle-transcription"
+    maxLength="3600"
+    playBeep="false"
+  />
+</Response>`
+      : `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US">${escapeXml(aiResponse.response)}</Say>
   <Pause length="1"/>
@@ -219,6 +236,89 @@ async function generateAIResponse(userMessage: string, context: any) {
         "Thank you for calling. I'm having a technical issue right now. Could you please try again in a moment?",
       success: false,
     }
+  }
+}
+
+// Generate speech using ElevenLabs custom voice
+async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
+  try {
+    const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY
+    const voiceId = process.env.ELEVENLABS_VOICE_ID || 'WcXkU7PbsO0uKKBdWJrG' // Your custom voice
+
+    if (!elevenLabsApiKey) {
+      console.log('🔇 ElevenLabs API key not found, falling back to Twilio voice')
+      return null
+    }
+
+    console.log('🎤 Generating custom voice speech with ElevenLabs')
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'audio/mpeg',
+        'Content-Type': 'application/json',
+        'xi-api-key': elevenLabsApiKey,
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.0,
+          use_speaker_boost: true,
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('ElevenLabs API error:', response.statusText)
+      return null
+    }
+
+    // Get the audio buffer
+    const audioBuffer = await response.arrayBuffer()
+
+    // Convert to base64 for temporary hosting
+    const base64Audio = Buffer.from(audioBuffer).toString('base64')
+    const audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`
+
+    // In production, you'd upload this to a CDN or cloud storage
+    // For now, we'll create a temporary endpoint to serve this audio
+    const tempAudioUrl = await createTempAudioEndpoint(audioBuffer, 'mpeg')
+
+    console.log('✅ Custom voice speech generated successfully')
+    return tempAudioUrl
+
+  } catch (error) {
+    console.error('Error generating custom voice speech:', error)
+    return null
+  }
+}
+
+// Create temporary audio endpoint (simplified for demo)
+async function createTempAudioEndpoint(audioBuffer: ArrayBuffer, format: string): Promise<string> {
+  try {
+    // Generate unique ID for this audio
+    const audioId = Math.random().toString(36).substring(7) + Date.now().toString(36)
+    
+    // Import the audio storage function
+    const { storeAudio } = await import('../audio/[id]/route')
+    
+    // Store the audio with appropriate content type
+    const contentType = format === 'mpeg' ? 'audio/mpeg' : 'audio/wav'
+    storeAudio(audioId, audioBuffer, contentType)
+    
+    // Return the URL that Twilio can access
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://your-app.vercel.app'
+    const audioUrl = `${baseUrl}/api/phone/audio/${audioId}`
+    
+    console.log(`🎵 Audio stored with ID: ${audioId}, URL: ${audioUrl}`)
+    return audioUrl
+    
+  } catch (error) {
+    console.error('Error creating temp audio endpoint:', error)
+    return ''
   }
 }
 
