@@ -3,6 +3,7 @@ import { About } from '@/components/portfolio/About'
 import { Experience } from '@/components/portfolio/Experience'
 import { Skills } from '@/components/portfolio/Skills'
 import { Projects } from '@/components/portfolio/Projects'
+import { PhoneCall } from '@/components/portfolio/PhoneCall'
 import { AIChat } from '@/components/portfolio/AIChat'
 import { Contact } from '@/components/portfolio/Contact'
 import { Navigation } from '@/components/portfolio/Navigation'
@@ -32,6 +33,7 @@ export default function HomePage() {
         <Experience />
         <Skills />
         <Projects />
+        <PhoneCall />
         <AIChat />
         <Contact />
       </main>

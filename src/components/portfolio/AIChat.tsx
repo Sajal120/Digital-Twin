@@ -296,7 +296,11 @@ export function AIChat() {
                 <div>
                   <h3 className="font-semibold">Sajal Basnet</h3>
                   <p className="text-sm text-blue-100">
-                    Ask me about my background (Text or Voice)
+                    Ask me about my background (Text, Voice, or 📞{' '}
+                    <a href="tel:+61256656168" className="underline hover:text-white">
+                      Call +61 2 5565 6168
+                    </a>
+                    )
                   </p>
                 </div>
               </div>
