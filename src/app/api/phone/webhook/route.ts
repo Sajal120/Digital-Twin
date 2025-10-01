@@ -104,7 +104,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   <Pause length="1"/>
   <Say voice="alice" language="en-US">
     This call is being recorded for quality and training purposes. 
-    How can I assist you today?
+    Please tell me what you'd like to know about my background and experience.
   </Say>
   <Record 
     action="/api/phone/handle-recording"
@@ -191,17 +191,17 @@ async function getCallerContext(phoneNumber: string): Promise<CallerContext> {
 // Generate personalized professional greeting
 function generateProfessionalGreeting(callerContext: CallerContext): string {
   const baseGreeting =
-    "Hello! You've reached the AI assistant for Sajal Shrestha, a senior software engineer specializing in full-stack development and AI integration."
+    "Hello! This is Sajal Basnet, a senior software engineer specializing in full-stack development and AI integration."
 
   if (callerContext.type === 'known_contact' && callerContext.name) {
-    return `${baseGreeting} Hello ${callerContext.name}, it's great to hear from you again!`
+    return `${baseGreeting} Hello ${callerContext.name}, it's great to hear from you again! I'm here to discuss my background and experience with you.`
   }
 
   if (callerContext.classification === 'business') {
-    return `${baseGreeting} I understand this may be a professional call, and I'm here to help with any questions about Sajal's background, experience, or availability.`
+    return `${baseGreeting} I understand this may be a professional call, and I'm here to share information about my background, experience, and availability.`
   }
 
-  return `${baseGreeting} I'm here to help answer any questions about Sajal's professional background and experience.`
+  return `${baseGreeting} I'm here to tell you about my professional background and experience. What would you like to know?`
 }
 
 // Store call session data (using Vercel KV or similar)

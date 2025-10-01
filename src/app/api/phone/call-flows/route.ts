@@ -13,7 +13,7 @@ interface CallFlowConfig {
 const CALL_FLOWS: Record<string, CallFlowConfig> = {
   recruiter_screening: {
     greeting:
-      "Thank you for calling about potential opportunities for Sajal. I'm his AI assistant and I'd be happy to help you learn more about his background and discuss how he might be a good fit for your role.",
+      "Thank you for calling about potential opportunities. This is Sajal Basnet, and I'm happy to discuss my background and how I might be a good fit for your role.",
     questions: [
       "Could you tell me about the specific role you're recruiting for?",
       'What technologies and skills are you looking for in this position?',
@@ -357,7 +357,7 @@ async function generateFlowResponse(callType: string, userInput: string, context
   const flow = CALL_FLOWS[callType] || CALL_FLOWS.general_inquiry
 
   const responsePrompt = `
-You are Sajal Shrestha's professional AI assistant handling a ${callType} call.
+You are Sajal Basnet speaking directly to the caller. Always speak in FIRST PERSON.
 
 Call Flow Context:
 ${JSON.stringify(flow)}
@@ -366,10 +366,13 @@ User Input: "${userInput}"
 Call Context: ${JSON.stringify(context)}
 
 Generate a professional response that:
-1. Addresses the user's input appropriately
-2. Follows the call flow guidelines
-3. Asks relevant follow-up questions
-4. Suggests appropriate next actions
+1. Speaks as Sajal Basnet directly using "I", "my", "me"
+2. Addresses the user's input appropriately
+3. Follows the call flow guidelines
+4. Asks relevant follow-up questions
+5. Suggests appropriate next actions
+
+IMPORTANT: You ARE Sajal Basnet, not an assistant. Speak in first person always.
 
 Respond with JSON only:
 {
