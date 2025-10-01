@@ -191,7 +191,7 @@ async function getCallerContext(phoneNumber: string): Promise<CallerContext> {
 // Generate personalized professional greeting
 function generateProfessionalGreeting(callerContext: CallerContext): string {
   const baseGreeting =
-    "Hello! This is Sajal Basnet, a senior software engineer specializing in full-stack development and AI integration."
+    'Hello! This is Sajal Basnet, a senior software engineer specializing in full-stack development and AI integration.'
 
   if (callerContext.type === 'known_contact' && callerContext.name) {
     return `${baseGreeting} Hello ${callerContext.name}, it's great to hear from you again! I'm here to discuss my background and experience with you.`

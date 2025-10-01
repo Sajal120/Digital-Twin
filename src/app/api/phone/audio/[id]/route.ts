@@ -1,34 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // In-memory storage for temporary audio files (in production, use proper storage)
-const audioCache = new Map<string, { buffer: ArrayBuffer; contentType: string; timestamp: number }>()
+const audioCache = new Map<
+  string,
+  { buffer: ArrayBuffer; contentType: string; timestamp: number }
+>()
 
 // Clean up old audio files every 10 minutes
-setInterval(() => {
-  const now = Date.now()
-  const maxAge = 10 * 60 * 1000 // 10 minutes
-  
-  for (const [id, data] of audioCache.entries()) {
-    if (now - data.timestamp > maxAge) {
-      audioCache.delete(id)
+setInterval(
+  () => {
+    const now = Date.now()
+    const maxAge = 10 * 60 * 1000 // 10 minutes
+
+    for (const [id, data] of audioCache.entries()) {
+      if (now - data.timestamp > maxAge) {
+        audioCache.delete(id)
+      }
     }
-  }
-}, 10 * 60 * 1000)
+  },
+  10 * 60 * 1000,
+)
 
 // Store audio temporarily
 export function storeAudio(id: string, buffer: ArrayBuffer, contentType: string) {
   audioCache.set(id, {
     buffer,
     contentType,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   })
 }
 
 // Serve temporary audio files for Twilio
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const audioId = params.id
     const audioData = audioCache.get(audioId)
@@ -47,7 +50,6 @@ export async function GET(
         'Access-Control-Allow-Origin': '*',
       },
     })
-
   } catch (error) {
     console.error('Error serving audio:', error)
     return new NextResponse('Internal Server Error', { status: 500 })

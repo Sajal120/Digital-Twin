@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
     // Create TwiML to speak AI response and continue recording
     // Use your custom ElevenLabs voice for professional phone responses
     const speechUrl = await generateCustomVoiceSpeech(aiResponse.response)
-    
-    const twiml = speechUrl 
+
+    const twiml = speechUrl
       ? `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${speechUrl}</Play>
@@ -57,10 +57,11 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="30"
+    timeout="6"
+    finishOnKey="#"
     transcribe="true"
     transcribeCallback="/api/phone/handle-transcription"
-    maxLength="3600"
+    maxLength="45"
     playBeep="false"
   />
 </Response>`
@@ -71,10 +72,11 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="30"
+    timeout="6"
+    finishOnKey="#"
     transcribe="true"
     transcribeCallback="/api/phone/handle-transcription"
-    maxLength="3600"
+    maxLength="45"
     playBeep="false"
   />
 </Response>`
@@ -104,8 +106,9 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="30"
-    maxLength="3600"
+    timeout="6"
+    finishOnKey="#"
+    maxLength="45"
     playBeep="false"
   />
 </Response>`
@@ -177,18 +180,49 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
   }
 }
 
-// Get conversation context for the call
+// Enhanced conversation storage with professional context
+interface ConversationData {
+  history: Array<{
+    userInput: string
+    aiResponse: string
+    timestamp: string
+    recordingSid?: string
+    duration?: string
+  }>
+  context: any
+  interviewType: string
+  callerInfo: any
+}
+
+const conversationStore = new Map<string, ConversationData>()
+
+// Get conversation context for the call with MCP integration
 async function getConversationContext(callSid: string) {
   try {
-    // In production, retrieve from stored call session data
-    console.log(`📋 Getting conversation context for call: ${callSid}`)
+    console.log(`📋 Getting enhanced conversation context for call: ${callSid}`)
 
-    // For now, return basic professional context
+    // Get or initialize conversation data
+    let conversationData = conversationStore.get(callSid)
+    if (!conversationData) {
+      conversationData = {
+        history: [],
+        context: {},
+        interviewType: 'professional_phone_call',
+        callerInfo: { source: 'phone', callSid },
+      }
+      conversationStore.set(callSid, conversationData)
+    }
+
+    console.log(`💭 Found ${conversationData.history.length} previous conversation turns`)
+    console.log(`🎯 Interview type: ${conversationData.interviewType}`)
+
     return {
       callSid,
-      conversationType: 'professional_inquiry',
-      callerContext: 'unknown',
-      conversationHistory: [],
+      conversationType: 'professional_phone_inquiry',
+      callerContext: 'phone_interview_networking_recruiting',
+      conversationHistory: conversationData.history.slice(-8), // Keep last 8 exchanges for rich context
+      interviewType: conversationData.interviewType,
+      enhancedMode: true, // Always use enhanced mode for phone calls
     }
   } catch (error) {
     console.error('Error getting conversation context:', error)
@@ -197,49 +231,121 @@ async function getConversationContext(callSid: string) {
       conversationType: 'general',
       callerContext: 'unknown',
       conversationHistory: [],
+      interviewType: 'general',
+      enhancedMode: true,
     }
   }
 }
 
-// Generate AI response using existing voice conversation API
+// Generate AI response using MCP server and enhanced chat system
 async function generateAIResponse(userMessage: string, context: any) {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://www.sajal-app.online'
 
-    const response = await fetch(`${baseUrl}/api/voice/conversation`, {
+    console.log(
+      '🤖 Generating AI response with full MCP integration for:',
+      userMessage.substring(0, 100) + '...',
+    )
+    console.log('📞 Call context:', context.callSid, '| Type:', context.interviewType)
+    console.log('💭 Conversation history length:', context.conversationHistory?.length || 0)
+
+    // Try MCP server integration first (most comprehensive)
+    try {
+      console.log('🔌 Attempting MCP server integration...')
+      const mcpResponse = await fetch(`${baseUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: `phone_${context.callSid}_${Date.now()}`,
+          method: 'tools/call',
+          params: {
+            name: 'ask_digital_twin',
+            arguments: {
+              question: userMessage,
+              interviewType: context.interviewType || 'general',
+              enhancedMode: true,
+              maxResults: 5, // More context for phone calls
+            },
+          },
+        }),
+      })
+
+      if (mcpResponse.ok) {
+        const mcpData = await mcpResponse.json()
+        if (mcpData.result?.content?.[0]?.text) {
+          console.log('✅ MCP server response successful')
+          // Clean up the response for voice (remove markdown formatting)
+          const cleanResponse = mcpData.result.content[0].text
+            .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
+            .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
+            .replace(/---\n/g, '') // Remove dividers
+            .replace(/\n\n+/g, '. ') // Replace multiple newlines with periods
+            .replace(/\n/g, '. ') // Replace single newlines with periods
+            .trim()
+
+          return {
+            response: cleanResponse,
+            success: true,
+            source: 'mcp_server',
+          }
+        }
+      }
+    } catch (mcpError: any) {
+      console.warn('⚠️ MCP server unavailable, falling back to chat API:', mcpError.message)
+    }
+
+    // Fallback to enhanced chat API
+    console.log('🔄 Using enhanced chat API as fallback...')
+    const chatResponse = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: userMessage,
-        context: `Phone call via Twilio. Call ID: ${context.callSid}`,
-        conversationHistory: context.conversationHistory,
-        interactionType: 'phone_professional',
+        user_id: `phone_${context.callSid}`,
+        role: 'user',
+        content: userMessage,
+        enhancedMode: true,
+        interviewType: context.interviewType || 'general',
+        conversationHistory: context.conversationHistory || [],
+        context: `Professional phone call via Twilio. Call ID: ${context.callSid}. This is a live phone conversation requiring natural, conversational responses.`,
       }),
     })
 
-    if (!response.ok) {
-      throw new Error(`Voice API error: ${response.statusText}`)
+    if (!chatResponse.ok) {
+      console.error('Chat API error:', chatResponse.status, chatResponse.statusText)
+      throw new Error(`Chat API error: ${chatResponse.statusText}`)
     }
 
-    const data = await response.json()
+    const chatData = await chatResponse.json()
+    console.log('✅ Chat API response generated successfully')
+    console.log('📊 Enhanced mode active:', chatData.enhanced)
+
+    // Clean up chat response for voice
+    const cleanResponse = (chatData.response || chatData.message?.content || chatData.content)
+      .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
+      .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
+      .replace(/\n\n+/g, '. ') // Replace multiple newlines with periods
+      .replace(/\n/g, '. ') // Replace single newlines with periods
+      .trim()
+
     return {
       response:
-        data.response || "I apologize, but I'm having trouble generating a response right now.",
-      success: data.success,
+        cleanResponse || "I apologize, but I'm having trouble generating a response right now.",
+      success: chatData.success !== false,
+      source: 'chat_api',
+      enhanced: chatData.enhanced,
     }
   } catch (error) {
     console.error('Error generating AI response:', error)
     return {
       response:
-        "Thank you for calling. I'm having a technical issue right now. Could you please try again in a moment?",
+        "Thank you for calling. I'm having a technical issue right now, but I'm Sajal Basnet, a software engineer. Could you please repeat your question?",
       success: false,
+      source: 'fallback',
     }
   }
-}
-
-// Generate speech using ElevenLabs custom voice
+} // Generate speech using ElevenLabs custom voice
 async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
   try {
     const elevenLabsApiKey = process.env.ELEVENLABS_API_KEY
@@ -250,12 +356,16 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
       return null
     }
 
-    console.log('🎤 Generating custom voice speech with ElevenLabs')
+    console.log(
+      '🎤 Generating custom voice speech with ElevenLabs for text:',
+      text.substring(0, 100) + '...',
+    )
+    console.log('🔑 Using voice ID:', voiceId)
 
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
-        'Accept': 'audio/mpeg',
+        Accept: 'audio/mpeg',
         'Content-Type': 'application/json',
         'xi-api-key': elevenLabsApiKey,
       },
@@ -272,7 +382,9 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
     })
 
     if (!response.ok) {
-      console.error('ElevenLabs API error:', response.statusText)
+      console.error('ElevenLabs API error:', response.status, response.statusText)
+      const errorBody = await response.text()
+      console.error('ElevenLabs error details:', errorBody)
       return null
     }
 
@@ -289,7 +401,6 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
 
     console.log('✅ Custom voice speech generated successfully')
     return tempAudioUrl
-
   } catch (error) {
     console.error('Error generating custom voice speech:', error)
     return null
@@ -301,48 +412,80 @@ async function createTempAudioEndpoint(audioBuffer: ArrayBuffer, format: string)
   try {
     // Generate unique ID for this audio
     const audioId = Math.random().toString(36).substring(7) + Date.now().toString(36)
-    
+
     // Import the audio storage function
     const { storeAudio } = await import('../audio/[id]/route')
-    
+
     // Store the audio with appropriate content type
     const contentType = format === 'mpeg' ? 'audio/mpeg' : 'audio/wav'
     storeAudio(audioId, audioBuffer, contentType)
-    
+
     // Return the URL that Twilio can access
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://your-app.vercel.app'
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://www.sajal-app.online'
     const audioUrl = `${baseUrl}/api/phone/audio/${audioId}`
-    
+
     console.log(`🎵 Audio stored with ID: ${audioId}, URL: ${audioUrl}`)
     return audioUrl
-    
   } catch (error) {
     console.error('Error creating temp audio endpoint:', error)
     return ''
   }
 }
 
-// Store conversation turn in call history
+// Store conversation turn with enhanced context
 async function storeConversationTurn(callSid: string, turnData: any) {
   try {
-    console.log(`💾 Storing conversation turn for call: ${callSid}`, turnData)
+    console.log(`💾 Storing enhanced conversation turn for call: ${callSid}`)
 
-    // In production, store in database or Vercel KV
-    // This would include:
-    // - User input transcription
-    // - AI response
-    // - Timestamp
-    // - Recording SID for reference
-    // - Call analytics data
+    // Get existing conversation data
+    let conversationData = conversationStore.get(callSid) || {
+      history: [],
+      context: {},
+      interviewType: 'professional_phone_call',
+      callerInfo: { source: 'phone', callSid },
+    }
+
+    // Add new turn
+    const newTurn = {
+      userInput: turnData.userInput,
+      aiResponse: turnData.aiResponse,
+      timestamp: turnData.timestamp,
+      recordingSid: turnData.recordingSid,
+      duration: turnData.duration,
+    }
+
+    conversationData.history.push(newTurn)
+
+    // Update context based on conversation content
+    if (turnData.userInput) {
+      const input = turnData.userInput.toLowerCase()
+      if (input.includes('interview') || input.includes('position') || input.includes('role')) {
+        conversationData.interviewType = 'technical'
+      } else if (input.includes('recruiter') || input.includes('hiring')) {
+        conversationData.interviewType = 'hr_screening'
+      } else if (
+        input.includes('network') ||
+        input.includes('coffee') ||
+        input.includes('connect')
+      ) {
+        conversationData.interviewType = 'networking'
+      }
+    }
+
+    // Store updated conversation data (keep last 15 turns for rich context)
+    conversationData.history = conversationData.history.slice(-15)
+    conversationStore.set(callSid, conversationData)
+
+    console.log(
+      `✅ Stored turn. Total turns: ${conversationData.history.length}, Type: ${conversationData.interviewType}`,
+    )
 
     return Promise.resolve()
   } catch (error) {
     console.error('Error storing conversation turn:', error)
     return Promise.resolve()
   }
-}
-
-// Handle OPTIONS for CORS
+} // Handle OPTIONS for CORS
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
