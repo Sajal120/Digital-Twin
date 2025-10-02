@@ -586,7 +586,13 @@ export async function POST(request: NextRequest) {
           .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
           .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
 
-        // PASS 3: Remove remaining fragments and clean whitespace
+        // PASS 3: Remove bullet points and listing patterns
+        cleanedResponse = cleanedResponse
+          .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ')
+          .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ')
+          .replace(/,\s*-\s+/g, ', ')
+
+        // PASS 4: Remove remaining fragments and clean whitespace
         cleanedResponse = cleanedResponse
           .replace(/\*\*+/g, '')
           .replace(/\*+/g, '')
@@ -595,8 +601,23 @@ export async function POST(request: NextRequest) {
           .replace(/\n\n+/g, '. ')
           .replace(/\n/g, '. ')
           .replace(/\.\s*\./g, '.')
+          .replace(/,\s*,/g, ',')
           .replace(/\s+/g, ' ')
           .trim()
+
+        // Truncate if too long for natural phone conversation
+        if (cleanedResponse.length > 300) {
+          const sentences = cleanedResponse.split(/\.\s+/)
+          let truncated = ''
+          for (const sentence of sentences) {
+            if ((truncated + sentence).length < 280) {
+              truncated += sentence + '. '
+            } else {
+              break
+            }
+          }
+          cleanedResponse = truncated.trim()
+        }
 
         // Remove any remaining "I'm Sajal Basnet" prefix if response already contains identification
         if (cleanedResponse.match(/I(?:'m| am) Sajal Basnet/i)) {
@@ -692,17 +713,37 @@ export async function POST(request: NextRequest) {
       .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-      // Third pass: Catch any remaining ** or * fragments
+      // Third pass: Remove bullet points and excessive listing patterns
+      .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ') // Remove "- item," patterns
+      .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ') // Remove "- item." patterns
+      .replace(/,\s*-\s+/g, ', ') // Clean up remaining list markers
+      // Fourth pass: Catch any remaining ** or * fragments
       .replace(/\*\*+/g, '')
       .replace(/\*+/g, '')
       // Remove separators
       .replace(/---+/g, '')
       .replace(/___+/g, '')
-      // Clean up spacing
+      // Clean up spacing and truncate if too long
       .replace(/\s+\./g, '.')
       .replace(/\.\s*\./g, '.')
+      .replace(/,\s*,/g, ',')
       .replace(/\s+/g, ' ')
       .trim()
+
+    // Truncate overly long responses for phone (max 300 chars for natural speech)
+    if (aiResponse.response.length > 300) {
+      const sentences = aiResponse.response.split(/\.\s+/)
+      let truncated = ''
+      for (const sentence of sentences) {
+        if ((truncated + sentence).length < 280) {
+          truncated += sentence + '. '
+        } else {
+          break
+        }
+      }
+      aiResponse.response = truncated.trim()
+      console.log('✂️ Truncated long response for natural phone conversation')
+    }
 
     console.log(`🧹 Final cleaned response preview: ${aiResponse.response.substring(0, 100)}...`)
 

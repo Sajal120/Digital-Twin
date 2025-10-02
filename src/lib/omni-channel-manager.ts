@@ -376,7 +376,11 @@ export class OmniChannelManager {
       .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-      // Pass 3: Catch remaining asterisk fragments
+      // Pass 3: Remove bullet points and listing patterns
+      .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ')
+      .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ')
+      .replace(/,\s*-\s+/g, ', ')
+      // Pass 4: Catch remaining asterisk fragments
       .replace(/\*\*+/g, '')
       .replace(/\*+/g, '')
       // Remove separators
@@ -390,8 +394,23 @@ export class OmniChannelManager {
         .replace(/\n\n+/g, '. ') // Replace paragraphs with pauses
         .replace(/\n/g, '. ') // Replace newlines with pauses
         .replace(/\.\s*\./g, '.') // Remove duplicate periods
+        .replace(/,\s*,/g, ',') // Remove duplicate commas
         .replace(/\s+/g, ' ') // Remove extra spaces
         .trim()
+
+      // Truncate overly long responses for natural phone conversation
+      if (cleaned.length > 300) {
+        const sentences = cleaned.split(/\.\s+/)
+        let truncated = ''
+        for (const sentence of sentences) {
+          if ((truncated + sentence).length < 280) {
+            truncated += sentence + '. '
+          } else {
+            break
+          }
+        }
+        cleaned = truncated.trim()
+      }
 
       // DON'T add "I'm Sajal Basnet" prefix if already present
       // Phone handler will manage natural greeting appropriately
