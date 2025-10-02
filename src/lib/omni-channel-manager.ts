@@ -393,6 +393,8 @@ export class OmniChannelManager {
       cleaned = cleaned
         .replace(/\n\n+/g, '. ') // Replace paragraphs with pauses
         .replace(/\n/g, '. ') // Replace newlines with pauses
+        .replace(/\s+-\.\s*/g, ' ') // Remove "-. " artifacts
+        .replace(/\s+-\s*$/g, '') // Remove trailing " -"
         .replace(/\.\s*\./g, '.') // Remove duplicate periods
         .replace(/,\s*,/g, ',') // Remove duplicate commas
         .replace(/\s+/g, ' ') // Remove extra spaces

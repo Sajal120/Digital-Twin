@@ -600,6 +600,8 @@ export async function POST(request: NextRequest) {
           .replace(/___+/g, '')
           .replace(/\n\n+/g, '. ')
           .replace(/\n/g, '. ')
+          .replace(/\s+-\.\s*/g, ' ')
+          .replace(/\s+-\s*$/g, '')
           .replace(/\.\s*\./g, '.')
           .replace(/,\s*,/g, ',')
           .replace(/\s+/g, ' ')
@@ -723,7 +725,9 @@ export async function POST(request: NextRequest) {
       // Remove separators
       .replace(/---+/g, '')
       .replace(/___+/g, '')
-      // Clean up spacing and truncate if too long
+      // Clean up spacing and artifacts
+      .replace(/\s+-\.\s*/g, ' ') // Remove "-. " artifacts
+      .replace(/\s+-\s*$/g, '') // Remove trailing " -"
       .replace(/\s+\./g, '.')
       .replace(/\.\s*\./g, '.')
       .replace(/,\s*,/g, ',')
