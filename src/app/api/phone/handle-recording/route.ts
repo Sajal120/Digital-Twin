@@ -57,11 +57,11 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="6"
+    timeout="5"
     finishOnKey="#"
     transcribe="true"
     transcribeCallback="/api/phone/handle-transcription"
-    maxLength="45"
+    maxLength="60"
     playBeep="false"
   />
 </Response>`
@@ -72,11 +72,11 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="6"
+    timeout="5"
     finishOnKey="#"
     transcribe="true"
     transcribeCallback="/api/phone/handle-transcription"
-    maxLength="45"
+    maxLength="60"
     playBeep="false"
   />
 </Response>`
@@ -106,9 +106,9 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="6"
+    timeout="5"
     finishOnKey="#"
-    maxLength="45"
+    maxLength="60"
     playBeep="false"
   />
 </Response>`
@@ -275,14 +275,24 @@ async function generateAIResponse(userMessage: string, context: any) {
         const mcpData = await mcpResponse.json()
         if (mcpData.result?.content?.[0]?.text) {
           console.log('✅ MCP server response successful')
-          // Clean up the response for voice (remove markdown formatting)
-          const cleanResponse = mcpData.result.content[0].text
+          // Clean up the response for voice (remove markdown formatting and MCP structure)
+          let cleanResponse = mcpData.result.content[0].text
+            .replace(/\*\*Enhanced Interview Response\*\* \([^)]+\):\s*/g, '') // Remove MCP header
+            .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '') // Remove metadata lines
             .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
             .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
             .replace(/---\n/g, '') // Remove dividers
             .replace(/\n\n+/g, '. ') // Replace multiple newlines with periods
             .replace(/\n/g, '. ') // Replace single newlines with periods
+            .replace(/\.\s*\./g, '.') // Remove duplicate periods
             .trim()
+          
+          // Ensure it starts naturally for phone conversation
+          if (!cleanResponse.match(/^(Hello|Hi|I am|I'm|My name is|Thank you)/i)) {
+            cleanResponse = `I'm Sajal Basnet. ${cleanResponse}`
+          }
+          
+          console.log('🎯 Cleaned response preview:', cleanResponse.substring(0, 100) + '...')
 
           return {
             response: cleanResponse,
@@ -322,12 +332,20 @@ async function generateAIResponse(userMessage: string, context: any) {
     console.log('📊 Enhanced mode active:', chatData.enhanced)
 
     // Clean up chat response for voice
-    const cleanResponse = (chatData.response || chatData.message?.content || chatData.content)
+    let cleanResponse = (chatData.response || chatData.message?.content || chatData.content)
       .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
       .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
       .replace(/\n\n+/g, '. ') // Replace multiple newlines with periods
       .replace(/\n/g, '. ') // Replace single newlines with periods
+      .replace(/\.\s*\./g, '.') // Remove duplicate periods
       .trim()
+    
+    // Ensure it starts naturally for phone conversation
+    if (!cleanResponse.match(/^(Hello|Hi|I am|I'm|My name is|Thank you)/i)) {
+      cleanResponse = `I'm Sajal Basnet. ${cleanResponse}`
+    }
+    
+    console.log('🎯 Chat cleaned response preview:', cleanResponse.substring(0, 100) + '...')
 
     return {
       response:
@@ -352,7 +370,9 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
     const voiceId = process.env.ELEVENLABS_VOICE_ID || 'WcXkU7PbsO0uKKBdWJrG' // Your custom voice
 
     if (!elevenLabsApiKey) {
-      console.log('🔇 ElevenLabs API key not found, falling back to Twilio voice')
+      console.log('🔇 ElevenLabs API key not found in environment variables')
+      console.log('📝 Set ELEVENLABS_API_KEY in Vercel dashboard for custom voice')
+      console.log('🔄 Falling back to Twilio voice')
       return null
     }
 
