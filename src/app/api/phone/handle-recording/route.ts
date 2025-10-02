@@ -541,15 +541,88 @@ export async function POST(request: NextRequest) {
         suggestions: unifiedResponse.suggestions,
       }
     } catch (omniError: any) {
-      console.warn('⚠️ Omni-channel system error, using fallback:', omniError.message)
+      console.warn('⚠️ Omni-channel system error, using enhanced fallback:', omniError.message)
 
-      // Fallback to original system
-      aiResponse = await generateAIResponse(contextualPrompt, {
-        ...conversationContext,
-        conversationFocus,
-        interactionType: 'phone_professional',
-        currentTurn: turnCount,
-      })
+      // Enhanced fallback with better intelligence
+      try {
+        const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
+
+        // Create more intelligent prompt for fallback
+        const enhancedPrompt = `You are Sajal Basnet in a live phone conversation. 
+        Current turn: ${turnCount}
+        Conversation focus: ${conversationFocus}
+        Audio processed: ${audioProcessingSuccess}
+        
+        User said/context: "${inputToProcess}"
+        
+        Respond naturally as if you're having a real conversation. Be conversational, personal, and vary your responses based on the conversation context. Don't repeat the same introduction every time. Build on the conversation history.`
+
+        const fallbackResponse = await generateAIResponse(enhancedPrompt, {
+          ...conversationContext,
+          conversationFocus,
+          interactionType: 'phone_professional',
+          currentTurn: turnCount,
+          enhancedMode: true,
+          intelligentFallback: true,
+        })
+
+        // Clean the response more aggressively for phone
+        let cleanedResponse = fallbackResponse.response
+
+        // Remove enhanced format markers
+        cleanedResponse = cleanedResponse
+          .replace(/Enhanced Interview Response[^:]*:\s*/g, '')
+          .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '')
+          .replace(/Query Enhancement:[^.]+\./g, '')
+          .replace(/Processing Mode:[^.]+\./g, '')
+          .replace(/\*\*(.+?)\*\*/g, '$1')
+          .replace(/\*(.+?)\*/g, '$1')
+          .replace(/---\n/g, '')
+          .replace(/\n\n+/g, '. ')
+          .replace(/\n/g, '. ')
+          .replace(/\.\s*\./g, '.')
+          .replace(/\s+/g, ' ')
+          .trim()
+
+        // Ensure it starts naturally
+        if (
+          !cleanedResponse.match(/^(Hello|Hi|I'm|My name is|Thank you|Sure|Absolutely|Of course)/i)
+        ) {
+          if (turnCount === 0) {
+            cleanedResponse = `Hello, I'm Sajal Basnet. ${cleanedResponse}`
+          } else {
+            cleanedResponse = `${cleanedResponse}`
+          }
+        }
+
+        aiResponse = {
+          response: cleanedResponse,
+          success: true,
+          source: 'enhanced_fallback',
+          suggestions: [],
+        }
+
+        console.log('✅ Enhanced fallback response generated')
+      } catch (fallbackError: any) {
+        console.error('❌ Even fallback failed:', fallbackError.message)
+
+        // Last resort - simple intelligent response
+        const simpleResponses = [
+          "Hi, I'm Sajal Basnet, a software developer from Nepal currently in Sydney. What would you like to know about my experience?",
+          "Hello! I'm Sajal, a computer science student and developer passionate about AI and technology. How can I help you today?",
+          "Thanks for calling! I'm Sajal Basnet, working in software development with a focus on AI. What specific areas interest you?",
+          "Hello there! I'm Sajal, a developer specializing in AI and full-stack development. What would you like to discuss?",
+        ]
+
+        const responseIndex = turnCount % simpleResponses.length
+
+        aiResponse = {
+          response: simpleResponses[responseIndex],
+          success: true,
+          source: 'intelligent_fallback',
+          suggestions: [],
+        }
+      }
     }
 
     console.log('🤖 Enhanced AI Response ready:', aiResponse.response.substring(0, 100) + '...')

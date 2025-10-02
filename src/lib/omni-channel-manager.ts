@@ -360,17 +360,35 @@ export class OmniChannelManager {
    */
   private cleanResponseForChannel(response: string, channel: string): string {
     let cleaned = response
+      // Remove enhanced format markers aggressively
+      .replace(/Enhanced Interview Response[^:]*:\s*/g, '')
+      .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '') // Remove metadata lines
+      .replace(/Query Enhancement:[^.]+\./g, '')
+      .replace(/Processing Mode:[^.]+\./g, '')
       .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
       .replace(/\*(.+?)\*/g, '$1') // Remove italic
-      .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '') // Remove metadata
+      .replace(/---\n/g, '') // Remove dividers
       .trim()
 
     if (channel === 'phone' || channel === 'voice') {
-      // Additional cleaning for voice channels
+      // Additional aggressive cleaning for voice channels
       cleaned = cleaned
         .replace(/\n\n+/g, '. ') // Replace paragraphs with pauses
         .replace(/\n/g, '. ') // Replace newlines with pauses
         .replace(/\.\s*\./g, '.') // Remove duplicate periods
+        .replace(/\s+/g, ' ') // Remove extra spaces
+        .trim()
+
+      // Ensure natural start for voice
+      if (!cleaned.match(/^(Hello|Hi|I'm|My name is|Thank you|Sure|Absolutely|Of course)/i)) {
+        cleaned = `I'm Sajal Basnet. ${cleaned}`
+      }
+    } else {
+      // Standard cleaning for other channels
+      cleaned = cleaned
+        .replace(/\n\n+/g, '. ')
+        .replace(/\n/g, '. ')
+        .replace(/\.\s*\./g, '.')
     }
 
     return cleaned
