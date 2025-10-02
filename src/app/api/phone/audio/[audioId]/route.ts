@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { phoneAudioCache } from '../../../../../lib/phone-audio-cache'
 
 // Allow cross-origin access for audio streaming endpoint
+// Updated: Fix Vercel build issue with dynamic routes
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
