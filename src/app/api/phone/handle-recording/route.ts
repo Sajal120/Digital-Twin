@@ -566,32 +566,43 @@ export async function POST(request: NextRequest) {
           intelligentFallback: true,
         })
 
-        // Clean the response more aggressively for phone
+        // Clean the response EXTREMELY aggressively for phone
         let cleanedResponse = fallbackResponse.response
 
-        // Remove enhanced format markers
+        // Remove ALL metadata markers and formatting
         cleanedResponse = cleanedResponse
-          .replace(/Enhanced Interview Response[^:]*:\s*/g, '')
-          .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '')
-          .replace(/Query Enhancement:[^.]+\./g, '')
-          .replace(/Processing Mode:[^.]+\./g, '')
+          // Remove enhanced format headers
+          .replace(/Enhanced Interview Response[^:]*:\s*/gi, '')
+          .replace(/\(general context\):\s*/gi, '')
+          .replace(/\(specific context\):\s*/gi, '')
+          // Remove query enhancement and processing mode indicators
+          .replace(/Query Enhancement:[^\n.]*[.\n]/gi, '')
+          .replace(/Processing Mode:[^\n.]*[.\n]/gi, '')
+          .replace(/Context Mode:[^\n.]*[.\n]/gi, '')
+          .replace(/Source:[^\n.]*[.\n]/gi, '')
+          // Remove markdown formatting
           .replace(/\*\*(.+?)\*\*/g, '$1')
           .replace(/\*(.+?)\*/g, '$1')
-          .replace(/---\n/g, '')
+          .replace(/#+\s+/g, '')
+          // Remove separators and structural markers
+          .replace(/---+/g, '')
+          .replace(/___+/g, '')
+          // Clean up whitespace
           .replace(/\n\n+/g, '. ')
           .replace(/\n/g, '. ')
           .replace(/\.\s*\./g, '.')
           .replace(/\s+/g, ' ')
           .trim()
 
-        // Ensure it starts naturally
-        if (
-          !cleanedResponse.match(/^(Hello|Hi|I'm|My name is|Thank you|Sure|Absolutely|Of course)/i)
-        ) {
-          if (turnCount === 0) {
-            cleanedResponse = `Hello, I'm Sajal Basnet. ${cleanedResponse}`
-          } else {
-            cleanedResponse = `${cleanedResponse}`
+        // Remove any remaining "I'm Sajal Basnet" prefix if response already contains identification
+        if (cleanedResponse.match(/I(?:'m| am) Sajal Basnet/i)) {
+          cleanedResponse = cleanedResponse.replace(/^I(?:'m| am) Sajal Basnet\.\s*/i, '')
+        }
+
+        // Only add greeting if it's first turn AND doesn't already have one
+        if (turnCount === 0) {
+          if (!cleanedResponse.match(/^(Hello|Hi|Hey|Greetings)/i)) {
+            cleanedResponse = `Hello, ${cleanedResponse}`
           }
         }
 
@@ -660,6 +671,34 @@ export async function POST(request: NextRequest) {
       }
       console.log(`💬 Natural conversation prompt: ${conversationPrompt}`)
     }
+
+    // FINAL ULTRA-AGGRESSIVE CLEAN: Remove any remaining metadata before voice generation
+    aiResponse.response = aiResponse.response
+      // Remove any metadata patterns
+      .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
+      .replace(/\(general context\):\.?\s*/gi, '')
+      .replace(/\(specific context\):\.?\s*/gi, '')
+      .replace(/Query Enhancement:[^\n.]*\.?\s*/gi, '')
+      .replace(/Processing Mode:[^\n.]*\.?\s*/gi, '')
+      .replace(/Context Mode:[^\n.]*\.?\s*/gi, '')
+      .replace(/Source:[^\n.]*\.?\s*/gi, '')
+      .replace(/Response Type:[^\n.]*\.?\s*/gi, '')
+      // Remove ALL markdown formatting
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove separators
+      .replace(/---+/g, '')
+      .replace(/___+/g, '')
+      .replace(/\*\*\*/g, '')
+      // Clean up spacing
+      .replace(/\s+\./g, '.')
+      .replace(/\.\s*\./g, '.')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+    console.log(`🧹 Final cleaned response preview: ${aiResponse.response.substring(0, 100)}...`)
 
     // CUSTOM VOICE INTEGRATION: Use your ElevenLabs cloned voice for natural conversation
     console.log('🎤 Generating custom voice audio for phone response...')

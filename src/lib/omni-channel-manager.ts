@@ -360,14 +360,25 @@ export class OmniChannelManager {
    */
   private cleanResponseForChannel(response: string, channel: string): string {
     let cleaned = response
-      // Remove enhanced format markers aggressively
-      .replace(/Enhanced Interview Response[^:]*:\s*/g, '')
-      .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '') // Remove metadata lines
-      .replace(/Query Enhancement:[^.]+\./g, '')
-      .replace(/Processing Mode:[^.]+\./g, '')
-      .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
-      .replace(/\*(.+?)\*/g, '$1') // Remove italic
-      .replace(/---\n/g, '') // Remove dividers
+      // Remove ALL metadata patterns ultra-aggressively
+      .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
+      .replace(/\(general context\):\.?\s*/gi, '')
+      .replace(/\(specific context\):\.?\s*/gi, '')
+      .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '')
+      .replace(/Query Enhancement:[^\n.]*\.?\s*/gi, '')
+      .replace(/Processing Mode:[^\n.]*\.?\s*/gi, '')
+      .replace(/Context Mode:[^\n.]*\.?\s*/gi, '')
+      .replace(/Source:[^\n.]*\.?\s*/gi, '')
+      .replace(/Response Type:[^\n.]*\.?\s*/gi, '')
+      // Remove ALL markdown formatting
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/#{1,6}\s+/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove separators
+      .replace(/---+/g, '')
+      .replace(/___+/g, '')
+      .replace(/\*\*\*/g, '')
       .trim()
 
     if (channel === 'phone' || channel === 'voice') {
@@ -379,16 +390,11 @@ export class OmniChannelManager {
         .replace(/\s+/g, ' ') // Remove extra spaces
         .trim()
 
-      // Ensure natural start for voice
-      if (!cleaned.match(/^(Hello|Hi|I'm|My name is|Thank you|Sure|Absolutely|Of course)/i)) {
-        cleaned = `I'm Sajal Basnet. ${cleaned}`
-      }
+      // DON'T add "I'm Sajal Basnet" prefix if already present
+      // Phone handler will manage natural greeting appropriately
     } else {
       // Standard cleaning for other channels
-      cleaned = cleaned
-        .replace(/\n\n+/g, '. ')
-        .replace(/\n/g, '. ')
-        .replace(/\.\s*\./g, '.')
+      cleaned = cleaned.replace(/\n\n+/g, '\n\n').replace(/\s+/g, ' ').trim()
     }
 
     return cleaned
