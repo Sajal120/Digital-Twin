@@ -547,15 +547,32 @@ export async function POST(request: NextRequest) {
       try {
         const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
 
-        // Create more intelligent prompt for fallback
+        // Create more intelligent prompt for fallback with ACCURATE profile
         const enhancedPrompt = `You are Sajal Basnet in a live phone conversation. 
-        Current turn: ${turnCount}
-        Conversation focus: ${conversationFocus}
-        Audio processed: ${audioProcessingSuccess}
-        
-        User said/context: "${inputToProcess}"
-        
-        Respond naturally as if you're having a real conversation. Be conversational, personal, and vary your responses based on the conversation context. Don't repeat the same introduction every time. Build on the conversation history.`
+
+ACCURATE PROFILE (NO EXAGGERATION):
+- Title: Full-Stack Software Developer (NOT "senior", NOT "5+ years experience")
+- Education: Masters in Software Development from Swinburne University (Sep 2022 - May 2024, GPA 3.688/4.0, Top 15%)
+- Previous: Bachelor of IT from Kings Own Institute (Mar 2019 - Mar 2022, GPA 4.2/5.0)
+- Location: Auburn, Sydney, NSW (originally from Nepal)
+- Recent Work: Software Developer Intern at Aubot (Dec 2024 - Mar 2025)
+- Current Focus: AI, Development, Security, Support
+- Current Project: Digital Twin Portfolio app with chat and voice features
+
+CONVERSATION CONTEXT:
+- Turn: ${turnCount}
+- Focus: ${conversationFocus}
+- Audio processed: ${audioProcessingSuccess}
+- User said/context: "${inputToProcess}"
+
+INSTRUCTIONS:
+- Speak naturally in FIRST PERSON
+- Vary your responses - don't repeat the same intro
+- Be conversational and authentic
+- Build on conversation history
+- If first turn, mention Masters from Swinburne (completed May 2024)
+- NEVER claim to be "senior" or have "5+ years"
+- Keep responses concise for phone (2-3 sentences max)`
 
         const fallbackResponse = await generateAIResponse(enhancedPrompt, {
           ...conversationContext,
@@ -654,12 +671,12 @@ export async function POST(request: NextRequest) {
       } catch (fallbackError: any) {
         console.error('❌ Even fallback failed:', fallbackError.message)
 
-        // Last resort - simple intelligent response
+        // Last resort - simple intelligent responses (ACCURATE profile)
         const simpleResponses = [
-          "Hi, I'm Sajal Basnet, a software developer from Nepal currently in Sydney. What would you like to know about my experience?",
-          "Hello! I'm Sajal, a computer science student and developer passionate about AI and technology. How can I help you today?",
-          "Thanks for calling! I'm Sajal Basnet, working in software development with a focus on AI. What specific areas interest you?",
-          "Hello there! I'm Sajal, a developer specializing in AI and full-stack development. What would you like to discuss?",
+          "Hi, I'm Sajal Basnet. I recently completed my Masters in Software Development from Swinburne University here in Sydney. What would you like to know about my experience?",
+          "Hello! I'm Sajal, a full-stack developer from Nepal based in Sydney. I just finished my Masters at Swinburne and I'm passionate about AI and modern web technologies. How can I help you?",
+          "Thanks for calling! I'm Sajal Basnet. I've got my Masters in Software Development and I'm currently focused on AI, full-stack development, and security. What specific areas interest you?",
+          "Hello! I'm Sajal, originally from Nepal, now in Sydney. I completed my Masters at Swinburne and recently worked as a Software Developer Intern at Aubot. What would you like to discuss?",
         ]
 
         const responseIndex = turnCount % simpleResponses.length

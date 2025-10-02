@@ -1,8 +1,8 @@
 {
   "personalInfo": {
     "name": "Sajal Basnet",
-    "title": "Full-Stack Developer | IT Support Specialist | Security Analyst | AI Enthusiast",
-    "location": "Auburn, Sydney, NSW, Australia",
+    "title": "Full-Stack Software Developer",
+    "location": "Auburn, 2144, Sydney, NSW, Australia",
     "contact": {
       "email": "basnetsajal120@gmail.com",
       "linkedin": "https://linkedin.com/in/sajal-basnet-7926aa188",
@@ -10,37 +10,37 @@
       "github": "https://github.com/Sajal120",
       "phone": "+61 424 425 793"
     },
-    "summary": "Versatile full-stack developer, security-minded problem solver, and IT support specialist based in Sydney. I blend hands-on software development with AI-enhanced workflows to build efficient, secure, and user-centric systems. Recognized in the Golden Key Honour Society (Top 15%) for academic excellence. I enjoy turning ambiguous problems into resilient products, with experience spanning from marketplace platforms to VR experiences and cloud optimization solutions.",
-    "elevator_pitch": "I'm Sajal Basnet — a full-stack developer who combines software engineering, AI-first workflows, and security best practices to deliver scalable solutions. With experience across web development, cloud optimization, and immersive VR, plus leadership skills from hospitality management, I bring both technical depth and operational excellence to every project."
+    "summary": "Results-driven full-stack developer with hands-on experience building responsive apps and optimising cloud systems. Masters in Software Development graduate from Swinburne University (GPA 3.688/4.0, Golden Key International Honour Society - Top 15%). Currently focused on AI, development, security, and support. Eager to contribute technical expertise and problem-solving skills to deliver high-impact software solutions in a dynamic team.",
+    "elevator_pitch": "I'm Sajal Basnet — a full-stack developer from Nepal based in Auburn, Sydney. I recently completed my Masters in Software Development at Swinburne (Top 15%) and have hands-on experience as a Software Developer Intern at Aubot and VR Developer at edgedVR. I'm passionate about AI, cloud optimization, and building practical solutions. Currently working on a Digital Twin Portfolio app with chat and voice features using React, Python, and AI technologies."
   },
 
   "salary_location": {
-    "current_salary_range": "$65,000 - $75,000 AUD",
-    "salary_expectations": "$75,000 - $95,000 AUD",
+    "current_salary_range": "Graduate/Entry-level",
+    "salary_expectations": "$70,000 - $85,000 AUD (negotiable based on opportunity)",
     "location_preferences": ["Sydney", "Melbourne", "Remote", "Hybrid"],
-    "current_location": "Auburn, Sydney, NSW, Australia",
+    "current_location": "Auburn, 2144, Sydney, NSW, Australia",
     "relocation_willing": true,
     "relocation_locations": ["Melbourne", "Brisbane", "Perth", "Adelaide"],
-    "remote_experience": "2+ years remote work experience during studies and projects",
-    "hybrid_preference": "3-4 days in office, 1-2 days remote",
-    "travel_availability": "Up to 20% domestic travel, open to occasional international travel",
-    "work_authorization": "Temporary Residence Visa - full work rights in Australia",
-    "visa_details": "Temporary residence visa holder with unrestricted work rights, eligible for visa renewal/pathway to permanent residence",
-    "notice_period": "2 weeks (currently available)",
-    "start_date_preference": "Within 2-3 weeks",
+    "remote_experience": "Remote internship experience at Aubot (Dec 2024 - Mar 2025)",
+    "hybrid_preference": "Flexible - open to office, hybrid, or remote arrangements",
+    "travel_availability": "Open to domestic and occasional international travel",
+    "work_authorization": "Full work rights in Australia",
+    "visa_details": "Authorized to work in Australia",
+    "notice_period": "Available immediately / flexible",
+    "start_date_preference": "Immediate to 2 weeks",
     "salary_negotiation_notes": {
-      "flexible_on_base_salary": "for learning opportunities and career growth",
+      "flexible_on_base_salary": "Prioritizing learning opportunities, mentorship, and career growth over maximum compensation",
       "values_beyond_salary": [
-        "mentorship",
-        "learning opportunities",
-        "career progression",
-        "innovative projects"
+        "mentorship and learning opportunities",
+        "working with modern tech stack (AI, cloud, full-stack)",
+        "career progression pathways",
+        "innovative projects and challenging problems"
       ],
       "benefits_preferences": [
-        "professional development budget",
+        "professional development and training budget",
         "flexible working arrangements",
-        "health insurance",
-        "superannuation"
+        "modern tech stack and tools",
+        "collaborative team environment"
       ]
     }
   },
@@ -1020,9 +1020,10 @@
       "institution": "Swinburne University of Technology",
       "degree": "Master of Software Development",
       "field": "Software Development",
-      "graduation": "2024",
+      "duration": "September 2022 - May 2024",
+      "graduation": "May 2024",
       "achievements": [
-        "Golden Key International Honour Society – Top 15% academic performance",
+        "Golden Key International Honour Society Asia Pacific – Top 15% academic performance",
         "GPA: 3.688/4.0",
         "Specialized in secure coding practices and AI systems development"
       ],
@@ -1042,8 +1043,11 @@
       "institution": "Kings Own Institute, Sydney",
       "degree": "Bachelor of Information Technology",
       "field": "Information Technology",
-      "graduation": "2020",
+      "duration": "March 2019 - March 2022",
+      "graduation": "March 2022",
+      "gpa": "4.2/5.0",
       "achievements": [
+        "GPA: 4.2/5.0",
         "Strong foundation in IT fundamentals",
         "Focus on programming and systems administration"
       ],
@@ -1055,8 +1059,7 @@
         "Web Development Technologies",
         "Software Engineering Principles"
       ],
-      "projects": ["Car Parking System", "Web Development Projects"],
-      "gpa": null
+      "projects": ["Car Parking System", "Web Development Projects"]
     }
   ],
 
