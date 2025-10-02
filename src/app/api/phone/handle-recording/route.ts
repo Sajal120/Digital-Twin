@@ -566,28 +566,32 @@ export async function POST(request: NextRequest) {
           intelligentFallback: true,
         })
 
-        // Clean the response EXTREMELY aggressively for phone
+        // Clean the response EXTREMELY aggressively for phone (MULTI-PASS)
         let cleanedResponse = fallbackResponse.response
 
-        // Remove ALL metadata markers and formatting
+        // PASS 1: Remove markdown formatting FIRST
         cleanedResponse = cleanedResponse
-          // Remove enhanced format headers
-          .replace(/Enhanced Interview Response[^:]*:\s*/gi, '')
-          .replace(/\(general context\):\s*/gi, '')
-          .replace(/\(specific context\):\s*/gi, '')
-          // Remove query enhancement and processing mode indicators
-          .replace(/Query Enhancement:[^\n.]*[.\n]/gi, '')
-          .replace(/Processing Mode:[^\n.]*[.\n]/gi, '')
-          .replace(/Context Mode:[^\n.]*[.\n]/gi, '')
-          .replace(/Source:[^\n.]*[.\n]/gi, '')
-          // Remove markdown formatting
           .replace(/\*\*(.+?)\*\*/g, '$1')
           .replace(/\*(.+?)\*/g, '$1')
           .replace(/#+\s+/g, '')
-          // Remove separators and structural markers
+
+        // PASS 2: Remove ALL metadata markers (including partially cleaned)
+        cleanedResponse = cleanedResponse
+          .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
+          .replace(/\(general context\):\.?\s*/gi, '')
+          .replace(/\(specific context\):\.?\s*/gi, '')
+          .replace(/Query Enhancement[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Processing Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+
+        // PASS 3: Remove remaining fragments and clean whitespace
+        cleanedResponse = cleanedResponse
+          .replace(/\*\*+/g, '')
+          .replace(/\*+/g, '')
           .replace(/---+/g, '')
           .replace(/___+/g, '')
-          // Clean up whitespace
           .replace(/\n\n+/g, '. ')
           .replace(/\n/g, '. ')
           .replace(/\.\s*\./g, '.')
@@ -674,24 +678,26 @@ export async function POST(request: NextRequest) {
 
     // FINAL ULTRA-AGGRESSIVE CLEAN: Remove any remaining metadata before voice generation
     aiResponse.response = aiResponse.response
-      // Remove any metadata patterns
-      .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
-      .replace(/\(general context\):\.?\s*/gi, '')
-      .replace(/\(specific context\):\.?\s*/gi, '')
-      .replace(/Query Enhancement:[^\n.]*\.?\s*/gi, '')
-      .replace(/Processing Mode:[^\n.]*\.?\s*/gi, '')
-      .replace(/Context Mode:[^\n.]*\.?\s*/gi, '')
-      .replace(/Source:[^\n.]*\.?\s*/gi, '')
-      .replace(/Response Type:[^\n.]*\.?\s*/gi, '')
-      // Remove ALL markdown formatting
+      // First pass: Remove markdown formatting to prevent partial markers
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
       .replace(/#{1,6}\s+/g, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Second pass: Remove metadata patterns (including partially cleaned ones)
+      .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
+      .replace(/\(general context\):\.?\s*/gi, '')
+      .replace(/\(specific context\):\.?\s*/gi, '')
+      .replace(/Query Enhancement[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Processing Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      // Third pass: Catch any remaining ** or * fragments
+      .replace(/\*\*+/g, '')
+      .replace(/\*+/g, '')
       // Remove separators
       .replace(/---+/g, '')
       .replace(/___+/g, '')
-      .replace(/\*\*\*/g, '')
       // Clean up spacing
       .replace(/\s+\./g, '.')
       .replace(/\.\s*\./g, '.')

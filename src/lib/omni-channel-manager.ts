@@ -360,25 +360,28 @@ export class OmniChannelManager {
    */
   private cleanResponseForChannel(response: string, channel: string): string {
     let cleaned = response
-      // Remove ALL metadata patterns ultra-aggressively
-      .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
-      .replace(/\(general context\):\.?\s*/gi, '')
-      .replace(/\(specific context\):\.?\s*/gi, '')
-      .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '')
-      .replace(/Query Enhancement:[^\n.]*\.?\s*/gi, '')
-      .replace(/Processing Mode:[^\n.]*\.?\s*/gi, '')
-      .replace(/Context Mode:[^\n.]*\.?\s*/gi, '')
-      .replace(/Source:[^\n.]*\.?\s*/gi, '')
-      .replace(/Response Type:[^\n.]*\.?\s*/gi, '')
-      // Remove ALL markdown formatting
+      // MULTI-PASS CLEANING: Do markdown removal FIRST to prevent partial patterns
+      // Pass 1: Remove markdown formatting
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
       .replace(/#{1,6}\s+/g, '')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Pass 2: Remove ALL metadata patterns (including partially cleaned)
+      .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
+      .replace(/\(general context\):\.?\s*/gi, '')
+      .replace(/\(specific context\):\.?\s*/gi, '')
+      .replace(/---\s*\*\*[^*]+\*\*:[^\n]+/g, '')
+      .replace(/Query Enhancement[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Processing Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      // Pass 3: Catch remaining asterisk fragments
+      .replace(/\*\*+/g, '')
+      .replace(/\*+/g, '')
       // Remove separators
       .replace(/---+/g, '')
       .replace(/___+/g, '')
-      .replace(/\*\*\*/g, '')
       .trim()
 
     if (channel === 'phone' || channel === 'voice') {
