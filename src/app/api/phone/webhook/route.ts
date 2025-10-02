@@ -101,12 +101,12 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
 
   try {
     const greeting = generateProfessionalGreeting(callerContext)
-    const fullGreeting = `${greeting}. This call is being recorded for quality and training purposes. Please tell me what you'd like to know about my background and experience.`
 
     console.log('🎤 Generating custom voice greeting...')
+    console.log('📝 Greeting:', greeting)
 
     // Generate custom voice greeting
-    const audioBuffer = await voiceService.generateSpeech(fullGreeting, {
+    const audioBuffer = await voiceService.generateSpeech(greeting, {
       provider: 'elevenlabs',
       voiceId: process.env.ELEVENLABS_VOICE_ID,
       stability: 0.6,
@@ -121,7 +121,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
       phoneAudioCache.set(audioId, {
         buffer: mp3Buffer,
         contentType: 'audio/mpeg',
-        text: fullGreeting.substring(0, 100),
+        text: greeting.substring(0, 100),
         timestamp: Date.now(),
         expires: Date.now() + 10 * 60 * 1000, // 10 minutes for greeting
       })
@@ -161,18 +161,13 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
 <Response>
   <Say voice="alice" language="en-US" rate="medium" pitch="medium">${greeting}</Say>
   <Pause length="1"/>
-  <Say voice="alice" language="en-US" rate="medium" pitch="medium">
-    This call is being recorded for quality and training purposes. 
-    Please tell me what you'd like to know about my background and experience.
-  </Say>
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="5"
+    timeout="3"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
-    maxLength="60"
+    transcribe="false"
+    maxLength="30"
     playBeep="false"
   />
 </Response>`
@@ -252,17 +247,17 @@ async function getCallerContext(phoneNumber: string): Promise<CallerContext> {
 // Generate personalized professional greeting
 function generateProfessionalGreeting(callerContext: CallerContext): string {
   const baseGreeting =
-    'Hello! This is Sajal Basnet, a full-stack software developer specializing in AI, web development, and cloud technologies. I recently completed my Masters in Software Development from Swinburne University.'
+    "Hello! I'm Sajal Basnet, a software developer with a Masters from Swinburne University. How can I help you today?"
 
   if (callerContext.type === 'known_contact' && callerContext.name) {
-    return `${baseGreeting} Hello ${callerContext.name}, it's great to hear from you again! I'm here to discuss my background and experience with you.`
+    return `Hello ${callerContext.name}! This is Sajal Basnet. Great to hear from you. What can I help you with?`
   }
 
   if (callerContext.classification === 'business') {
-    return `${baseGreeting} I understand this may be a professional call, and I'm here to share information about my background, experience, and availability.`
+    return 'Hello! This is Sajal Basnet, software developer with a Masters from Swinburne. What would you like to know?'
   }
 
-  return `${baseGreeting} I'm here to tell you about my professional background and experience. What would you like to know?`
+  return baseGreeting
 }
 
 // Store call session data (using Vercel KV or similar)

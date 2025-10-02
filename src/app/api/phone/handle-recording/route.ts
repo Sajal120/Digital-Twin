@@ -391,8 +391,18 @@ export async function POST(request: NextRequest) {
     let userMessage = 'Continue our professional conversation'
     let audioProcessingSuccess = false
 
-    // Attempt audio recognition if we have a recording URL
-    if (recordingUrl && duration && parseInt(duration) > 1) {
+    // Get turn count BEFORE attempting transcription
+    const unifiedContextPreview = await omniChannelManager.getUnifiedContext(
+      callSid,
+      'phone',
+      callSid,
+      'Twilio Voice API',
+    )
+    const currentTurn = unifiedContextPreview.conversationHistory?.length || 0
+    console.log(`🔢 Current turn: ${currentTurn}`)
+
+    // ONLY attempt transcription if this is NOT turn 0 (user has actually spoken)
+    if (currentTurn > 0 && recordingUrl && duration && parseInt(duration) > 1) {
       console.log('🔊 Attempting audio transcription for keyword detection...')
       try {
         const audioProcessingResult = await processAudioWithFallback(
@@ -412,6 +422,8 @@ export async function POST(request: NextRequest) {
           audioError?.message || 'Unknown error',
         )
       }
+    } else if (currentTurn === 0) {
+      console.log("👋 Turn 0: Skipping transcription (initial greeting, user hasn't spoken yet)")
     } else {
       console.log('📝 No audio to process, using progressive conversation flow')
     }
@@ -449,13 +461,15 @@ export async function POST(request: NextRequest) {
 
     // STEP 4 IMPROVEMENT: Smart Topic Intelligence - AI chooses best topics based on caller interest
     const turnCount = conversationContext.conversationHistory?.length || 0
-    
+
     console.log(`🔢 Turn count for CallSid ${callSid}: ${turnCount}`)
     console.log(`📜 Conversation history length: ${unifiedContext.conversationHistory.length}`)
-    
+
     // If this is turn 0 but we have a recordingSid, something is wrong with history loading
     if (turnCount === 0 && recordingSid) {
-      console.warn('⚠️ WARNING: Turn count is 0 but we have a recordingSid - history might not be loading!')
+      console.warn(
+        '⚠️ WARNING: Turn count is 0 but we have a recordingSid - history might not be loading!',
+      )
     }
 
     // Analyze conversation pattern and caller interests
@@ -516,15 +530,18 @@ export async function POST(request: NextRequest) {
       try {
         // Use actual user input if audio was processed, otherwise use contextual prompt
         const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
-        
-        // IMPORTANT: Only use greeting on turn 0, otherwise respond to what was said
-        const enhancedInput = turnCount === 0 
-          ? `This is the first phone call. Introduce yourself briefly mentioning your Masters from Swinburne. ${inputToProcess}`
-          : audioProcessingSuccess 
-            ? `The caller just said: "${userMessage}". Respond directly and naturally to their question or comment. Don't repeat your introduction.`
-            : `Continue the conversation naturally based on context. Don't repeat your introduction.`
 
-        console.log(`🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`)
+        // IMPORTANT: Only use greeting on turn 0, otherwise respond to what was said
+        const enhancedInput =
+          turnCount === 0
+            ? `This is the first phone call. Introduce yourself briefly mentioning your Masters from Swinburne. ${inputToProcess}`
+            : audioProcessingSuccess
+              ? `The caller just said: "${userMessage}". Respond directly and naturally to their question or comment. Don't repeat your introduction.`
+              : `Continue the conversation naturally based on context. Don't repeat your introduction.`
+
+        console.log(
+          `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
+        )
 
         const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
           callSid,
@@ -571,16 +588,15 @@ export async function POST(request: NextRequest) {
 
         // Success - break out of retry loop
         break
-
       } catch (omniError: any) {
         lastError = omniError
         retryCount++
         console.error(`❌ Omni-channel attempt ${retryCount} failed:`, omniError.message)
-        
+
         if (retryCount < maxRetries) {
           const waitTime = Math.pow(2, retryCount) * 1000 // Exponential backoff
           console.log(`⏳ Waiting ${waitTime}ms before retry...`)
-          await new Promise(resolve => setTimeout(resolve, waitTime))
+          await new Promise((resolve) => setTimeout(resolve, waitTime))
         }
       }
     }
@@ -593,25 +609,29 @@ export async function POST(request: NextRequest) {
       // EMERGENCY FALLBACK - Only used if omni-channel completely fails
       try {
         console.error('⚠️ EMERGENCY: Using direct chat API fallback')
-        
+
         const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
-        
+
         // Call chat API directly as last resort
-        const chatResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'}/api/chat`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: turnCount === 0 
-              ? `Introduce yourself briefly for a phone call. ${inputToProcess}`
-              : audioProcessingSuccess
-                ? `Caller said: "${userMessage}". Respond naturally to their question.`
-                : inputToProcess,
-            role: 'user',
-            user_id: callSid,
-            enhancedMode: true,
-            conversationHistory: conversationContext.conversationHistory || [],
-          }),
-        })
+        const chatResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'}/api/chat`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message:
+                turnCount === 0
+                  ? `Introduce yourself briefly for a phone call. ${inputToProcess}`
+                  : audioProcessingSuccess
+                    ? `Caller said: "${userMessage}". Respond naturally to their question.`
+                    : inputToProcess,
+              role: 'user',
+              user_id: callSid,
+              enhancedMode: true,
+              conversationHistory: conversationContext.conversationHistory || [],
+            }),
+          },
+        )
 
         if (!chatResponse.ok) {
           throw new Error(`Chat API returned ${chatResponse.status}`)
@@ -806,11 +826,10 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="5"
+    timeout="3"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
-    maxLength="60"
+    transcribe="false"
+    maxLength="30"
     playBeep="false"
   />
 </Response>`
@@ -830,16 +849,13 @@ export async function POST(request: NextRequest) {
 <Response>
   <Say voice="alice" language="en-US" rate="medium" pitch="medium">${escapeXml(aiResponse.response)}</Say>
   <Pause length="1"/>
-  <Say voice="alice" language="en-US" rate="medium" pitch="medium">${escapeXml(conversationPrompt)}</Say>
-  <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="5"
+    timeout="3"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
-    maxLength="60"
+    transcribe="false"
+    maxLength="30"
     playBeep="false"
   />
 </Response>`
@@ -878,9 +894,9 @@ export async function POST(request: NextRequest) {
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="5"
+    timeout="3"
     finishOnKey="#"
-    maxLength="60"
+    maxLength="30"
     playBeep="false"
   />
 </Response>`
