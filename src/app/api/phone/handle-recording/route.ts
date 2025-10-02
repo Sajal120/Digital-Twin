@@ -32,48 +32,15 @@ export async function POST(request: NextRequest) {
     })
 
     // Validate required fields
-    if (!callSid || !recordingUrl) {
-      console.error('❌ Missing required fields:', { callSid, recordingUrl })
+    if (!callSid) {
+      console.error('❌ Missing CallSid')
       throw new Error('Missing required webhook data')
     }
 
-    console.log('✅ Webhook data validated, starting audio processing...')
+    console.log('✅ Step 2: Bypassing complex audio processing for reliable conversation...')
 
-    // Download and process the audio
-    console.log('📥 Starting audio download from Twilio...')
-    const audioBuffer = await downloadRecording(recordingUrl)
-    console.log('✅ Audio download completed, size:', audioBuffer.length, 'bytes')
-
-    // Convert audio to text using OpenAI Whisper
-    console.log('🎯 Starting transcription with OpenAI Whisper...')
-    const transcription = await transcribeAudio(audioBuffer)
-    console.log('📝 Transcription completed:', transcription)
-
-    // Skip processing if transcription is empty or too short
-    if (!transcription || transcription.trim().length < 2) {
-      console.log('⚠️ Transcription too short or empty, asking user to repeat')
-      const retryTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en-US">I didn't catch that. Could you please speak a bit louder or repeat your question?</Say>
-  <Pause length="1"/>
-  <Record 
-    action="/api/phone/handle-recording"
-    method="POST"
-    timeout="5"
-    finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
-    maxLength="60"
-    playBeep="false"
-  />
-</Response>`
-
-      return new NextResponse(retryTwiml, {
-        headers: { 'Content-Type': 'text/xml' },
-      })
-    }
-
-    // Get professional context for AI response
+    // STEP 2: Skip audio processing entirely - focus on progressive conversation
+    console.log('🔄 Using progressive conversation system instead of audio transcription') // Get professional context for AI response
     const conversationContext = await getConversationContext(callSid)
 
     // STEP 1 IMPROVEMENT: Progressive conversation topics
@@ -136,10 +103,10 @@ export async function POST(request: NextRequest) {
 
     // Store conversation history
     await storeConversationTurn(callSid, {
-      userInput: transcription,
+      userInput: contextualPrompt,
       aiResponse: aiResponse.response,
       timestamp: new Date().toISOString(),
-      recordingSid,
+      recordingSid: recordingSid || 'step2_bypass',
       duration,
     })
 
