@@ -586,6 +586,16 @@ export async function POST(request: NextRequest) {
           .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
           .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
 
+        // PASS 2.5: Fix grammar issues in greetings
+        cleanedResponse = cleanedResponse
+          .replace(/^Hello\s+this\s+Sajal\s+Basnet/gi, "Hello, I'm Sajal Basnet")
+          .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
+          .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
+          .replace(
+            /^Sajal\s+Basnet\s+(?:is\s+)?a\s+senior\s+software\s+engineer/gi,
+            "I'm Sajal Basnet, a senior software engineer",
+          )
+
         // PASS 3: Remove bullet points and listing patterns
         cleanedResponse = cleanedResponse
           .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ')
@@ -715,11 +725,19 @@ export async function POST(request: NextRequest) {
       .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-      // Third pass: Remove bullet points and excessive listing patterns
+      // Third pass: Fix grammar issues in greetings
+      .replace(/^Hello\s+this\s+Sajal\s+Basnet/gi, "Hello, I'm Sajal Basnet")
+      .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
+      .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
+      .replace(
+        /^Sajal\s+Basnet\s+(?:is\s+)?a\s+senior\s+software\s+engineer/gi,
+        "I'm Sajal Basnet, a senior software engineer",
+      )
+      // Fourth pass: Remove bullet points and excessive listing patterns
       .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ') // Remove "- item," patterns
       .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ') // Remove "- item." patterns
       .replace(/,\s*-\s+/g, ', ') // Clean up remaining list markers
-      // Fourth pass: Catch any remaining ** or * fragments
+      // Fifth pass: Catch any remaining ** or * fragments
       .replace(/\*\*+/g, '')
       .replace(/\*+/g, '')
       // Remove separators

@@ -332,6 +332,25 @@ export class OmniChannelManager {
    * Call chat API with unified context
    */
   private async callChatAPI(userInput: string, context: any) {
+    // Build conversation history with system instruction for accurate identity
+    const conversationHistory = [
+      {
+        role: 'system',
+        content: `You are Sajal Basnet. ACCURATE INFO ONLY (NO EXAGGERATION):
+- Title: Full-Stack Software Developer (NOT senior, NOT 5+ years)
+- Education: Masters in Software Development from Swinburne University (GPA 3.688/4.0, Top 15% - Golden Key International Honour Society)
+- Location: Auburn, Sydney, NSW, Australia (originally from Nepal)
+- Current Focus: AI, Development, Security, Support
+- Recent Work: Software Developer Intern at Aubot (12/2024-03/2025), VR Developer at edgedVR (09/2021-03/2022)
+- Current Project: Digital Twin Portfolio app with chat and voice features
+- Tech Stack: React, Python, JavaScript, PHP, Java, C#, Node.js, AWS, Terraform, MySQL, MongoDB, PostgreSQL
+- Languages: English (Proficient), Nepali (Native), Hindi (Basic)
+
+Speak naturally in FIRST PERSON. Vary your responses. Be conversational and authentic.`,
+      },
+      ...(context.conversationHistory || []),
+    ]
+
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -342,7 +361,9 @@ export class OmniChannelManager {
         content: userInput,
         enhancedMode: true,
         omniChannelContext: context,
-        conversationHistory: context.conversationHistory,
+        conversationHistory: conversationHistory,
+        systemInstruction:
+          'Use accurate profile info. NO EXAGGERATION. Speak in first person naturally.',
       }),
     })
 
@@ -376,6 +397,14 @@ export class OmniChannelManager {
       .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
       .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+      // Pass 2.5: Fix grammar issues in greetings
+      .replace(/^Hello\s+this\s+Sajal\s+Basnet/gi, "Hello, I'm Sajal Basnet")
+      .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
+      .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
+      .replace(
+        /^Sajal\s+Basnet\s+(?:is\s+)?a\s+senior\s+software\s+engineer/gi,
+        "I'm Sajal Basnet, a senior software engineer",
+      )
       // Pass 3: Remove bullet points and listing patterns
       .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ')
       .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ')
@@ -441,13 +470,21 @@ export class OmniChannelManager {
    * Load professional profile from MCP server
    */
   private async loadProfessionalProfile(): Promise<ProfessionalProfile> {
-    // Default professional profile (can be enhanced with MCP data)
+    // ACCURATE professional profile based on actual CV - NO EXAGGERATION
     return {
       personalInfo: {
         name: 'Sajal Basnet',
-        title: 'Software Engineer & AI Developer',
-        expertise: ['AI Development', 'Full-Stack Development', 'Security', 'DevOps'],
-        experience: '5+ years in software development with focus on AI and modern web technologies',
+        title: 'Full-Stack Software Developer',
+        expertise: [
+          'Full-Stack Development',
+          'AI Development',
+          'React & JavaScript',
+          'Python',
+          'Cloud & DevOps',
+          'Security',
+        ],
+        experience:
+          'Masters in Software Development graduate from Swinburne University (GPA 3.688/4.0, Top 15%), based in Auburn, Sydney. Software Developer Intern at Aubot and former VR Developer at edgedVR. Currently focused on AI, development, security, and support with hands-on experience in React, Python, JavaScript, AWS, and building a digital twin portfolio with chat and voice features.',
       },
       conversationStyle: {
         tone: 'professional',
