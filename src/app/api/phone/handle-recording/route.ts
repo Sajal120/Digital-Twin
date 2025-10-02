@@ -76,8 +76,40 @@ export async function POST(request: NextRequest) {
     // Get professional context for AI response
     const conversationContext = await getConversationContext(callSid)
 
-    // Generate AI response using existing voice conversation API
-    const aiResponse = await generateAIResponse(transcription, conversationContext)
+    // STEP 1 IMPROVEMENT: Progressive conversation topics
+    const turnCount = conversationContext.conversationHistory?.length || 0
+    let conversationFocus = 'general_background'
+    let contextualPrompt = 'Tell me about your professional background and experience'
+
+    if (turnCount === 0) {
+      conversationFocus = 'introduction_overview'
+      contextualPrompt = 'Give me a professional introduction and overview of your background'
+    } else if (turnCount === 1) {
+      conversationFocus = 'technical_skills'
+      contextualPrompt =
+        'What are your main technical skills, programming languages, and technologies?'
+    } else if (turnCount === 2) {
+      conversationFocus = 'recent_projects'
+      contextualPrompt = 'Tell me about your recent projects and professional achievements'
+    } else if (turnCount === 3) {
+      conversationFocus = 'career_goals'
+      contextualPrompt = 'What are your career goals and what type of opportunities interest you?'
+    } else {
+      conversationFocus = 'questions_discussion'
+      contextualPrompt =
+        'What questions do you have about roles, opportunities, or working together?'
+    }
+
+    console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
+    console.log(`💬 Contextual prompt: ${contextualPrompt}`)
+
+    // Generate AI response with contextual focus
+    const aiResponse = await generateAIResponse(contextualPrompt, {
+      ...conversationContext,
+      conversationFocus,
+      interactionType: 'phone_professional',
+      currentTurn: turnCount,
+    })
 
     console.log('🤖 AI Response:', aiResponse.response)
 
