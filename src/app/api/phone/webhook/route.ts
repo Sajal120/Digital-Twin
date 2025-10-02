@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { voiceService } from '../../../../services/voiceService'
+import { phoneAudioCache, createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
 // Define types for better TypeScript support
 interface Contact {
@@ -95,14 +97,71 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
 
   // Create professional greeting with caller context
   const callerContext = await getCallerContext(fromNumber)
-  const greeting = generateProfessionalGreeting(callerContext)
+  let twiml: string
 
-  // Create TwiML response for professional greeting
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+  try {
+    const greeting = generateProfessionalGreeting(callerContext)
+    const fullGreeting = `${greeting}. This call is being recorded for quality and training purposes. Please tell me what you'd like to know about my background and experience.`
+
+    console.log('🎤 Generating custom voice greeting...')
+
+    // Generate custom voice greeting
+    const audioBuffer = await voiceService.generateSpeech(fullGreeting, {
+      provider: 'elevenlabs',
+      voiceId: process.env.ELEVENLABS_VOICE_ID,
+      stability: 0.6,
+      similarityBoost: 0.8,
+    })
+
+    if (audioBuffer && audioBuffer.byteLength > 0) {
+      // Create audio endpoint
+      const audioId = `greeting_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const mp3Buffer = Buffer.from(audioBuffer)
+
+      phoneAudioCache.set(audioId, {
+        buffer: mp3Buffer,
+        contentType: 'audio/mpeg',
+        text: fullGreeting.substring(0, 100),
+        timestamp: Date.now(),
+        expires: Date.now() + 10 * 60 * 1000, // 10 minutes for greeting
+      })
+
+      const audioUrl = createPhoneAudioUrl(audioId)
+
+      console.log('✅ Custom voice greeting generated')
+      console.log(`🎵 Greeting audio URL: ${audioUrl}`)
+
+      // TwiML with custom voice greeting
+      twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US">${greeting}</Say>
+  <Play>${audioUrl}</Play>
   <Pause length="1"/>
-  <Say voice="alice" language="en-US">
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="5"
+    finishOnKey="#"
+    transcribe="true"
+    transcribeCallback="/api/phone/handle-transcription"
+    maxLength="60"
+    playBeep="false"
+  />
+</Response>`
+    } else {
+      throw new Error('Empty audio buffer')
+    }
+  } catch (error: any) {
+    console.warn('⚠️ Custom voice greeting failed, using Twilio voice:', error.message)
+
+    // Fallback to Twilio voice
+    const greeting = generateProfessionalGreeting(callerContext)
+
+    // Create TwiML response for professional greeting with enhanced Twilio voice
+    twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US" rate="medium" pitch="medium">${greeting}</Say>
+  <Pause length="1"/>
+  <Say voice="alice" language="en-US" rate="medium" pitch="medium">
     This call is being recorded for quality and training purposes. 
     Please tell me what you'd like to know about my background and experience.
   </Say>
@@ -117,6 +176,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     playBeep="false"
   />
 </Response>`
+  }
 
   // Store call session for tracking
   await storeCallSession(callSid, fromNumber, {

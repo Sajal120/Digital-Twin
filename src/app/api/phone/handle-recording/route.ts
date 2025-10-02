@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { omniChannelManager } from '../../../../lib/omni-channel-manager'
+import { voiceService } from '../../../../services/voiceService'
+import { phoneAudioCache, createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
 // Escape XML special characters for TwiML
 function escapeXml(text: string): string {
@@ -413,8 +416,36 @@ export async function POST(request: NextRequest) {
       console.log('📝 No audio to process, using progressive conversation flow')
     }
 
-    // Get professional context for AI response
-    const conversationContext = await getConversationContext(callSid)
+    // OMNI-CHANNEL ENHANCEMENT: Get unified conversation context across all channels
+    console.log('🌐 Initializing omni-channel conversation context...')
+    const unifiedContext = await omniChannelManager.getUnifiedContext(
+      callSid, // Using callSid as userId for phone channel
+      'phone',
+      callSid,
+      'Twilio Voice API',
+    )
+
+    console.log(
+      `👤 Unified context loaded: ${unifiedContext.channels.length} channels, ${unifiedContext.conversationHistory.length} total turns`,
+    )
+    console.log(`🎯 Relationship type: ${unifiedContext.relationshipContext.callerType}`)
+    console.log(
+      `📞 Current channel: ${unifiedContext.currentChannel.type} (${unifiedContext.currentChannel.platform})`,
+    )
+
+    // Get professional context for AI response (legacy compatibility)
+    const conversationContext = {
+      callSid,
+      conversationType: 'professional_phone_inquiry',
+      callerContext: unifiedContext.relationshipContext.callerType,
+      conversationHistory: unifiedContext.conversationHistory,
+      interviewType:
+        unifiedContext.relationshipContext.callerType === 'recruiter'
+          ? 'hr_screening'
+          : 'professional',
+      enhancedMode: true,
+      omniChannelData: unifiedContext,
+    }
 
     // STEP 4 IMPROVEMENT: Smart Topic Intelligence - AI chooses best topics based on caller interest
     const turnCount = conversationContext.conversationHistory?.length || 0
@@ -461,38 +492,132 @@ export async function POST(request: NextRequest) {
     console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
     console.log(`💬 Contextual prompt: ${contextualPrompt}`)
 
-    // Generate AI response with contextual focus
-    const aiResponse = await generateAIResponse(contextualPrompt, {
-      ...conversationContext,
-      conversationFocus,
-      interactionType: 'phone_professional',
-      currentTurn: turnCount,
-    })
+    // OMNI-CHANNEL AI RESPONSE: Generate unified response using enhanced context
+    console.log('🤖 Generating omni-channel AI response...')
 
-    console.log('🤖 AI Response:', aiResponse.response)
+    let aiResponse: any
+
+    try {
+      // Use actual user input if audio was processed, otherwise use contextual prompt
+      const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
+
+      const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
+        callSid,
+        inputToProcess,
+        {
+          conversationFocus,
+          currentTurn: turnCount,
+          phoneSpecificContext: {
+            callDuration: duration,
+            audioProcessed: audioProcessingSuccess,
+            smartTopicAnalysis,
+          },
+        },
+      )
+
+      console.log('✅ Omni-channel response generated successfully')
+      console.log(`📊 Source: ${unifiedResponse.source}`)
+      console.log(`🎯 Response preview: ${unifiedResponse.response.substring(0, 100)}...`)
+
+      // Store conversation turn in omni-channel system
+      await omniChannelManager.addConversationTurn(
+        callSid,
+        inputToProcess,
+        unifiedResponse.response,
+        {
+          audioProcessed: audioProcessingSuccess,
+          confidence: audioProcessingSuccess ? 0.8 : 0.6,
+          keywords: smartTopicAnalysis.detectedInterests,
+          channelType: 'phone',
+          conversationFocus,
+          turnNumber: turnCount,
+        },
+      )
+
+      aiResponse = {
+        response: unifiedResponse.response,
+        success: true,
+        source: unifiedResponse.source,
+        suggestions: unifiedResponse.suggestions,
+      }
+    } catch (omniError: any) {
+      console.warn('⚠️ Omni-channel system error, using fallback:', omniError.message)
+
+      // Fallback to original system
+      aiResponse = await generateAIResponse(contextualPrompt, {
+        ...conversationContext,
+        conversationFocus,
+        interactionType: 'phone_professional',
+        currentTurn: turnCount,
+      })
+    }
+
+    console.log('🤖 Enhanced AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
     // Create TwiML to speak AI response and continue recording
     // TEMPORARY: Use Twilio voice while fixing audio serving issue
     console.log('🎤 Using Twilio voice for reliable conversation flow')
     console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
-    // STEP 4: Smart conversation prompts based on topic analysis and caller interests
+    // NATURAL CONVERSATION PROMPTS: Enhanced follow-ups using omni-channel intelligence
     let conversationPrompt = 'Please continue with your questions.'
 
     if (turnCount === 0) {
-      conversationPrompt = 'What would you like to know more about regarding my technical skills?'
+      // First interaction - warm professional greeting
+      const relationshipType = unifiedContext.relationshipContext.callerType
+      if (relationshipType === 'recruiter') {
+        conversationPrompt =
+          'What specific aspects of my background are most relevant to the opportunity you have in mind?'
+      } else if (relationshipType === 'colleague') {
+        conversationPrompt =
+          'What would you like to know about my experience or how we might collaborate?'
+      } else {
+        conversationPrompt =
+          'What would you like to know more about regarding my technical skills and experience?'
+      }
     } else {
-      // Generate smart follow-up based on the topic and caller analysis
-      const smartPrompt = generateSmartFollowUp(conversationFocus, smartTopicAnalysis, turnCount)
-      conversationPrompt = smartPrompt
-      console.log(`💬 Smart follow-up generated: ${conversationPrompt}`)
+      // Use omni-channel suggestions if available, otherwise smart follow-up
+      if (aiResponse.suggestions && aiResponse.suggestions.length > 0) {
+        const suggestion = aiResponse.suggestions[0]
+        conversationPrompt = `Would you like me to ${suggestion.toLowerCase()}, or do you have other questions?`
+      } else {
+        // Generate smart follow-up based on the topic and caller analysis
+        const smartPrompt = generateSmartFollowUp(conversationFocus, smartTopicAnalysis, turnCount)
+        conversationPrompt = smartPrompt
+      }
+      console.log(`💬 Natural conversation prompt: ${conversationPrompt}`)
     }
 
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // CUSTOM VOICE INTEGRATION: Use your ElevenLabs cloned voice for natural conversation
+    console.log('🎤 Generating custom voice audio for phone response...')
+
+    let twiml: string
+
+    try {
+      // Generate custom voice audio for both response and prompt
+      console.log('🔊 Creating audio with your cloned voice...')
+
+      const fullResponse = `${aiResponse.response}. ${conversationPrompt}`
+
+      // Use your existing voice service to generate audio
+      const audioBuffer = await voiceService.generateSpeech(fullResponse, {
+        provider: 'elevenlabs',
+        voiceId: process.env.ELEVENLABS_VOICE_ID,
+        stability: 0.6,
+        similarityBoost: 0.8,
+      })
+
+      if (audioBuffer && audioBuffer.byteLength > 0) {
+        // Create audio URL for Twilio to play
+        const audioUrl = await createPhoneAudioEndpoint(audioBuffer, fullResponse)
+
+        console.log('✅ Custom voice audio generated successfully')
+        console.log(`🎵 Audio URL: ${audioUrl.substring(0, 60)}...`)
+
+        // TwiML with custom voice audio
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US">${escapeXml(aiResponse.response)}</Say>
-  <Pause length="2"/>
-  <Say voice="alice" language="en-US">${escapeXml(conversationPrompt)}</Say>
+  <Play>${audioUrl}</Play>
   <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
@@ -505,6 +630,38 @@ export async function POST(request: NextRequest) {
     playBeep="false"
   />
 </Response>`
+
+        console.log('🎯 Using custom voice TwiML')
+      } else {
+        throw new Error('Empty audio buffer from voice service')
+      }
+    } catch (voiceError: any) {
+      console.warn(
+        '⚠️ Custom voice generation failed, using Twilio voice fallback:',
+        voiceError.message,
+      )
+
+      // Fallback to Twilio voice with enhanced naturalness
+      twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US" rate="medium" pitch="medium">${escapeXml(aiResponse.response)}</Say>
+  <Pause length="1"/>
+  <Say voice="alice" language="en-US" rate="medium" pitch="medium">${escapeXml(conversationPrompt)}</Say>
+  <Pause length="1"/>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="5"
+    finishOnKey="#"
+    transcribe="true"
+    transcribeCallback="/api/phone/handle-transcription"
+    maxLength="60"
+    playBeep="false"
+  />
+</Response>`
+
+      console.log('🔄 Using enhanced Twilio voice fallback')
+    }
 
     // STEP 5: Store conversation history with actual user input when available
     await storeConversationTurn(callSid, {
@@ -941,6 +1098,40 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
   } catch (error) {
     console.error('Error generating custom voice speech:', error)
     return null
+  }
+}
+
+// Create phone-optimized audio endpoint for Twilio
+async function createPhoneAudioEndpoint(audioBuffer: ArrayBuffer, text: string): Promise<string> {
+  try {
+    console.log('📞 Creating phone-optimized audio endpoint for Twilio...')
+
+    // Create unique audio ID
+    const audioId = `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // Convert to MP3 format (Twilio preferred)
+    const mp3Buffer = Buffer.from(audioBuffer)
+
+    // Store audio in shared cache with expiration (5 minutes)
+    phoneAudioCache.set(audioId, {
+      buffer: mp3Buffer,
+      contentType: 'audio/mpeg',
+      text: text.substring(0, 100), // For debugging
+      timestamp: Date.now(),
+      expires: Date.now() + 5 * 60 * 1000, // 5 minutes
+    })
+
+    // Generate audio URL
+    const audioUrl = createPhoneAudioUrl(audioId)
+
+    console.log('✅ Phone audio endpoint created:', audioUrl)
+    console.log(`🎵 Audio size: ${mp3Buffer.length} bytes`)
+    console.log(`📊 Cache status:`, phoneAudioCache.getStatus())
+
+    return audioUrl
+  } catch (error) {
+    console.error('❌ Error creating phone audio endpoint:', error)
+    throw error
   }
 }
 
