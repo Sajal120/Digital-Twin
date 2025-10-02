@@ -82,26 +82,11 @@ export async function POST(request: NextRequest) {
     console.log('🤖 AI Response:', aiResponse.response)
 
     // Create TwiML to speak AI response and continue recording
-    // Use your custom ElevenLabs voice for professional phone responses
-    const speechUrl = await generateCustomVoiceSpeech(aiResponse.response)
+    // TEMPORARY: Use Twilio voice while fixing audio serving issue
+    console.log('🎤 Using Twilio voice for reliable conversation flow')
+    console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
-    const twiml = speechUrl
-      ? `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Play>${speechUrl}</Play>
-  <Pause length="1"/>
-  <Record 
-    action="/api/phone/handle-recording"
-    method="POST"
-    timeout="5"
-    finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
-    maxLength="60"
-    playBeep="false"
-  />
-</Response>`
-      : `<?xml version="1.0" encoding="UTF-8"?>
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US">${escapeXml(aiResponse.response)}</Say>
   <Pause length="1"/>
@@ -487,24 +472,23 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
   }
 }
 
-// Create temporary audio endpoint (simplified for demo)
+// Create temporary audio endpoint using direct streaming
 async function createTempAudioEndpoint(audioBuffer: ArrayBuffer, format: string): Promise<string> {
   try {
-    // Generate unique ID for this audio
+    console.log('🎵 Creating audio endpoint for Twilio access...')
+
+    // Store the audio in a simple cache that survives the function call
     const audioId = Math.random().toString(36).substring(7) + Date.now().toString(36)
+    const base64Audio = Buffer.from(audioBuffer).toString('base64')
 
-    // Import the audio storage function
-    const { storeAudio } = await import('../audio/[id]/route')
-
-    // Store the audio with appropriate content type
-    const contentType = format === 'mpeg' ? 'audio/mpeg' : 'audio/wav'
-    storeAudio(audioId, audioBuffer, contentType)
-
-    // Return the URL that Twilio can access
+    // Create an endpoint that can regenerate the audio
     const baseUrl = process.env.NEXTAUTH_URL || 'https://www.sajal-app.online'
-    const audioUrl = `${baseUrl}/api/phone/audio/${audioId}`
 
-    console.log(`🎵 Audio stored with ID: ${audioId}, URL: ${audioUrl}`)
+    // For now, let's use a workaround: embed the audio data in the URL
+    // This bypasses the cache issue
+    const audioUrl = `${baseUrl}/api/phone/audio/stream?data=${base64Audio.substring(0, 100)}&format=${format}&id=${audioId}`
+
+    console.log('✅ Audio URL created:', audioUrl.substring(0, 80) + '...')
     return audioUrl
   } catch (error) {
     console.error('Error creating temp audio endpoint:', error)
