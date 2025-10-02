@@ -449,6 +449,14 @@ export async function POST(request: NextRequest) {
 
     // STEP 4 IMPROVEMENT: Smart Topic Intelligence - AI chooses best topics based on caller interest
     const turnCount = conversationContext.conversationHistory?.length || 0
+    
+    console.log(`🔢 Turn count for CallSid ${callSid}: ${turnCount}`)
+    console.log(`📜 Conversation history length: ${unifiedContext.conversationHistory.length}`)
+    
+    // If this is turn 0 but we have a recordingSid, something is wrong with history loading
+    if (turnCount === 0 && recordingSid) {
+      console.warn('⚠️ WARNING: Turn count is 0 but we have a recordingSid - history might not be loading!')
+    }
 
     // Analyze conversation pattern and caller interests
     const smartTopicAnalysis = analyzeCallerInterests(conversationContext.conversationHistory || [])
@@ -494,94 +502,123 @@ export async function POST(request: NextRequest) {
 
     // OMNI-CHANNEL AI RESPONSE: Generate unified response using enhanced context
     console.log('🤖 Generating omni-channel AI response...')
+    console.log(`📝 Input type: ${audioProcessingSuccess ? 'ACTUAL SPEECH' : 'Contextual prompt'}`)
+    console.log(`💬 User said: "${audioProcessingSuccess ? userMessage : 'No audio processed'}"`)
 
     let aiResponse: any
 
-    try {
-      // Use actual user input if audio was processed, otherwise use contextual prompt
-      const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
+    // ALWAYS USE OMNI-CHANNEL - Retry with exponential backoff if needed
+    let retryCount = 0
+    const maxRetries = 3
+    let lastError: any = null
 
-      const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
-        callSid,
-        inputToProcess,
-        {
-          conversationFocus,
-          currentTurn: turnCount,
-          phoneSpecificContext: {
-            callDuration: duration,
-            audioProcessed: audioProcessingSuccess,
-            smartTopicAnalysis,
-          },
-        },
-      )
-
-      console.log('✅ Omni-channel response generated successfully')
-      console.log(`📊 Source: ${unifiedResponse.source}`)
-      console.log(`🎯 Response preview: ${unifiedResponse.response.substring(0, 100)}...`)
-
-      // Store conversation turn in omni-channel system
-      await omniChannelManager.addConversationTurn(
-        callSid,
-        inputToProcess,
-        unifiedResponse.response,
-        {
-          audioProcessed: audioProcessingSuccess,
-          confidence: audioProcessingSuccess ? 0.8 : 0.6,
-          keywords: smartTopicAnalysis.detectedInterests,
-          channelType: 'phone',
-          conversationFocus,
-          turnNumber: turnCount,
-        },
-      )
-
-      aiResponse = {
-        response: unifiedResponse.response,
-        success: true,
-        source: unifiedResponse.source,
-        suggestions: unifiedResponse.suggestions,
-      }
-    } catch (omniError: any) {
-      console.warn('⚠️ Omni-channel system error, using enhanced fallback:', omniError.message)
-
-      // Enhanced fallback with better intelligence
+    while (retryCount < maxRetries) {
       try {
+        // Use actual user input if audio was processed, otherwise use contextual prompt
         const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
+        
+        // IMPORTANT: Only use greeting on turn 0, otherwise respond to what was said
+        const enhancedInput = turnCount === 0 
+          ? `This is the first phone call. Introduce yourself briefly mentioning your Masters from Swinburne. ${inputToProcess}`
+          : audioProcessingSuccess 
+            ? `The caller just said: "${userMessage}". Respond directly and naturally to their question or comment. Don't repeat your introduction.`
+            : `Continue the conversation naturally based on context. Don't repeat your introduction.`
 
-        // Create more intelligent prompt for fallback with ACCURATE profile
-        const enhancedPrompt = `You are Sajal Basnet in a live phone conversation. 
+        console.log(`🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`)
 
-ACCURATE PROFILE (NO EXAGGERATION):
-- Title: Full-Stack Software Developer (NOT "senior", NOT "5+ years experience")
-- Education: Masters in Software Development from Swinburne University (Sep 2022 - May 2024, GPA 3.688/4.0, Top 15%)
-- Previous: Bachelor of IT from Kings Own Institute (Mar 2019 - Mar 2022, GPA 4.2/5.0)
-- Location: Auburn, Sydney, NSW (originally from Nepal)
-- Recent Work: Software Developer Intern at Aubot (Dec 2024 - Mar 2025)
-- Current Focus: AI, Development, Security, Support
-- Current Project: Digital Twin Portfolio app with chat and voice features
+        const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
+          callSid,
+          enhancedInput,
+          {
+            conversationFocus,
+            currentTurn: turnCount,
+            isFirstTurn: turnCount === 0,
+            hasActualSpeech: audioProcessingSuccess,
+            userActualWords: audioProcessingSuccess ? userMessage : null,
+            phoneSpecificContext: {
+              callDuration: duration,
+              audioProcessed: audioProcessingSuccess,
+              smartTopicAnalysis,
+            },
+          },
+        )
 
-CONVERSATION CONTEXT:
-- Turn: ${turnCount}
-- Focus: ${conversationFocus}
-- Audio processed: ${audioProcessingSuccess}
-- User said/context: "${inputToProcess}"
+        console.log('✅ Omni-channel response generated successfully!')
+        console.log(`📊 Source: ${unifiedResponse.source}`)
+        console.log(`🎯 Response preview: ${unifiedResponse.response.substring(0, 150)}...`)
 
-INSTRUCTIONS:
-- Speak naturally in FIRST PERSON
-- Vary your responses - don't repeat the same intro
-- Be conversational and authentic
-- Build on conversation history
-- If first turn, mention Masters from Swinburne (completed May 2024)
-- NEVER claim to be "senior" or have "5+ years"
-- Keep responses concise for phone (2-3 sentences max)`
+        // Store conversation turn in omni-channel system
+        await omniChannelManager.addConversationTurn(
+          callSid,
+          audioProcessingSuccess ? userMessage : inputToProcess,
+          unifiedResponse.response,
+          {
+            audioProcessed: audioProcessingSuccess,
+            confidence: audioProcessingSuccess ? 0.9 : 0.5,
+            keywords: smartTopicAnalysis.detectedInterests,
+            channelType: 'phone',
+            conversationFocus,
+            turnNumber: turnCount,
+          },
+        )
 
-        const fallbackResponse = await generateAIResponse(enhancedPrompt, {
-          ...conversationContext,
-          conversationFocus,
-          interactionType: 'phone_professional',
-          currentTurn: turnCount,
-          enhancedMode: true,
-          intelligentFallback: true,
+        aiResponse = {
+          response: unifiedResponse.response,
+          success: true,
+          source: unifiedResponse.source,
+          suggestions: unifiedResponse.suggestions,
+        }
+
+        // Success - break out of retry loop
+        break
+
+      } catch (omniError: any) {
+        lastError = omniError
+        retryCount++
+        console.error(`❌ Omni-channel attempt ${retryCount} failed:`, omniError.message)
+        
+        if (retryCount < maxRetries) {
+          const waitTime = Math.pow(2, retryCount) * 1000 // Exponential backoff
+          console.log(`⏳ Waiting ${waitTime}ms before retry...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
+        }
+      }
+    }
+
+    // If all retries failed, throw error to use simple fallback
+    if (!aiResponse) {
+      console.error('💥 ALL OMNI-CHANNEL RETRIES FAILED - Using emergency fallback')
+      throw new Error(`Omni-channel failed after ${maxRetries} attempts: ${lastError?.message}`)
+
+      // EMERGENCY FALLBACK - Only used if omni-channel completely fails
+      try {
+        console.error('⚠️ EMERGENCY: Using direct chat API fallback')
+        
+        const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
+        
+        // Call chat API directly as last resort
+        const chatResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: turnCount === 0 
+              ? `Introduce yourself briefly for a phone call. ${inputToProcess}`
+              : audioProcessingSuccess
+                ? `Caller said: "${userMessage}". Respond naturally to their question.`
+                : inputToProcess,
+            role: 'user',
+            user_id: callSid,
+            enhancedMode: true,
+            conversationHistory: conversationContext.conversationHistory || [],
+          }),
         })
+
+        if (!chatResponse.ok) {
+          throw new Error(`Chat API returned ${chatResponse.status}`)
+        }
+
+        const chatData = await chatResponse.json()
+        const fallbackResponse = { response: chatData.response || chatData.content }
 
         // Clean the response EXTREMELY aggressively for phone (MULTI-PASS)
         let cleanedResponse = fallbackResponse.response
@@ -591,73 +628,22 @@ INSTRUCTIONS:
           .replace(/\*\*(.+?)\*\*/g, '$1')
           .replace(/\*(.+?)\*/g, '$1')
           .replace(/#+\s+/g, '')
-
-        // PASS 2: Remove ALL metadata markers (including partially cleaned)
-        cleanedResponse = cleanedResponse
-          .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
-          .replace(/\(general context\):\.?\s*/gi, '')
-          .replace(/\(specific context\):\.?\s*/gi, '')
-          .replace(/Query Enhancement[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-          .replace(/Processing Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-          .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-          .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-          .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-
-        // PASS 2.5: Fix grammar issues in greetings
-        cleanedResponse = cleanedResponse
-          .replace(/^Hello\s+this\s+Sajal\s+Basnet/gi, "Hello, I'm Sajal Basnet")
-          .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
-          .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
-          .replace(
-            /^Sajal\s+Basnet\s+(?:is\s+)?a\s+(?:senior\s+)?software\s+(?:engineer|developer)/gi,
-            "I'm Sajal Basnet, a full-stack software developer",
-          )
-
-        // PASS 3: Remove bullet points and listing patterns
-        cleanedResponse = cleanedResponse
-          .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ')
-          .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ')
-          .replace(/,\s*-\s+/g, ', ')
-
-        // PASS 4: Remove remaining fragments and clean whitespace
-        cleanedResponse = cleanedResponse
-          .replace(/\*\*+/g, '')
           .replace(/\*+/g, '')
-          .replace(/---+/g, '')
-          .replace(/___+/g, '')
-          .replace(/\n\n+/g, '. ')
-          .replace(/\n/g, '. ')
-          .replace(/\s+-\.\s*/g, ' ')
-          .replace(/\s+-\s*$/g, '')
+          .replace(/\n+/g, '. ')
           .replace(/\.\s*\./g, '.')
-          .replace(/,\s*,/g, ',')
           .replace(/\s+/g, ' ')
           .trim()
 
-        // Truncate if too long for natural phone conversation
+        // Truncate if too long for phone
         if (cleanedResponse.length > 300) {
           const sentences = cleanedResponse.split(/\.\s+/)
           let truncated = ''
           for (const sentence of sentences) {
             if ((truncated + sentence).length < 280) {
               truncated += sentence + '. '
-            } else {
-              break
-            }
+            } else break
           }
           cleanedResponse = truncated.trim()
-        }
-
-        // Remove any remaining "I'm Sajal Basnet" prefix if response already contains identification
-        if (cleanedResponse.match(/I(?:'m| am) Sajal Basnet/i)) {
-          cleanedResponse = cleanedResponse.replace(/^I(?:'m| am) Sajal Basnet\.\s*/i, '')
-        }
-
-        // Only add greeting if it's first turn AND doesn't already have one
-        if (turnCount === 0) {
-          if (!cleanedResponse.match(/^(Hello|Hi|Hey|Greetings)/i)) {
-            cleanedResponse = `Hello, ${cleanedResponse}`
-          }
         }
 
         aiResponse = {
