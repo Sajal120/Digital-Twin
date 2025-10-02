@@ -10,6 +10,351 @@ function escapeXml(text: string): string {
     .replace(/'/g, '&#39;')
 }
 
+// STEP 4: Smart Topic Intelligence Functions
+
+// Analyze caller interests based on conversation history
+interface CallerInterestAnalysis {
+  detectedInterests: string[]
+  conversationTone: 'technical' | 'casual' | 'business' | 'recruiter'
+  engagementLevel: 'high' | 'medium' | 'low'
+  topicPreferences: string[]
+  questioningStyle: 'detailed' | 'overview' | 'specific'
+}
+
+function analyzeCallerInterests(conversationHistory: any[]): CallerInterestAnalysis {
+  console.log('🔍 Analyzing caller interests from conversation history...')
+
+  const interests: string[] = []
+  const preferences: string[] = []
+  let tone: 'technical' | 'casual' | 'business' | 'recruiter' = 'business'
+  let engagement: 'high' | 'medium' | 'low' = 'medium'
+  let style: 'detailed' | 'overview' | 'specific' = 'overview'
+
+  if (conversationHistory.length === 0) {
+    return {
+      detectedInterests: ['introduction', 'background'],
+      conversationTone: 'business',
+      engagementLevel: 'medium',
+      topicPreferences: ['professional_overview'],
+      questioningStyle: 'overview',
+    }
+  }
+
+  // Analyze conversation patterns
+  const allText = conversationHistory
+    .map((turn) => `${turn.userInput || ''} ${turn.aiResponse || ''}`)
+    .join(' ')
+    .toLowerCase()
+
+  // Detect technical interests
+  if (
+    allText.includes('technical') ||
+    allText.includes('programming') ||
+    allText.includes('development') ||
+    allText.includes('code')
+  ) {
+    interests.push('technical_skills')
+    preferences.push('technology_focus')
+    tone = 'technical'
+  }
+
+  // Detect project interests
+  if (
+    allText.includes('project') ||
+    allText.includes('experience') ||
+    allText.includes('work') ||
+    allText.includes('built')
+  ) {
+    interests.push('projects')
+    preferences.push('hands_on_experience')
+  }
+
+  // Detect career/business interests
+  if (
+    allText.includes('career') ||
+    allText.includes('opportunity') ||
+    allText.includes('role') ||
+    allText.includes('position')
+  ) {
+    interests.push('career_goals')
+    preferences.push('future_opportunities')
+    tone = 'recruiter'
+  }
+
+  // Detect collaboration interests
+  if (
+    allText.includes('team') ||
+    allText.includes('collaborate') ||
+    allText.includes('work style') ||
+    allText.includes('approach')
+  ) {
+    interests.push('collaboration')
+    preferences.push('teamwork_focus')
+  }
+
+  // Determine engagement level based on conversation depth
+  const avgTurnLength =
+    conversationHistory.reduce((sum, turn) => sum + (turn.aiResponse?.length || 0), 0) /
+    conversationHistory.length
+
+  engagement = avgTurnLength > 200 ? 'high' : avgTurnLength > 100 ? 'medium' : 'low'
+
+  // Determine questioning style
+  if (allText.includes('specific') || allText.includes('detail') || allText.includes('example')) {
+    style = 'detailed'
+  } else if (
+    allText.includes('overview') ||
+    allText.includes('general') ||
+    allText.includes('tell me about')
+  ) {
+    style = 'overview'
+  } else {
+    style = 'specific'
+  }
+
+  console.log(
+    `📊 Analysis complete: ${interests.length} interests, ${tone} tone, ${engagement} engagement`,
+  )
+
+  return {
+    detectedInterests: interests.length > 0 ? interests : ['general_professional'],
+    conversationTone: tone,
+    engagementLevel: engagement,
+    topicPreferences: preferences.length > 0 ? preferences : ['balanced_discussion'],
+    questioningStyle: style,
+  }
+}
+
+// Smart topic selection based on analysis
+interface SmartTopic {
+  focus: string
+  prompt: string
+  reasoning: string
+}
+
+function selectSmartTopic(
+  turnCount: number,
+  analysis: CallerInterestAnalysis,
+  conversationSummary: string,
+): SmartTopic {
+  console.log(`🎯 Selecting smart topic for turn ${turnCount} based on analysis...`)
+
+  const { detectedInterests, conversationTone, engagementLevel, questioningStyle } = analysis
+
+  // Create contextual prompt base
+  const contextPrefix = conversationSummary || ''
+
+  // Smart topic selection logic
+  if (turnCount === 1) {
+    // Second turn - choose based on caller's apparent focus
+    if (detectedInterests.includes('technical_skills') || conversationTone === 'technical') {
+      return {
+        focus: 'deep_technical_skills',
+        prompt: `${contextPrefix}I'd like to dive deeper into your technical expertise. Can you walk me through your programming languages, frameworks, and the specific technologies you're most passionate about working with?`,
+        reasoning: 'Caller showed technical interest - diving deep into technical skills',
+      }
+    } else if (detectedInterests.includes('projects') || questioningStyle === 'detailed') {
+      return {
+        focus: 'project_showcase',
+        prompt: `${contextPrefix}I'm interested in seeing your skills in action. Can you tell me about a recent project you're particularly proud of? What challenges did you face and how did you solve them?`,
+        reasoning: 'Caller wants specifics - showcasing concrete project examples',
+      }
+    } else if (conversationTone === 'recruiter') {
+      return {
+        focus: 'professional_value_proposition',
+        prompt: `${contextPrefix}From a professional standpoint, what unique value do you bring to a team or organization? What sets you apart in your field?`,
+        reasoning: 'Recruiter tone detected - focusing on professional value',
+      }
+    } else {
+      return {
+        focus: 'technical_skills_overview',
+        prompt: `${contextPrefix}Let's explore your technical background. What programming languages and technologies do you work with, and which ones do you enjoy most?`,
+        reasoning: 'General business tone - balanced technical overview',
+      }
+    }
+  } else if (turnCount === 2) {
+    // Third turn - build on established interest
+    if (detectedInterests.includes('career_goals') || conversationTone === 'recruiter') {
+      return {
+        focus: 'career_aspirations_specific',
+        prompt: `${contextPrefix}Based on your background, what type of role or company environment aligns with your career goals? Are you looking for specific challenges or growth opportunities?`,
+        reasoning: 'Career focus established - exploring specific aspirations',
+      }
+    } else if (detectedInterests.includes('technical_skills')) {
+      return {
+        focus: 'technical_projects_applied',
+        prompt: `${contextPrefix}Now that I understand your technical skills, can you share how you've applied these technologies in real projects? What was your most challenging technical implementation?`,
+        reasoning: 'Technical interest confirmed - showing applied skills',
+      }
+    } else {
+      return {
+        focus: 'recent_achievements',
+        prompt: `${contextPrefix}I'd love to hear about your recent professional achievements. What project or accomplishment are you most proud of lately?`,
+        reasoning: 'General interest - highlighting recent success',
+      }
+    }
+  } else if (turnCount === 3) {
+    // Fourth turn - explore collaboration or future focus
+    if (engagementLevel === 'high' && conversationTone === 'technical') {
+      return {
+        focus: 'technical_leadership',
+        prompt: `${contextPrefix}You clearly have strong technical skills. How do you approach mentoring others or leading technical decisions in a team environment?`,
+        reasoning: 'High engagement + technical tone - exploring leadership',
+      }
+    } else if (conversationTone === 'recruiter') {
+      return {
+        focus: 'ideal_opportunity',
+        prompt: `${contextPrefix}Thinking about your next career move, what would an ideal opportunity look like for you? What type of work environment and challenges excite you most?`,
+        reasoning: 'Recruiter conversation - defining ideal opportunity',
+      }
+    } else {
+      return {
+        focus: 'collaboration_approach',
+        prompt: `${contextPrefix}Tell me about your approach to working with teams. How do you handle collaboration, communication, and problem-solving in a group setting?`,
+        reasoning: 'Exploring teamwork and collaboration skills',
+      }
+    }
+  } else if (turnCount >= 4) {
+    // Later turns - adaptive based on conversation flow
+    if (detectedInterests.includes('collaboration') || questioningStyle === 'detailed') {
+      return {
+        focus: 'problem_solving_methodology',
+        prompt: `${contextPrefix}I'm curious about your problem-solving approach. Can you walk me through how you tackle complex challenges, from initial analysis to implementation?`,
+        reasoning: 'Detailed questioning style - exploring methodology',
+      }
+    } else if (conversationTone === 'recruiter' && turnCount === 4) {
+      return {
+        focus: 'next_steps_discussion',
+        prompt: `${contextPrefix}Based on our conversation, do you have any questions about potential opportunities, or is there anything specific you'd like to discuss about your career path?`,
+        reasoning: 'Recruiter conversation reaching decision point',
+      }
+    } else {
+      return {
+        focus: 'open_discussion',
+        prompt: `${contextPrefix}What questions do you have for me? Is there anything specific about my experience, skills, or background you'd like to explore further?`,
+        reasoning: 'Opening floor for caller questions and interests',
+      }
+    }
+  }
+
+  // Fallback
+  return {
+    focus: 'general_discussion',
+    prompt: `${contextPrefix}What would you like to know more about regarding my professional background and experience?`,
+    reasoning: 'Fallback - general discussion',
+  }
+}
+
+// STEP 5: Controlled Audio Processing with Smart Fallbacks
+interface AudioProcessingResult {
+  success: boolean
+  transcript?: string
+  keywords?: string[]
+  confidence?: number
+  fallbackReason?: string
+}
+
+async function processAudioWithFallback(
+  recordingUrl: string,
+  duration: number,
+): Promise<AudioProcessingResult> {
+  try {
+    console.log('🎵 Processing audio with controlled recognition...')
+    console.log(`⏱️ Duration: ${duration}s, URL: ${recordingUrl.substring(0, 80)}...`)
+
+    // Skip very short recordings (likely accidental)
+    if (duration < 2) {
+      return {
+        success: false,
+        fallbackReason: 'Recording too short (less than 2 seconds)',
+      }
+    }
+
+    // Skip very long recordings (likely hold music or silence)
+    if (duration > 30) {
+      return {
+        success: false,
+        fallbackReason: 'Recording too long (over 30 seconds) - likely background noise',
+      }
+    }
+
+    // Download and transcribe audio
+    console.log('📥 Downloading recording for transcription...')
+    const audioBuffer = await downloadRecording(recordingUrl)
+
+    if (audioBuffer.length === 0) {
+      return {
+        success: false,
+        fallbackReason: 'Empty audio buffer',
+      }
+    }
+
+    console.log(`📊 Audio buffer size: ${audioBuffer.length} bytes`)
+    const transcript = await transcribeAudio(audioBuffer)
+
+    if (!transcript || transcript.length < 3) {
+      return {
+        success: false,
+        fallbackReason: 'Transcript too short or empty',
+      }
+    }
+
+    // Basic keyword extraction for context
+    const keywords = extractKeywords(transcript)
+
+    console.log('✅ Audio processing completed successfully')
+    console.log(`📝 Transcript: ${transcript}`)
+    console.log(`🔑 Keywords: ${keywords.join(', ')}`)
+
+    return {
+      success: true,
+      transcript,
+      keywords,
+      confidence: transcript.length > 10 ? 0.8 : 0.6,
+    }
+  } catch (error: any) {
+    console.log('❌ Audio processing failed:', error?.message || 'Unknown error')
+    return {
+      success: false,
+      fallbackReason: `Processing error: ${error?.message || 'Unknown error'}`,
+    }
+  }
+}
+
+// Extract basic keywords from transcript for context
+function extractKeywords(transcript: string): string[] {
+  const keywords: string[] = []
+  const text = transcript.toLowerCase()
+
+  // Technical keywords
+  const techTerms = [
+    'technical',
+    'programming',
+    'development',
+    'code',
+    'project',
+    'software',
+    'engineering',
+  ]
+  techTerms.forEach((term) => {
+    if (text.includes(term)) keywords.push(term)
+  })
+
+  // Career keywords
+  const careerTerms = ['career', 'job', 'opportunity', 'role', 'position', 'hiring', 'interview']
+  careerTerms.forEach((term) => {
+    if (text.includes(term)) keywords.push(term)
+  })
+
+  // Collaboration keywords
+  const collabTerms = ['team', 'collaborate', 'work', 'together', 'experience']
+  collabTerms.forEach((term) => {
+    if (text.includes(term)) keywords.push(term)
+  })
+
+  return [...new Set(keywords)] // Remove duplicates
+}
+
 // Handle recorded audio from Twilio and process with AI
 export async function POST(request: NextRequest) {
   console.log('🎙️ Recording webhook called - processing user speech...')
@@ -37,16 +382,47 @@ export async function POST(request: NextRequest) {
       throw new Error('Missing required webhook data')
     }
 
-    console.log('✅ Step 2: Bypassing complex audio processing for reliable conversation...')
+    console.log('🎤 Step 5: Enabling controlled audio recognition with keyword detection...')
 
-    // STEP 2: Skip audio processing entirely - focus on progressive conversation
-    console.log('🔄 Using progressive conversation system instead of audio transcription')
+    // STEP 5: Controlled audio processing with smart fallbacks
+    let userMessage = 'Continue our professional conversation'
+    let audioProcessingSuccess = false
+
+    // Attempt audio recognition if we have a recording URL
+    if (recordingUrl && duration && parseInt(duration) > 1) {
+      console.log('🔊 Attempting audio transcription for keyword detection...')
+      try {
+        const audioProcessingResult = await processAudioWithFallback(
+          recordingUrl,
+          parseInt(duration),
+        )
+        if (audioProcessingResult.success && audioProcessingResult.transcript) {
+          userMessage = audioProcessingResult.transcript
+          audioProcessingSuccess = true
+          console.log('✅ Audio processing successful:', userMessage.substring(0, 100) + '...')
+        } else {
+          console.log('⚠️ Audio processing failed, using progressive conversation system')
+        }
+      } catch (audioError: any) {
+        console.log(
+          '⚠️ Audio processing error, continuing with progressive system:',
+          audioError?.message || 'Unknown error',
+        )
+      }
+    } else {
+      console.log('📝 No audio to process, using progressive conversation flow')
+    }
 
     // Get professional context for AI response
     const conversationContext = await getConversationContext(callSid)
 
-    // STEP 3 IMPROVEMENT: Enhanced conversation memory & context building
+    // STEP 4 IMPROVEMENT: Smart Topic Intelligence - AI chooses best topics based on caller interest
     const turnCount = conversationContext.conversationHistory?.length || 0
+
+    // Analyze conversation pattern and caller interests
+    const smartTopicAnalysis = analyzeCallerInterests(conversationContext.conversationHistory || [])
+    console.log('🧠 Smart topic analysis:', smartTopicAnalysis)
+
     let conversationFocus = 'general_background'
     let contextualPrompt = 'Tell me about your professional background and experience'
 
@@ -58,25 +434,28 @@ export async function POST(request: NextRequest) {
         ? `Previous discussion covered: ${previousTopics.slice(-2).join(', ')}. `
         : ''
 
+    // STEP 5: Enhanced topic selection with audio recognition integration
     if (turnCount === 0) {
       conversationFocus = 'introduction_overview'
       contextualPrompt =
         'Give me a professional introduction and overview of your background. This is our first interaction, so provide a comprehensive overview.'
-    } else if (turnCount === 1) {
-      conversationFocus = 'technical_skills'
-      contextualPrompt = `${conversationSummary}Now I'd like to dive deeper into your technical skills, programming languages, and specific technologies you work with.`
-    } else if (turnCount === 2) {
-      conversationFocus = 'recent_projects'
-      contextualPrompt = `${conversationSummary}Can you tell me about specific recent projects where you applied these technical skills? Include details about challenges and achievements.`
-    } else if (turnCount === 3) {
-      conversationFocus = 'career_goals'
-      contextualPrompt = `${conversationSummary}Based on your background and skills, what are your career goals and what type of opportunities or roles are you most interested in?`
-    } else if (turnCount === 4) {
-      conversationFocus = 'collaboration_style'
-      contextualPrompt = `${conversationSummary}Tell me about your work style, how you collaborate with teams, and your approach to problem-solving.`
     } else {
-      conversationFocus = 'questions_discussion'
-      contextualPrompt = `${conversationSummary}Do you have any questions about potential opportunities, roles, or would you like to discuss any specific aspects of your experience further?`
+      // Use AI to determine the best next topic, incorporating audio when available
+      const smartTopic = selectSmartTopic(turnCount, smartTopicAnalysis, conversationSummary)
+      conversationFocus = smartTopic.focus
+
+      // STEP 5: Use actual user speech when audio processing succeeded
+      if (audioProcessingSuccess && userMessage !== 'Continue our professional conversation') {
+        contextualPrompt = `The caller said: "${userMessage}". ${smartTopic.prompt} Please respond directly to their question while incorporating the suggested context.`
+        console.log('🎙️ Using actual user speech in prompt')
+      } else {
+        contextualPrompt = smartTopic.prompt
+        console.log('📝 Using smart topic prompt (no audio or fallback)')
+      }
+
+      console.log(`🎯 Smart topic selected: ${conversationFocus}`)
+      console.log(`💡 Interest indicators: ${smartTopicAnalysis.detectedInterests.join(', ')}`)
+      console.log(`🔊 Audio success: ${audioProcessingSuccess}`)
     }
 
     console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
@@ -97,20 +476,16 @@ export async function POST(request: NextRequest) {
     console.log('🎤 Using Twilio voice for reliable conversation flow')
     console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
-    // STEP 3: Enhanced conversation prompts based on turn
+    // STEP 4: Smart conversation prompts based on topic analysis and caller interests
     let conversationPrompt = 'Please continue with your questions.'
+
     if (turnCount === 0) {
       conversationPrompt = 'What would you like to know more about regarding my technical skills?'
-    } else if (turnCount === 1) {
-      conversationPrompt =
-        "Would you like to hear about specific projects where I've applied these skills?"
-    } else if (turnCount === 2) {
-      conversationPrompt = 'What aspects of my career goals or future opportunities interest you?'
-    } else if (turnCount === 3) {
-      conversationPrompt =
-        'Do you have questions about my work style or how I approach collaboration?'
     } else {
-      conversationPrompt = 'What other questions do you have, or shall we discuss next steps?'
+      // Generate smart follow-up based on the topic and caller analysis
+      const smartPrompt = generateSmartFollowUp(conversationFocus, smartTopicAnalysis, turnCount)
+      conversationPrompt = smartPrompt
+      console.log(`💬 Smart follow-up generated: ${conversationPrompt}`)
     }
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -131,13 +506,15 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
 
-    // Store conversation history
+    // STEP 5: Store conversation history with actual user input when available
     await storeConversationTurn(callSid, {
-      userInput: contextualPrompt,
+      userInput: audioProcessingSuccess ? userMessage : contextualPrompt,
       aiResponse: aiResponse.response,
       timestamp: new Date().toISOString(),
-      recordingSid: recordingSid || 'step2_bypass',
+      recordingSid: recordingSid || 'step5_audio_enabled',
       duration,
+      audioProcessed: audioProcessingSuccess,
+      actualSpeech: audioProcessingSuccess ? userMessage : undefined,
     })
 
     console.log('✅ TwiML response generated, returning to Twilio')
@@ -308,6 +685,72 @@ async function getConversationContext(callSid: string) {
       interviewType: 'general',
       enhancedMode: true,
     }
+  }
+}
+
+// Generate smart follow-up questions based on conversation context
+function generateSmartFollowUp(
+  conversationFocus: string,
+  analysis: CallerInterestAnalysis,
+  turnCount: number,
+): string {
+  const { conversationTone, engagementLevel, questioningStyle } = analysis
+
+  console.log(
+    `🧠 Generating smart follow-up for: ${conversationFocus}, tone: ${conversationTone}, engagement: ${engagementLevel}`,
+  )
+
+  // Adaptive follow-ups based on conversation focus and caller style
+  switch (conversationFocus) {
+    case 'deep_technical_skills':
+      return questioningStyle === 'detailed'
+        ? "Which of these technologies would you like me to elaborate on, or are there specific technical challenges you're curious about?"
+        : 'What technical areas interest you most for your project or team?'
+
+    case 'project_showcase':
+    case 'technical_projects_applied':
+      return conversationTone === 'recruiter'
+        ? 'How do these project experiences align with the type of work or challenges you have in mind?'
+        : "Are there particular aspects of my project approach that you'd like to explore further?"
+
+    case 'professional_value_proposition':
+    case 'career_aspirations_specific':
+      return engagementLevel === 'high'
+        ? "Based on what I've shared, what opportunities or roles do you think might be a strong fit?"
+        : 'What questions do you have about my career goals or professional background?'
+
+    case 'technical_leadership':
+      return 'Are you looking for someone with technical leadership experience, or would you like to know more about my collaborative approach?'
+
+    case 'ideal_opportunity':
+      return 'Does this align with what you have in mind, or would you like to discuss how my background fits your specific needs?'
+
+    case 'collaboration_approach':
+      return conversationTone === 'technical'
+        ? "How does my collaboration style fit with your team's technical workflow?"
+        : 'What collaboration qualities are most important for your team environment?'
+
+    case 'problem_solving_methodology':
+      return "Would you like me to walk through a specific example, or are there particular problem-solving challenges you're facing?"
+
+    case 'recent_achievements':
+      return 'Which of these achievements resonates most with your current needs or interests?'
+
+    case 'next_steps_discussion':
+      return 'What additional information would be helpful for our next conversation, or shall we discuss potential next steps?'
+
+    case 'open_discussion':
+      return 'What specific aspects of my background would be most relevant to explore further?'
+
+    default:
+      // Adaptive fallback based on conversation tone
+      if (conversationTone === 'recruiter') {
+        return "How does my background align with what you're looking for, or what other areas should we explore?"
+      } else if (conversationTone === 'technical') {
+        return "Are there specific technical aspects you'd like me to dive deeper into?"
+      } else {
+        return 'What would you like to explore next about my professional background?'
+      }
   }
 }
 
