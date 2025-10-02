@@ -1085,16 +1085,13 @@ async function generateCustomVoiceSpeech(text: string): Promise<string | null> {
     // Get the audio buffer
     const audioBuffer = await response.arrayBuffer()
 
-    // Convert to base64 for temporary hosting
+    // Convert to base64 for temporary use (not needed with new system)
     const base64Audio = Buffer.from(audioBuffer).toString('base64')
     const audioDataUrl = `data:audio/mpeg;base64,${base64Audio}`
 
-    // In production, you'd upload this to a CDN or cloud storage
-    // For now, we'll create a temporary endpoint to serve this audio
-    const tempAudioUrl = await createTempAudioEndpoint(audioBuffer, 'mpeg')
-
-    console.log('✅ Custom voice speech generated successfully')
-    return tempAudioUrl
+    // Note: This function is deprecated - use createPhoneAudioEndpoint instead
+    console.log('✅ Custom voice speech generated successfully (legacy path)')
+    return audioDataUrl // Return data URL as fallback
   } catch (error) {
     console.error('Error generating custom voice speech:', error)
     return null
@@ -1132,30 +1129,6 @@ async function createPhoneAudioEndpoint(audioBuffer: ArrayBuffer, text: string):
   } catch (error) {
     console.error('❌ Error creating phone audio endpoint:', error)
     throw error
-  }
-}
-
-// Create temporary audio endpoint using direct streaming
-async function createTempAudioEndpoint(audioBuffer: ArrayBuffer, format: string): Promise<string> {
-  try {
-    console.log('🎵 Creating audio endpoint for Twilio access...')
-
-    // Store the audio in a simple cache that survives the function call
-    const audioId = Math.random().toString(36).substring(7) + Date.now().toString(36)
-    const base64Audio = Buffer.from(audioBuffer).toString('base64')
-
-    // Create an endpoint that can regenerate the audio
-    const baseUrl = process.env.NEXTAUTH_URL || 'https://www.sajal-app.online'
-
-    // For now, let's use a workaround: embed the audio data in the URL
-    // This bypasses the cache issue
-    const audioUrl = `${baseUrl}/api/phone/audio/stream?data=${base64Audio.substring(0, 100)}&format=${format}&id=${audioId}`
-
-    console.log('✅ Audio URL created:', audioUrl.substring(0, 80) + '...')
-    return audioUrl
-  } catch (error) {
-    console.error('Error creating temp audio endpoint:', error)
-    return ''
   }
 }
 
