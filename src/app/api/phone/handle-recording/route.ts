@@ -609,8 +609,8 @@ INSTRUCTIONS:
           .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
           .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
           .replace(
-            /^Sajal\s+Basnet\s+(?:is\s+)?a\s+senior\s+software\s+engineer/gi,
-            "I'm Sajal Basnet, a senior software engineer",
+            /^Sajal\s+Basnet\s+(?:is\s+)?a\s+(?:senior\s+)?software\s+(?:engineer|developer)/gi,
+            "I'm Sajal Basnet, a full-stack software developer",
           )
 
         // PASS 3: Remove bullet points and listing patterns
@@ -747,8 +747,8 @@ INSTRUCTIONS:
       .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
       .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
       .replace(
-        /^Sajal\s+Basnet\s+(?:is\s+)?a\s+senior\s+software\s+engineer/gi,
-        "I'm Sajal Basnet, a senior software engineer",
+        /^Sajal\s+Basnet\s+(?:is\s+)?a\s+(?:senior\s+)?software\s+(?:engineer|developer)/gi,
+        "I'm Sajal Basnet, a full-stack software developer",
       )
       // Fourth pass: Remove bullet points and excessive listing patterns
       .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ') // Remove "- item," patterns

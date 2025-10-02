@@ -54,7 +54,7 @@ const CALL_FLOWS: Record<string, CallFlowConfig> = {
     ],
     responses: {
       background:
-        "Sajal is a senior software engineer with a passion for AI integration and full-stack development. He's built some fascinating projects including this AI-powered portfolio system that demonstrates advanced conversational AI capabilities.",
+        "Sajal is a full-stack software developer with a Masters from Swinburne University. He's passionate about AI and has built fascinating projects including this AI-powered portfolio system with chat and voice capabilities.",
       expertise:
         "His areas of expertise include full-stack web development, cloud architecture, AI/ML integration, team leadership, and system design. He's particularly interested in the intersection of AI and practical business applications.",
       collaboration:
@@ -122,7 +122,7 @@ const CALL_FLOWS: Record<string, CallFlowConfig> = {
     ],
     responses: {
       general:
-        "Sajal is a senior software engineer with expertise in full-stack development, AI integration, and cloud technologies. He's passionate about building innovative solutions and has a track record of leading successful technical projects.",
+        'Sajal is a full-stack software developer with expertise in AI, web development, and cloud technologies. He recently completed his Masters in Software Development and worked as a Software Developer Intern at Aubot.',
       projects:
         'His recent work includes building this AI-powered portfolio system, implementing advanced search and conversation capabilities, and creating scalable web applications. Each project demonstrates his ability to combine technical excellence with practical business value.',
       contact:

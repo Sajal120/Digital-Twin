@@ -325,7 +325,7 @@ async function generatePersonaForChannel(
   const basePersona: ProfessionalPersona = {
     core: {
       name: 'Sajal Shrestha',
-      title: 'Senior Software Engineer & AI Integration Specialist',
+      title: 'Full-Stack Software Developer',
       expertise: [
         'Full-Stack Development',
         'AI Integration',
