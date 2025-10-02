@@ -7,7 +7,10 @@ console.log('=========================\n')
 // Test environment variables
 console.log('Environment Variables:')
 console.log('ELEVENLABS_API_KEY:', process.env.ELEVENLABS_API_KEY ? '✅ Set' : '❌ Missing')
-console.log('ELEVENLABS_VOICE_ID:', process.env.ELEVENLABS_VOICE_ID || 'WcXkU7PbsO0uKKBdWJrG (default)')
+console.log(
+  'ELEVENLABS_VOICE_ID:',
+  process.env.ELEVENLABS_VOICE_ID || 'WcXkU7PbsO0uKKBdWJrG (default)',
+)
 console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL || '❌ Missing')
 console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing')
 console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? '✅ Set' : '❌ Missing')
@@ -51,7 +54,7 @@ async function testMCPConnection() {
 // Test ElevenLabs API
 async function testElevenLabsAPI() {
   console.log('\n🎤 Testing ElevenLabs API...')
-  
+
   const apiKey = process.env.ELEVENLABS_API_KEY
   if (!apiKey) {
     console.log('❌ ElevenLabs API key missing')
@@ -63,7 +66,7 @@ async function testElevenLabsAPI() {
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
-        'Accept': 'audio/mpeg',
+        Accept: 'audio/mpeg',
         'Content-Type': 'application/json',
         'xi-api-key': apiKey,
       },
@@ -125,7 +128,7 @@ async function runTests() {
   await testMCPConnection()
   await testElevenLabsAPI()
   await testChatAPI()
-  
+
   console.log('\n🏁 Debug Test Complete')
 }
 

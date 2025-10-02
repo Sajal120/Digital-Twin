@@ -286,12 +286,12 @@ async function generateAIResponse(userMessage: string, context: any) {
             .replace(/\n/g, '. ') // Replace single newlines with periods
             .replace(/\.\s*\./g, '.') // Remove duplicate periods
             .trim()
-          
+
           // Ensure it starts naturally for phone conversation
           if (!cleanResponse.match(/^(Hello|Hi|I am|I'm|My name is|Thank you)/i)) {
             cleanResponse = `I'm Sajal Basnet. ${cleanResponse}`
           }
-          
+
           console.log('🎯 Cleaned response preview:', cleanResponse.substring(0, 100) + '...')
 
           return {
@@ -339,12 +339,12 @@ async function generateAIResponse(userMessage: string, context: any) {
       .replace(/\n/g, '. ') // Replace single newlines with periods
       .replace(/\.\s*\./g, '.') // Remove duplicate periods
       .trim()
-    
+
     // Ensure it starts naturally for phone conversation
     if (!cleanResponse.match(/^(Hello|Hi|I am|I'm|My name is|Thank you)/i)) {
       cleanResponse = `I'm Sajal Basnet. ${cleanResponse}`
     }
-    
+
     console.log('🎯 Chat cleaned response preview:', cleanResponse.substring(0, 100) + '...')
 
     return {

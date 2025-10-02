@@ -11,7 +11,7 @@ async function testPhoneWebhook() {
     const response = await fetch('https://www.sajal-app.online/api/phone/webhook', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'From=%2B1234567890&To=%2B61278044137&CallSid=test123&CallStatus=ringing'
+      body: 'From=%2B1234567890&To=%2B61278044137&CallSid=test123&CallStatus=ringing',
     })
 
     if (response.ok) {
@@ -69,9 +69,13 @@ async function testMCPForPhone() {
       console.log('✅ MCP Phone Context: Working')
       console.log('Response length:', responseText.length)
       console.log('Sample:', responseText.substring(0, 150) + '...')
-      
+
       // Check if it mentions Sajal Basnet
-      if (responseText.includes('Sajal Basnet') || responseText.includes('I am') || responseText.includes('My')) {
+      if (
+        responseText.includes('Sajal Basnet') ||
+        responseText.includes('I am') ||
+        responseText.includes('My')
+      ) {
         console.log('✅ First-person response: Detected')
       } else {
         console.log('⚠️ First-person response: May need improvement')
@@ -92,7 +96,7 @@ async function testVoiceConversation() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'Hello, I\'m calling about a software engineering position',
+        message: "Hello, I'm calling about a software engineering position",
         context: 'Phone call via Twilio. Professional phone conversation.',
         conversationHistory: [],
         interactionType: 'phone_professional',
@@ -120,13 +124,13 @@ async function runPhoneTests() {
   await testRecordingHandler()
   await testMCPForPhone()
   await testVoiceConversation()
-  
+
   console.log('\n📋 RECOMMENDATIONS:')
   console.log('1. Set ELEVENLABS_API_KEY in Vercel environment variables')
   console.log('2. Verify NEXTAUTH_URL is set to https://www.sajal-app.online')
   console.log('3. Test actual phone call to see TwiML flow')
   console.log('4. Check Vercel logs during phone calls for debugging')
-  
+
   console.log('\n🏁 Phone Debug Test Complete')
 }
 
