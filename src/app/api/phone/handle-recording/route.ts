@@ -12,6 +12,8 @@ function escapeXml(text: string): string {
 
 // Handle recorded audio from Twilio and process with AI
 export async function POST(request: NextRequest) {
+  console.log('🎙️ Recording webhook called - processing user speech...')
+
   try {
     // Parse Twilio form data
     const formData = await request.formData()
@@ -28,6 +30,12 @@ export async function POST(request: NextRequest) {
       duration: `${duration}s`,
       recordingUrl,
     })
+
+    // Validate required fields
+    if (!callSid || !recordingUrl) {
+      console.error('❌ Missing required fields:', { callSid, recordingUrl })
+      throw new Error('Missing required webhook data')
+    }
 
     // Download and process the audio
     const audioBuffer = await downloadRecording(recordingUrl)
@@ -90,11 +98,15 @@ export async function POST(request: NextRequest) {
       duration,
     })
 
+    console.log('✅ TwiML response generated, returning to Twilio')
+    console.log('📤 TwiML preview:', twiml.substring(0, 200) + '...')
+
     return new NextResponse(twiml, {
       headers: { 'Content-Type': 'text/xml' },
     })
   } catch (error) {
     console.error('❌ Recording processing error:', error)
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 
     // Return TwiML to continue recording even if processing fails
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -113,6 +125,7 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
 
+    console.log('🔄 Returning fallback TwiML to continue conversation')
     return new NextResponse(fallbackTwiml, {
       headers: { 'Content-Type': 'text/xml' },
     })
