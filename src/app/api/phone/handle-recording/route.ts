@@ -40,31 +40,43 @@ export async function POST(request: NextRequest) {
     console.log('✅ Step 2: Bypassing complex audio processing for reliable conversation...')
 
     // STEP 2: Skip audio processing entirely - focus on progressive conversation
-    console.log('🔄 Using progressive conversation system instead of audio transcription') // Get professional context for AI response
+    console.log('🔄 Using progressive conversation system instead of audio transcription')
+
+    // Get professional context for AI response
     const conversationContext = await getConversationContext(callSid)
 
-    // STEP 1 IMPROVEMENT: Progressive conversation topics
+    // STEP 3 IMPROVEMENT: Enhanced conversation memory & context building
     const turnCount = conversationContext.conversationHistory?.length || 0
     let conversationFocus = 'general_background'
     let contextualPrompt = 'Tell me about your professional background and experience'
 
+    // Build context from previous conversation history
+    const previousTopics =
+      conversationContext.conversationHistory?.map((turn) => turn.userInput) || []
+    const conversationSummary =
+      previousTopics.length > 0
+        ? `Previous discussion covered: ${previousTopics.slice(-2).join(', ')}. `
+        : ''
+
     if (turnCount === 0) {
       conversationFocus = 'introduction_overview'
-      contextualPrompt = 'Give me a professional introduction and overview of your background'
+      contextualPrompt =
+        'Give me a professional introduction and overview of your background. This is our first interaction, so provide a comprehensive overview.'
     } else if (turnCount === 1) {
       conversationFocus = 'technical_skills'
-      contextualPrompt =
-        'What are your main technical skills, programming languages, and technologies?'
+      contextualPrompt = `${conversationSummary}Now I'd like to dive deeper into your technical skills, programming languages, and specific technologies you work with.`
     } else if (turnCount === 2) {
       conversationFocus = 'recent_projects'
-      contextualPrompt = 'Tell me about your recent projects and professional achievements'
+      contextualPrompt = `${conversationSummary}Can you tell me about specific recent projects where you applied these technical skills? Include details about challenges and achievements.`
     } else if (turnCount === 3) {
       conversationFocus = 'career_goals'
-      contextualPrompt = 'What are your career goals and what type of opportunities interest you?'
+      contextualPrompt = `${conversationSummary}Based on your background and skills, what are your career goals and what type of opportunities or roles are you most interested in?`
+    } else if (turnCount === 4) {
+      conversationFocus = 'collaboration_style'
+      contextualPrompt = `${conversationSummary}Tell me about your work style, how you collaborate with teams, and your approach to problem-solving.`
     } else {
       conversationFocus = 'questions_discussion'
-      contextualPrompt =
-        'What questions do you have about roles, opportunities, or working together?'
+      contextualPrompt = `${conversationSummary}Do you have any questions about potential opportunities, roles, or would you like to discuss any specific aspects of your experience further?`
     }
 
     console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
@@ -85,9 +97,27 @@ export async function POST(request: NextRequest) {
     console.log('🎤 Using Twilio voice for reliable conversation flow')
     console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
+    // STEP 3: Enhanced conversation prompts based on turn
+    let conversationPrompt = 'Please continue with your questions.'
+    if (turnCount === 0) {
+      conversationPrompt = 'What would you like to know more about regarding my technical skills?'
+    } else if (turnCount === 1) {
+      conversationPrompt =
+        "Would you like to hear about specific projects where I've applied these skills?"
+    } else if (turnCount === 2) {
+      conversationPrompt = 'What aspects of my career goals or future opportunities interest you?'
+    } else if (turnCount === 3) {
+      conversationPrompt =
+        'Do you have questions about my work style or how I approach collaboration?'
+    } else {
+      conversationPrompt = 'What other questions do you have, or shall we discuss next steps?'
+    }
+
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US">${escapeXml(aiResponse.response)}</Say>
+  <Pause length="2"/>
+  <Say voice="alice" language="en-US">${escapeXml(conversationPrompt)}</Say>
   <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
