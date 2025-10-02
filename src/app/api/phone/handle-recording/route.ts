@@ -37,13 +37,41 @@ export async function POST(request: NextRequest) {
       throw new Error('Missing required webhook data')
     }
 
+    console.log('✅ Webhook data validated, starting audio processing...')
+
     // Download and process the audio
+    console.log('📥 Starting audio download from Twilio...')
     const audioBuffer = await downloadRecording(recordingUrl)
+    console.log('✅ Audio download completed, size:', audioBuffer.length, 'bytes')
 
     // Convert audio to text using OpenAI Whisper
+    console.log('🎯 Starting transcription with OpenAI Whisper...')
     const transcription = await transcribeAudio(audioBuffer)
+    console.log('📝 Transcription completed:', transcription)
 
-    console.log('📝 Transcription:', transcription)
+    // Skip processing if transcription is empty or too short
+    if (!transcription || transcription.trim().length < 2) {
+      console.log('⚠️ Transcription too short or empty, asking user to repeat')
+      const retryTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">I didn't catch that. Could you please speak a bit louder or repeat your question?</Say>
+  <Pause length="1"/>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="5"
+    finishOnKey="#"
+    transcribe="true"
+    transcribeCallback="/api/phone/handle-transcription"
+    maxLength="60"
+    playBeep="false"
+  />
+</Response>`
+
+      return new NextResponse(retryTwiml, {
+        headers: { 'Content-Type': 'text/xml' },
+      })
+    }
 
     // Get professional context for AI response
     const conversationContext = await getConversationContext(callSid)
@@ -135,13 +163,18 @@ export async function POST(request: NextRequest) {
 // Download recording from Twilio
 async function downloadRecording(recordingUrl: string): Promise<Buffer> {
   try {
+    console.log('🔐 Checking Twilio credentials...')
     // Add Twilio auth to the URL
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN
 
     if (!twilioAccountSid || !twilioAuthToken) {
+      console.error('❌ Missing Twilio credentials in environment')
       throw new Error('Missing Twilio credentials')
     }
+
+    console.log('✅ Twilio credentials found, downloading recording...')
+    console.log('📥 Recording URL:', recordingUrl)
 
     // Create authenticated URL
     const authString = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64')
@@ -151,6 +184,8 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
         Authorization: `Basic ${authString}`,
       },
     })
+
+    console.log('📊 Download response status:', response.status, response.statusText)
 
     if (!response.ok) {
       throw new Error(`Failed to download recording: ${response.statusText}`)
@@ -166,6 +201,13 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
 // Transcribe audio using OpenAI Whisper
 async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
   try {
+    console.log('🔑 Checking OpenAI API key...')
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OpenAI API key missing from environment')
+      throw new Error('OpenAI API key not configured')
+    }
+
+    console.log('✅ OpenAI API key found, creating transcription request...')
     const formData = new FormData()
     const uint8Array = new Uint8Array(audioBuffer)
     const audioBlob = new Blob([uint8Array], { type: 'audio/wav' })
@@ -173,6 +215,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
     formData.append('model', 'whisper-1')
     formData.append('language', 'en')
 
+    console.log('📤 Sending audio to OpenAI Whisper API...')
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -181,7 +224,11 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
       body: formData,
     })
 
+    console.log('📊 OpenAI response status:', response.status, response.statusText)
+
     if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ OpenAI API error details:', errorText)
       throw new Error(`OpenAI API error: ${response.statusText}`)
     }
 
