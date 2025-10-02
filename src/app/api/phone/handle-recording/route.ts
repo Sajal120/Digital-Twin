@@ -12,7 +12,7 @@ function escapeXml(text: string): string {
 
 // Handle recorded audio from Twilio and process with AI
 export async function POST(request: NextRequest) {
-  console.log('🎙️ Recording webhook called - BYPASS MODE for immediate testing...')
+  console.log('🎙️ Recording webhook called - processing user speech...')
 
   try {
     // Parse Twilio form data
@@ -20,42 +20,41 @@ export async function POST(request: NextRequest) {
     const webhookData = Object.fromEntries(formData.entries())
 
     const callSid = webhookData.CallSid as string
+    const recordingUrl = webhookData.RecordingUrl as string
+    const recordingSid = webhookData.RecordingSid as string
     const duration = webhookData.RecordingDuration as string
 
-    console.log('🎵 Recording received (BYPASS MODE):', {
+    console.log('🎵 Recording received:', {
       callSid,
+      recordingSid,
       duration: `${duration}s`,
-      mode: 'BYPASS - skipping audio processing',
+      recordingUrl,
     })
 
     // Validate required fields
-    if (!callSid) {
-      console.error('❌ Missing CallSid')
+    if (!callSid || !recordingUrl) {
+      console.error('❌ Missing required fields:', { callSid, recordingUrl })
       throw new Error('Missing required webhook data')
     }
 
-    // BYPASS: Skip audio download and transcription
-    // Use a default message to simulate user speech
-    const simulatedUserMessage = "I'm interested in learning about your background and experience"
-    console.log('🔄 BYPASS: Using simulated user message:', simulatedUserMessage)
+    console.log('✅ Webhook data validated, starting audio processing...')
 
-    // Get professional context for AI response
-    console.log('📋 Getting conversation context...')
-    const conversationContext = await getConversationContext(callSid)
+    // Download and process the audio
+    console.log('📥 Starting audio download from Twilio...')
+    const audioBuffer = await downloadRecording(recordingUrl)
+    console.log('✅ Audio download completed, size:', audioBuffer.length, 'bytes')
 
-    // Generate AI response using existing voice conversation API
-    console.log('🤖 Generating AI response...')
-    const aiResponse = await generateAIResponse(simulatedUserMessage, conversationContext)
+    // Convert audio to text using OpenAI Whisper
+    console.log('🎯 Starting transcription with OpenAI Whisper...')
+    const transcription = await transcribeAudio(audioBuffer)
+    console.log('📝 Transcription completed:', transcription)
 
-    console.log('✅ AI Response generated:', aiResponse.response.substring(0, 100) + '...')
-
-    // Create TwiML to speak AI response and continue recording
-    console.log('🎤 Creating TwiML response with Twilio voice')
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // Skip processing if transcription is empty or too short
+    if (!transcription || transcription.trim().length < 2) {
+      console.log('⚠️ Transcription too short or empty, asking user to repeat')
+      const retryTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US">${escapeXml(aiResponse.response)}</Say>
-  <Pause length="2"/>
-  <Say voice="alice" language="en-US">Please continue with your questions.</Say>
+  <Say voice="alice" language="en-US">I didn't catch that. Could you please speak a bit louder or repeat your question?</Say>
   <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
@@ -67,12 +66,48 @@ export async function POST(request: NextRequest) {
     maxLength="60"
     playBeep="false"
   />
-</Response>` // Store conversation history
+</Response>`
+
+      return new NextResponse(retryTwiml, {
+        headers: { 'Content-Type': 'text/xml' },
+      })
+    }
+
+    // Get professional context for AI response
+    const conversationContext = await getConversationContext(callSid)
+
+    // Generate AI response using existing voice conversation API
+    const aiResponse = await generateAIResponse(transcription, conversationContext)
+
+    console.log('🤖 AI Response:', aiResponse.response)
+
+    // Create TwiML to speak AI response and continue recording
+    // TEMPORARY: Use Twilio voice while fixing audio serving issue
+    console.log('🎤 Using Twilio voice for reliable conversation flow')
+    console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">${escapeXml(aiResponse.response)}</Say>
+  <Pause length="1"/>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="5"
+    finishOnKey="#"
+    transcribe="true"
+    transcribeCallback="/api/phone/handle-transcription"
+    maxLength="60"
+    playBeep="false"
+  />
+</Response>`
+
+    // Store conversation history
     await storeConversationTurn(callSid, {
-      userInput: simulatedUserMessage,
+      userInput: transcription,
       aiResponse: aiResponse.response,
       timestamp: new Date().toISOString(),
-      recordingSid: 'bypass_mode',
+      recordingSid,
       duration,
     })
 
