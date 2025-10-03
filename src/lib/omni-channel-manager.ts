@@ -271,9 +271,17 @@ export class OmniChannelManager {
     }
 
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
+    // For phone: Add timeout wrapper (3s) to prevent Twilio Error 11205
     try {
       console.log('🤖 Using MCP server for intelligent response with RAG + database')
-      const mcpResponse = await this.callMCPServer(userInput, enhancedContext)
+      const mcpTimeout = additionalContext.phoneCall ? 3000 : 10000
+      const mcpResponse = (await Promise.race([
+        this.callMCPServer(userInput, enhancedContext),
+        new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('MCP timeout')), mcpTimeout),
+        ),
+      ])) as { success: boolean; response: string; suggestions?: string[] }
+
       if (mcpResponse.success) {
         return {
           response: mcpResponse.response,
@@ -283,12 +291,13 @@ export class OmniChannelManager {
         }
       }
     } catch (error) {
-      console.warn('⚠️ MCP server failed, trying chat API')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.warn('⚠️ MCP server failed or timeout, trying chat API:', errorMessage)
     }
 
     // Fallback to enhanced chat API with timeout for phone calls
     try {
-      const timeoutMs = additionalContext.phoneCall ? 5000 : 10000 // 5s for phone (allows MCP/RAG), 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 3500 : 10000 // 3.5s for phone (fast with quality), 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>

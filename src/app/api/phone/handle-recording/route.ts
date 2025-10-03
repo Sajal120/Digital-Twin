@@ -764,9 +764,6 @@ export async function POST(request: NextRequest) {
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000),
             ),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('ElevenLabs timeout')), 6000),
-            ),
           ])) as Response
 
           if (!elevenlabsResponse.ok) {
@@ -865,17 +862,17 @@ export async function POST(request: NextRequest) {
       }
     })()
 
-    // Race between processing and timeout (15s - allow time for quality responses)
+    // Race between processing and timeout (9s - MUST be under Twilio's 10s limit)
     try {
       const result = await Promise.race([
         processingPromise,
         new Promise<NextResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('Processing timeout after 15s')), 15000),
+          setTimeout(() => reject(new Error('Processing timeout after 9s')), 9000),
         ),
       ])
       return result
     } catch (timeoutError) {
-      console.error('⏱️ TIMEOUT after 15s - asking user to continue')
+      console.error('⏱️ TIMEOUT after 9s - asking user to continue')
       console.error('Timeout error:', timeoutError)
 
       // Return TwiML to continue conversation (don't throw!)
