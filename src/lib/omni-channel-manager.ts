@@ -248,20 +248,10 @@ export class OmniChannelManager {
     }
 
     console.log(`🤖 Generating unified response for ${context.currentChannel.type} channel`)
+    console.log(`📝 User input: "${userInput}"`)
 
-    // PHONE OPTIMIZATION: Quick answers for common questions (bypass AI for speed)
-    if (additionalContext.phoneCall || additionalContext.ultraBrief) {
-      const quickAnswer = this.getQuickPhoneAnswer(userInput.toLowerCase())
-      if (quickAnswer) {
-        console.log('⚡ Using quick answer (bypassed AI for speed)')
-        return {
-          response: quickAnswer,
-          source: 'quick_answer',
-          context: { userId, currentChannel: context.currentChannel.type },
-          suggestions: [],
-        }
-      }
-    }
+    // PHONE OPTIMIZATION: Always use AI for natural, context-aware responses
+    // Quick answers disabled - AI provides better, more specific responses
 
     // Prepare enhanced context for MCP server
     const enhancedContext = {
@@ -297,7 +287,7 @@ export class OmniChannelManager {
 
     // Fallback to enhanced chat API with timeout for phone calls
     try {
-      const timeoutMs = additionalContext.phoneCall ? 3000 : 10000 // 3s for phone, 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 4000 : 10000 // 4s for phone (fast but allows AI processing), 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -337,37 +327,37 @@ export class OmniChannelManager {
       .replace(/[?.!,]/g, '')
     console.log('🔍 Quick answer check for:', normalizedQuestion)
 
-    // Experience/work questions - expanded patterns (match partial words too)
+    // Experience/work questions - ULTRA AGGRESSIVE matching for instant response
     if (
       normalizedQuestion.match(
-        /(experience|experi|work|job|career|working|employed|what.*do|current.*role|position|your.*role|background|what.*you.*do|tell.*about|whats|what.*is)/,
+        /(exp|work|job|career|do|role|position|background|about|company|companies)/,
       )
     ) {
-      console.log('⚡ Quick answer: experience')
+      console.log('⚡ INSTANT answer: experience')
       this.lastQuestionTopic = 'experience'
-      return "I'm working at Kimpton. Before that, I interned at Aubot doing software development, and edgedVR doing VR work. I'm really into AI, security, and software development."
+      return 'I work at Kimpton. I interned at Aubot doing software development, and at edgedVR doing VR development.'
     }
 
     // Education questions
     if (
       normalizedQuestion.match(
-        /\b(education|study|degree|masters|university|school|graduated|learn|qualification|studied|whats your degree|what is your degree)\b/,
+        /(education|study|degree|master|university|school|graduate|swinburne)/,
       )
     ) {
-      console.log('⚡ Quick answer: education')
+      console.log('⚡ INSTANT answer: education')
       this.lastQuestionTopic = 'education'
-      return 'Got my Masters in Software Development from Swinburne University. Graduated May 2024 with a 3.69 GPA.'
+      return 'Masters in Software Development from Swinburne University. Graduated May 2024.'
     }
 
-    // Tech/skills questions - expanded patterns
+    // Tech/skills questions
     if (
       normalizedQuestion.match(
-        /\b(tech|skill|language|framework|tool|stack|know|use|programming|code|develop|technology|what can you|what do you know)\b/,
+        /(tech|skill|language|framework|tool|stack|know|use|program|code|can)/,
       )
     ) {
-      console.log('⚡ Quick answer: skills')
+      console.log('⚡ INSTANT answer: skills')
       this.lastQuestionTopic = 'skills'
-      return 'I work with React, Python, JavaScript, Node.js, AWS, and Terraform. Really into AI, machine learning, security, and data analysis.'
+      return 'React, Python, JavaScript, Node.js, AWS, Terraform. Into AI, machine learning, and security.'
     }
 
     // Location questions
@@ -478,32 +468,30 @@ export class OmniChannelManager {
       {
         role: 'system',
         content: isPhoneCall
-          ? `You're Sajal Basnet on a phone call. Be natural and conversational. Answer in 15-20 words MAX.
+          ? `You're Sajal Basnet on a phone call. Answer in 10-15 words MAX. Be SPECIFIC.
 
-ABOUT YOU:
-- Currently working at Kimpton
-- Passionate about AI, machine learning, security, and software development
-- Masters from Swinburne (GPA 3.69, graduated May 2024)
-- Previous internships: Aubot (software dev) and edgedVR (VR dev)
+FACTS:
+- Work: Kimpton (current), Aubot (software dev intern), edgedVR (VR dev intern)
+- Education: Masters Software Development, Swinburne University, May 2024, GPA 3.69
 - Skills: React, Python, JavaScript, Node.js, AWS, Terraform
-- Based in Sydney, originally from Nepal
+- Interests: AI, machine learning, security, software development
+- Location: Sydney, Australia (from Nepal)
 
-CONVERSATION STYLE:
-- Speak like a human, use contractions (I'm, I've, that's)
-- Answer the EXACT question asked, don't add extra info
-- Be enthusiastic about AI and tech
-- Keep it brief and natural
+RULES:
+1. Answer ONLY what's asked - nothing extra
+2. Use contractions (I'm, I've)
+3. Be specific with names (Kimpton, Aubot, edgedVR, Swinburne)
+4. 10-15 words MAX
 
 EXAMPLES:
 Q: "What's your experience?"
-❌ "I can help you with software development"
-✅ "I'm working at Kimpton now. Previously interned at Aubot and edgedVR. Really into AI and security."
+A: "I work at Kimpton. Interned at Aubot and edgedVR doing software development."
 
-Q: "What are your skills?"
-❌ "I have skills in many technologies"
-✅ "I work with React, Python, AWS, and Terraform. Learning more about AI and machine learning."
+Q: "What's your education?"
+A: "Masters from Swinburne University. Graduated May 2024."
 
-RULE: Natural, brief, specific answers. Sound human, not robotic.`
+Q: "What skills do you have?"
+A: "React, Python, JavaScript, AWS, Terraform. Into AI and machine learning."`
           : `You're Sajal Basnet. Speak naturally and conversationally.
 
 YOUR PROFILE:
@@ -537,7 +525,7 @@ Be conversational, use first person, show enthusiasm for AI and tech. Sound huma
           conversationHistory: conversationHistory,
           model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
           systemInstruction: isPhoneCall
-            ? 'PHONE CALL: 15-20 words max. Sound human and natural. Answer the exact question asked with specific facts. Use contractions. Be conversational.'
+            ? 'PHONE CALL: Answer the EXACT question in 10-15 words. Be specific. Example: Q: "What\'s your experience?" A: "I work at Kimpton. Interned at Aubot and edgedVR doing software development."'
             : 'Use accurate profile info. Speak naturally in first person. Show enthusiasm for AI and tech.',
         }),
       })

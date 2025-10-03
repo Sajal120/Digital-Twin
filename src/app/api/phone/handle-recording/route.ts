@@ -939,21 +939,21 @@ export async function POST(request: NextRequest) {
     }
   })()
 
-  // Race between processing and timeout (max 8 seconds to return to Twilio)
+  // Race between processing and timeout (max 6 seconds total - transcription + AI)
   try {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 8000),
+        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 6000),
       ),
     ])
     return result
   } catch (timeoutError) {
-    console.error('⏱️ TIMEOUT: Returning quick fallback to prevent Twilio error 11205')
+    console.error('⏱️ TIMEOUT: Returning INSTANT fallback (5s limit reached)')
     const quickFallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US" rate="medium">
-    I'm Sajal, software developer at Kimpton. I've got experience with React, Python, and AWS. What would you like to know?
+    I work at Kimpton. I interned at Aubot and edgedVR. Got my Masters from Swinburne. What do you want to know?
   </Say>
   <Record 
     action="/api/phone/handle-recording"
@@ -1031,7 +1031,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
           'Phone interview with Sajal Basnet, software developer. Topics: work experience at Kimpton, Aubot, edgedVR; AI and machine learning interests; security; Masters degree from Swinburne University; skills in React, Python, JavaScript, AWS, Terraform; Sydney location; career goals. Common questions: What do you do? Your experience? Your background? Your education? Your skills? What are you interested in? Tell me about yourself.',
         )
 
-        console.log('📤 Sending to Groq Whisper API (most accurate mode)...')
+        console.log('📤 Sending to Groq Whisper API (FAST mode)...')
         const groqResponse = (await Promise.race([
           fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
             method: 'POST',
@@ -1040,7 +1040,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
             },
             body: formData,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 5000)), // Increased to 5s for better quality
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 2000)), // 2s timeout for speed
         ])) as Response
 
         if (groqResponse.ok) {
