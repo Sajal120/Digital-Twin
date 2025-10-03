@@ -977,20 +977,37 @@ export async function POST(request: NextRequest) {
 async function downloadRecording(recordingUrl: string): Promise<Buffer> {
   try {
     console.log('🔐 Checking Twilio credentials...')
+
+    // Try API Key first (more reliable), fallback to Auth Token
+    const twilioApiKeySid = process.env.TWILIO_API_KEY_SID
+    const twilioApiKeySecret = process.env.TWILIO_API_KEY_SECRET
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN
 
-    if (!twilioAccountSid || !twilioAuthToken) {
+    let authUsername: string
+    let authPassword: string
+
+    // Use API Key if available (PREFERRED METHOD)
+    if (twilioApiKeySid && twilioApiKeySecret) {
+      console.log('✅ Using Twilio API Key authentication (preferred)')
+      authUsername = twilioApiKeySid
+      authPassword = twilioApiKeySecret
+      console.log('🔑 API Key SID length:', twilioApiKeySid.length, 'chars')
+      console.log('🔑 API Key Secret length:', twilioApiKeySecret.length, 'chars')
+      console.log('🔑 API Key SID starts with:', twilioApiKeySid.substring(0, 5))
+    } else if (twilioAccountSid && twilioAuthToken) {
+      console.log('✅ Using Twilio Auth Token authentication (fallback)')
+      authUsername = twilioAccountSid
+      authPassword = twilioAuthToken
+      console.log('🔑 Account SID length:', twilioAccountSid.length, 'chars')
+      console.log('🔑 Auth Token length:', twilioAuthToken.length, 'chars')
+      console.log('🔑 Account SID starts with:', twilioAccountSid.substring(0, 5))
+    } else {
       console.error('❌ Missing Twilio credentials in environment')
       throw new Error('Missing Twilio credentials')
     }
 
-    console.log('✅ Twilio credentials found, downloading recording...')
     console.log('📥 Recording URL:', recordingUrl)
-    console.log('🔑 Account SID length:', twilioAccountSid.length, 'chars')
-    console.log('🔑 Auth Token length:', twilioAuthToken.length, 'chars')
-    console.log('🔑 Account SID starts with:', twilioAccountSid.substring(0, 5))
-    console.log('🔑 Auth Token starts with:', twilioAuthToken.substring(0, 5))
 
     // Twilio returns recording URL without file extension
     // We need to append .wav to get the actual audio file
@@ -998,7 +1015,7 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
     console.log('📥 Audio URL with extension:', audioUrl)
 
     // Create authenticated URL using Basic Auth
-    const authString = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64')
+    const authString = Buffer.from(`${authUsername}:${authPassword}`).toString('base64')
     console.log('🔐 Auth string length:', authString.length, 'chars')
 
     const response = await fetch(audioUrl, {
