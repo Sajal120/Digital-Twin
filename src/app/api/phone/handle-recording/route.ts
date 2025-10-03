@@ -826,7 +826,7 @@ export async function POST(request: NextRequest) {
             }),
           }),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('ElevenLabs timeout')), 5000),
+            setTimeout(() => reject(new Error('ElevenLabs timeout')), 6000),
           ),
         ])) as Response
 
@@ -865,8 +865,22 @@ export async function POST(request: NextRequest) {
         console.log('✅ Using ElevenLabs voice (your cloned voice)')
       } catch (voiceError: any) {
         console.error('❌ ElevenLabs voice failed:', voiceError.message)
-        // Don't use robotic Twilio voice - throw error to trigger timeout fallback
-        throw voiceError
+        console.warn('⚠️ Falling back to Twilio Say (will retry ElevenLabs on next turn)')
+
+        // Use Twilio Say as temporary fallback (better than timing out)
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">${aiResponse.response.substring(0, 200)}</Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+        console.log('🔄 Using Twilio voice as temporary fallback')
       }
 
       // STEP 5: Store conversation history with actual user input when available
@@ -891,56 +905,33 @@ export async function POST(request: NextRequest) {
       console.error('❌ Recording processing error:', error)
       console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
 
-      // Return TwiML to continue recording even if processing fails
-      const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en-US">
-    I apologize, but I'm having trouble processing your message. 
-    Could you please repeat that?
-  </Say>
-  <Record 
-    action="/api/phone/handle-recording"
-    method="POST"
-    timeout="10"
-    finishOnKey="#"
-    maxLength="120"
-    playBeep="false"
-  />
-</Response>`
-
-      console.log('🔄 Returning fallback TwiML to continue conversation')
-      return new NextResponse(fallbackTwiml, {
-        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
-      })
+      // Re-throw to trigger outer timeout handler which will retry
+      throw error
     }
   })()
 
-  // Race between processing and timeout (max 7 seconds total - FAST!)
+  // Race between processing and timeout (15s - allows full AI + voice generation)
   try {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 8000),
+        setTimeout(() => reject(new Error('Processing timeout after 15s')), 15000),
       ),
     ])
     return result
   } catch (timeoutError) {
-    console.error('⏱️ TIMEOUT: Returning fallback (processing took too long)')
-    const quickFallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    console.error('⏱️ CRITICAL TIMEOUT after 15s - This should rarely happen')
+    console.error('Timeout error:', timeoutError)
+
+    // Return error TwiML to end call gracefully (user waited too long)
+    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US" rate="fast">
-    I work at Kimpton. Interned at Aubot and edgedVR. Masters from Swinburne. What else?
+  <Say voice="alice" language="en-US">
+    I'm experiencing technical difficulties. Please try calling back in a moment.
   </Say>
-  <Record 
-    action="/api/phone/handle-recording"
-    method="POST"
-    timeout="10"
-    finishOnKey="#"
-    maxLength="120"
-    playBeep="false"
-  />
+  <Hangup/>
 </Response>`
-    return new NextResponse(quickFallbackTwiml, {
+    return new NextResponse(errorTwiml, {
       headers: { 'Content-Type': 'text/xml; charset=utf-8' },
     })
   }
