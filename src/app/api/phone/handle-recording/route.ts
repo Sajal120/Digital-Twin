@@ -862,17 +862,17 @@ export async function POST(request: NextRequest) {
       }
     })()
 
-    // Race between processing and timeout (7s for faster response)
+    // Race between processing and timeout (8s to allow 4s MCP + 2.5s voice)
     try {
       const result = await Promise.race([
         processingPromise,
         new Promise<NextResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('Processing timeout after 7s')), 7000),
+          setTimeout(() => reject(new Error('Processing timeout after 8s')), 8000),
         ),
       ])
       return result
     } catch (timeoutError) {
-      console.error('⏱️ TIMEOUT after 7s - returning quick response')
+      console.error('⏱️ TIMEOUT after 8s - returning quick response')
       console.error('Timeout error:', timeoutError)
 
       // Return intelligent fallback using conversation context (not generic!)

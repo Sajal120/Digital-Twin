@@ -271,10 +271,10 @@ export class OmniChannelManager {
     }
 
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
-    // For phone: Add timeout wrapper (3s for fast response)
+    // For phone: Add timeout wrapper (4s for better success rate)
     try {
       console.log('🤖 Using MCP server for intelligent response with RAG + database')
-      const mcpTimeout = additionalContext.phoneCall ? 3000 : 10000
+      const mcpTimeout = additionalContext.phoneCall ? 4000 : 10000
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -451,6 +451,7 @@ export class OmniChannelManager {
    */
   private async callDirectGroq(userInput: string, context: any): Promise<string> {
     console.log('🚀 DIRECT GROQ: Starting fast AI call...')
+    console.log('📝 Question:', userInput)
 
     if (!process.env.GROQ_API_KEY) {
       console.error('❌ GROQ_API_KEY not set!')
@@ -460,35 +461,57 @@ export class OmniChannelManager {
     const Groq = require('groq-sdk')
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-    const systemPrompt = `PHONE: Be natural and brief (15-20 words). Answer directly.
+    const systemPrompt = `You are Sajal Basnet answering a phone call. Be SPECIFIC and DIRECT.
 
-YOU ARE SAJAL BASNET - Software Developer:
-• NOW: Kimpton (full-stack, React/Python)
-• PAST: Aubot (software dev), edgedVR (VR dev)  
-• DEGREE: Masters, Swinburne University, May 2024, GPA 3.688
-• TECH: React, Python, JavaScript, Node.js, AWS, Terraform
-• INTERESTS: AI, machine learning, security
-• LOCATION: Sydney (from Nepal)
+YOUR INFORMATION:
+• CURRENT JOB: Full-stack Software Developer at Kimpton (React, Python)
+• PAST EXPERIENCE: 
+  - Aubot: Software Development Intern
+  - edgedVR: VR Developer Intern
+• EDUCATION: Masters in Software Development, Swinburne University, May 2024, GPA 3.688
+• TECHNICAL SKILLS: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
+• INTERESTS: AI, machine learning, security, cloud architecture
+• LOCATION: Sydney, Australia (originally from Nepal)
+
+IMPORTANT RULES:
+1. Answer the SPECIFIC question asked
+2. Use REAL company/university names (Kimpton, Aubot, edgedVR, Swinburne)
+3. Keep answers to 15-25 words for phone
+4. Don't repeat yourself - check conversation history
+5. Be conversational but specific
 
 EXAMPLES:
-Q: "What do you do?" → "I'm a full-stack developer at Kimpton, working with React and Python."
-Q: "Experience?" → "I work at Kimpton. Previously interned at Aubot doing software development and edgedVR doing VR."
-Q: "Education?" → "Masters in Software Development from Swinburne, graduated May 2024."
-Q: "What are you passionate about?" → "I'm really into AI, machine learning, and security."
+Q: "What's your work experience?" → "I work at Kimpton as a full-stack developer. Previously, I interned at Aubot doing software development and at edgedVR as a VR developer."
+Q: "Tell me about yourself" → "I'm Sajal Basnet, a software developer at Kimpton. I have a Masters from Swinburne and I'm passionate about AI and security."
+Q: "What do you do?" → "I'm a full-stack developer at Kimpton, working with React and Python on web applications."
+Q: "Your education?" → "Masters in Software Development from Swinburne University, graduated May 2024 with a 3.688 GPA."`
 
-CRITICAL: Use REAL company names (Kimpton, Aubot, edgedVR, Swinburne). NO generic phrases. Answer what they asked.`
-
-    console.log('📝 Question:', userInput)
     const startTime = Date.now()
 
+    // Build conversation history to maintain context
+    const messages: any[] = [{ role: 'system', content: systemPrompt }]
+
+    // Add recent conversation history for context (last 3 turns)
+    if (context.conversationHistory && context.conversationHistory.length > 0) {
+      const recentHistory = context.conversationHistory.slice(-3)
+      for (const turn of recentHistory) {
+        messages.push({ role: 'user', content: turn.userInput })
+        messages.push({ role: 'assistant', content: turn.aiResponse })
+      }
+    }
+
+    // Add current question
+    messages.push({ role: 'user', content: userInput })
+
+    console.log(
+      `💭 Using ${messages.length - 1} messages (including ${Math.floor((messages.length - 2) / 2)} history turns)`,
+    )
+
     const completion = await groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userInput },
-      ],
+      messages,
       model: 'llama-3.1-8b-instant', // Fastest model available
-      temperature: 0.7,
-      max_tokens: 80, // Shorter for faster responses (15-20 words)
+      temperature: 0.5, // Lower for more consistent responses
+      max_tokens: 100, // Slightly higher for complete answers
     })
 
     const response = completion.choices[0]?.message?.content || 'Could you repeat that?'
@@ -696,18 +719,30 @@ Be conversational, use first person, show enthusiasm for AI and tech. Sound huma
         .replace(/\bwith (software development|technology|programming|coding)\b/gi, '')
         .trim()
 
-      // PHONE SPECIFIC: Ultra-aggressive truncation - Maximum 2 sentences, 25 words
+      // PHONE SPECIFIC: Smart truncation - Keep complete sentences, max 3 sentences or 40 words
       const sentences = cleaned.split(/\.\s+/).filter((s) => s.trim().length > 3)
-      if (sentences.length > 2) {
-        cleaned = sentences.slice(0, 2).join('. ') + '.'
+      if (sentences.length > 3) {
+        cleaned = sentences.slice(0, 3).join('. ') + '.'
       } else if (sentences.length > 0) {
         cleaned = sentences.join('. ') + (cleaned.endsWith('.') ? '' : '.')
       }
 
-      // Hard word limit: 25 words maximum
+      // Word limit: 40 words maximum (allows complete thoughts)
       const words = cleaned.split(/\s+/).filter((w) => w.length > 0)
-      if (words.length > 25) {
-        cleaned = words.slice(0, 25).join(' ') + '.'
+      if (words.length > 40) {
+        // Find last complete sentence within 40 words
+        let truncated = ''
+        let wordCount = 0
+        for (const sentence of sentences) {
+          const sentenceWords = sentence.split(/\s+/).length
+          if (wordCount + sentenceWords <= 40) {
+            truncated += sentence + '. '
+            wordCount += sentenceWords
+          } else {
+            break
+          }
+        }
+        cleaned = truncated.trim() || words.slice(0, 40).join(' ') + '.'
       }
 
       // Truncate overly long responses for natural phone conversation
