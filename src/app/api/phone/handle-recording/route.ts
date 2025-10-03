@@ -988,13 +988,14 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
     let authPassword: string
 
     // Use API Key if available (PREFERRED METHOD)
-    if (twilioApiKeySid && twilioApiKeySecret) {
+    // IMPORTANT: API Key auth uses Account SID + API Key Secret (NOT API Key SID!)
+    if (twilioApiKeySid && twilioApiKeySecret && twilioAccountSid) {
       console.log('✅ Using Twilio API Key authentication (preferred)')
-      authUsername = twilioApiKeySid
+      authUsername = twilioAccountSid // Use Account SID, NOT API Key SID!
       authPassword = twilioApiKeySecret
-      console.log('🔑 API Key SID length:', twilioApiKeySid.length, 'chars')
+      console.log('🔑 Account SID (username):', twilioAccountSid.substring(0, 5) + '...')
+      console.log('🔑 API Key SID (reference):', twilioApiKeySid.substring(0, 5) + '...')
       console.log('🔑 API Key Secret length:', twilioApiKeySecret.length, 'chars')
-      console.log('🔑 API Key SID starts with:', twilioApiKeySid.substring(0, 5))
     } else if (twilioAccountSid && twilioAuthToken) {
       console.log('✅ Using Twilio Auth Token authentication (fallback)')
       authUsername = twilioAccountSid
@@ -1009,22 +1010,91 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
 
     console.log('📥 Recording URL:', recordingUrl)
 
-    // Twilio returns recording URL without file extension
-    // We need to append .wav to get the actual audio file
-    const audioUrl = recordingUrl.endsWith('.wav') ? recordingUrl : `${recordingUrl}.wav`
-    console.log('📥 Audio URL with extension:', audioUrl)
-
     // Create authenticated URL using Basic Auth
     const authString = Buffer.from(`${authUsername}:${authPassword}`).toString('base64')
     console.log('🔐 Auth string length:', authString.length, 'chars')
 
-    const response = await fetch(audioUrl, {
-      method: 'GET',
-      headers: {
-        Authorization: `Basic ${authString}`,
-        Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
-      },
-    })
+    // Try multiple approaches to download the recording
+    let response: Response | null = null
+    let lastError: Error | null = null
+
+    // Approach 1: Try with .wav extension
+    try {
+      const wavUrl = recordingUrl.endsWith('.wav') ? recordingUrl : `${recordingUrl}.wav`
+      console.log('📥 Trying with .wav extension:', wavUrl)
+      response = await fetch(wavUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Basic ${authString}`,
+          Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
+        },
+      })
+      if (response.ok) {
+        console.log('✅ Success with .wav extension')
+      } else {
+        console.log('❌ Failed with .wav extension:', response.status)
+        throw new Error(`Failed with .wav: ${response.status}`)
+      }
+    } catch (error) {
+      console.log('⚠️ .wav approach failed, trying without extension...')
+      lastError = error as Error
+      response = null
+    }
+
+    // Approach 2: Try without extension (direct API call)
+    if (!response || !response.ok) {
+      try {
+        console.log('📥 Trying without extension:', recordingUrl)
+        response = await fetch(recordingUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Basic ${authString}`,
+            Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
+          },
+        })
+        if (response.ok) {
+          console.log('✅ Success without extension')
+        } else {
+          console.log('❌ Failed without extension:', response.status)
+          throw new Error(`Failed without extension: ${response.status}`)
+        }
+      } catch (error) {
+        console.log('⚠️ Direct approach also failed, trying .mp3...')
+        lastError = error as Error
+        response = null
+      }
+    }
+
+    // Approach 3: Try with .mp3 extension
+    if (!response || !response.ok) {
+      try {
+        const mp3Url = recordingUrl.endsWith('.mp3') ? recordingUrl : `${recordingUrl}.mp3`
+        console.log('📥 Trying with .mp3 extension:', mp3Url)
+        response = await fetch(mp3Url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Basic ${authString}`,
+            Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
+          },
+        })
+        if (response.ok) {
+          console.log('✅ Success with .mp3 extension')
+        }
+      } catch (error) {
+        lastError = error as Error
+      }
+    }
+
+    // If all approaches failed, throw error
+    if (!response || !response.ok) {
+      const status = response?.status || 'unknown'
+      const statusText = response?.statusText || 'unknown'
+      console.error('❌ All download approaches failed')
+      if (response) {
+        console.error('❌ Twilio API error response:', await response.text())
+      }
+      throw new Error(`Failed to download recording after all attempts: ${status} ${statusText}`)
+    }
 
     console.log('📊 Download response status:', response.status, response.statusText)
     console.log('📊 Content-Type:', response.headers.get('content-type'))
