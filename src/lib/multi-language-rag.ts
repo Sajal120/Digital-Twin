@@ -6,15 +6,19 @@
  * in English, Hindi, and Nepali with proper context management.
  */
 
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 import { parseLanguageDetectionResponse, safeJsonParse } from './json-utils'
 import { conversationToneManager, type ToneContext } from './conversation-tone-manager'
-import { findConversationTemplate, getTemplateResponse, getBasicResponse } from './natural-language-templates'
+import {
+  findConversationTemplate,
+  getTemplateResponse,
+  getBasicResponse,
+} from './natural-language-templates'
 import type { VectorResult } from './llm-enhanced-rag'
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+// Initialize OpenAI client (more reliable than Groq, no rate limits)
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface LanguageContext {
@@ -48,50 +52,63 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
   try {
     // Quick rule-based detection for common patterns
     const messageLower = message.toLowerCase()
-    
+
     // Hindi patterns - most common Hindi words and phrases
-    if (messageLower.includes('kaise ho') || messageLower.includes('kese ho') || 
-        messageLower.includes('bhai') || messageLower.includes('aap') ||
-        messageLower.includes('kya hai') || messageLower.includes('batao') ||
-        messageLower.includes('hindi mein') || messageLower.includes('indian language') ||
-        /\b(kuch|kaam|time|project|complete)\b/.test(messageLower)) {
+    if (
+      messageLower.includes('kaise ho') ||
+      messageLower.includes('kese ho') ||
+      messageLower.includes('bhai') ||
+      messageLower.includes('aap') ||
+      messageLower.includes('kya hai') ||
+      messageLower.includes('batao') ||
+      messageLower.includes('hindi mein') ||
+      messageLower.includes('indian language') ||
+      /\b(kuch|kaam|time|project|complete)\b/.test(messageLower)
+    ) {
       return {
         detectedLanguage: 'hi',
         confidence: 0.95,
         translatedQuery: message, // Keep original for context
         culturalContext: ['casual', 'friendly'],
         preferredResponseLanguage: 'hi',
-        needsTranslation: false
+        needsTranslation: false,
       }
     }
-    
+
     // Nepali patterns - common Nepali words and phrases
-    if (messageLower.includes('nepali') || messageLower.includes('nepalese') ||
-        messageLower.includes('kasto cha') || messageLower.includes('ke cha') ||
-        messageLower.includes('timro') || messageLower.includes('hajur') ||
-        messageLower.includes('k xa') || messageLower.includes('k cha') ||
-        messageLower.includes('thikai xa') || messageLower.includes('malai') ||
-        messageLower.includes('timilai') || messageLower.includes('nepal') || 
-        messageLower.includes('kathmandu')) {
+    if (
+      messageLower.includes('nepali') ||
+      messageLower.includes('nepalese') ||
+      messageLower.includes('kasto cha') ||
+      messageLower.includes('ke cha') ||
+      messageLower.includes('timro') ||
+      messageLower.includes('hajur') ||
+      messageLower.includes('k xa') ||
+      messageLower.includes('k cha') ||
+      messageLower.includes('thikai xa') ||
+      messageLower.includes('malai') ||
+      messageLower.includes('timilai') ||
+      messageLower.includes('nepal') ||
+      messageLower.includes('kathmandu')
+    ) {
       return {
         detectedLanguage: 'ne',
         confidence: 0.95,
         translatedQuery: message, // Keep original for context
         culturalContext: ['professional', 'nepali'],
         preferredResponseLanguage: 'ne',
-        needsTranslation: false
+        needsTranslation: false,
       }
     }
-    
+
     // Default to English
     return {
       detectedLanguage: 'en',
       confidence: 0.8,
       culturalContext: ['professional'],
       preferredResponseLanguage: 'en',
-      needsTranslation: false
+      needsTranslation: false,
     }
-    
   } catch (error) {
     console.error('Language detection failed:', error)
     return {
@@ -99,7 +116,7 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       confidence: 0.8,
       culturalContext: ['professional'],
       preferredResponseLanguage: 'en',
-      needsTranslation: false
+      needsTranslation: false,
     }
   }
 }
@@ -112,7 +129,7 @@ export async function generateMultiLanguageResponse(
   languageContext: LanguageContext,
   originalMessage: string,
   sessionId: string = 'default-session',
-  conversationHistory: any[] = []
+  conversationHistory: any[] = [],
 ): Promise<MultiLanguageRAGResult> {
   try {
     // Check for pre-built templates first for common phrases
@@ -133,22 +150,22 @@ export async function generateMultiLanguageResponse(
               ragPattern: 'template_response',
               searchResults: 0,
               crossLanguageSearch: false,
-              templateUsed: template.context
-            }
+              templateUsed: template.context,
+            },
           }
         }
       }
     }
-    
+
     // Generate contextual response
     let finalResponse = ragResult.response
     let translationUsed = false
 
     if (languageContext.detectedLanguage !== 'en' && languageContext.confidence > 0.7) {
       console.log(`🌍 Generating ${languageContext.detectedLanguage} response`)
-      
+
       let responsePrompt = ''
-      
+
       if (languageContext.detectedLanguage === 'hi') {
         responsePrompt = `You are Sajal Basnet responding naturally to a friend in Hinglish.
 
@@ -163,7 +180,6 @@ Reply in natural Hinglish:
 - Match the casual tone
 
 Response:`
-        
       } else if (languageContext.detectedLanguage === 'ne') {
         responsePrompt = `You are Sajal Basnet responding in natural Nepali.
 
@@ -178,10 +194,10 @@ Reply in natural Nepali:
 
 Response:`
       }
-      
+
       if (responsePrompt) {
-        const response = await groq.chat.completions.create({
-          model: 'llama-3.1-8b-instant',
+        const response = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
           messages: [{ role: 'user', content: responsePrompt }],
           max_tokens: 150,
           temperature: 0.7,
@@ -205,8 +221,8 @@ Response:`
         languageDetection: languageContext,
         ragPattern: ragResult.metadata?.ragPattern || 'unknown',
         searchResults: ragResult.metadata?.resultsFound || 0,
-        crossLanguageSearch: languageContext.needsTranslation || false
-      }
+        crossLanguageSearch: languageContext.needsTranslation || false,
+      },
     }
   } catch (error) {
     console.error('Multi-language response generation failed:', error)
@@ -220,8 +236,8 @@ Response:`
         languageDetection: languageContext,
         ragPattern: ragResult.metadata?.ragPattern || 'unknown',
         searchResults: ragResult.metadata?.resultsFound || 0,
-        crossLanguageSearch: false
-      }
+        crossLanguageSearch: false,
+      },
     }
   }
 }
@@ -232,11 +248,16 @@ Response:`
 export async function processMultiLanguageQuery(
   message: string,
   contextEnhanced: any,
-  sessionId: string
+  sessionId: string,
 ): Promise<{
   languageContext: LanguageContext
   selectedPattern: {
-    pattern: 'advanced_agentic' | 'multi_hop' | 'hybrid_search' | 'tool_enhanced' | 'standard_agentic'
+    pattern:
+      | 'advanced_agentic'
+      | 'multi_hop'
+      | 'hybrid_search'
+      | 'tool_enhanced'
+      | 'standard_agentic'
     searchQuery: string
     reasoning: string
   }
@@ -244,23 +265,24 @@ export async function processMultiLanguageQuery(
 }> {
   // Step 1: Detect language and context
   const languageContext = await detectLanguageContext(message)
-  console.log(`🌍 Language detected: ${languageContext.detectedLanguage} (confidence: ${languageContext.confidence})`)
+  console.log(
+    `🌍 Language detected: ${languageContext.detectedLanguage} (confidence: ${languageContext.confidence})`,
+  )
 
   // Step 2: Select appropriate RAG pattern
   const selectedPattern = {
     pattern: 'standard_agentic' as const,
     searchQuery: message,
-    reasoning: `Standard agentic RAG for ${languageContext.detectedLanguage} query`
+    reasoning: `Standard agentic RAG for ${languageContext.detectedLanguage} query`,
   }
 
-  // Step 3: Enhance query for better search  
-  const enhancedQuery = languageContext.needsTranslation ? 
-    selectedPattern.searchQuery : message
+  // Step 3: Enhance query for better search
+  const enhancedQuery = languageContext.needsTranslation ? selectedPattern.searchQuery : message
 
   return {
     languageContext,
     selectedPattern,
-    enhancedQuery
+    enhancedQuery,
   }
 }
 
@@ -270,7 +292,7 @@ export async function processMultiLanguageQuery(
 export async function applySmartFiltering(
   results: VectorResult[],
   languageContext: LanguageContext,
-  originalQuery: string
+  originalQuery: string,
 ): Promise<VectorResult[]> {
   if (results.length === 0) return results
 

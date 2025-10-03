@@ -15,12 +15,12 @@
  * - Conversation Branching and Context Switching
  */
 
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 import { parseAnalysisResponse, parseTopicsResponse, safeJsonParse } from './json-utils'
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+// Initialize OpenAI client (more reliable than Groq, no rate limits)
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface ConversationMessage {
@@ -183,7 +183,7 @@ export class ConversationMemory {
     confidence: number
     followUpTo?: string
   }> {
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return {
         entities: this.extractSimpleEntities(message),
         intent: this.classifySimpleIntent(message),
@@ -222,9 +222,9 @@ Return JSON:
 Analysis:`
 
     try {
-      const completion = await groq.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         messages: [{ role: 'user', content: analysisPrompt }],
-        model: 'llama-3.1-8b-instant',
+        model: 'gpt-3.5-turbo',
         temperature: 0.3,
         max_tokens: 300,
       })
@@ -363,7 +363,7 @@ Analysis:`
     context: ConversationContext,
     message: string,
   ): Promise<void> {
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       // Fallback topic extraction
       const simpleTopics = this.extractSimpleEntities(message)
       simpleTopics.forEach((topic) => {
@@ -394,9 +394,9 @@ Maximum 3 most important new topics.
 
 Topics:`
 
-      const completion = await groq.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         messages: [{ role: 'user', content: topicPrompt }],
-        model: 'llama-3.1-8b-instant',
+        model: 'gpt-3.5-turbo',
         temperature: 0.3,
         max_tokens: 150,
       })
@@ -404,7 +404,7 @@ Topics:`
       const responseContent = completion.choices[0]?.message?.content?.trim()
       if (responseContent) {
         const newTopics = parseTopicsResponse(responseContent)
-        
+
         newTopics.forEach((topic) => {
           if (
             !context.topicsDiscussed.some(
@@ -559,7 +559,7 @@ Topics:`
    * Conversation History Compression
    */
   private async compressConversationHistory(context: ConversationContext): Promise<void> {
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       // Simple compression: keep recent messages and important ones
       const importantMessages = context.messages
         .filter((m) => m.metadata?.confidence && m.metadata.confidence > 0.8)
@@ -591,9 +591,9 @@ Create a concise summary covering:
 
 Summary:`
 
-      const completion = await groq.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         messages: [{ role: 'user', content: compressionPrompt }],
-        model: 'llama-3.1-8b-instant',
+        model: 'gpt-3.5-turbo',
         temperature: 0.3,
         max_tokens: 300,
       })
@@ -635,7 +635,7 @@ Summary:`
     const relevantHistory = await this.getRelevantHistory(context, currentQuery)
     const currentBranch = context.conversationFlow.find((branch) => branch.isActive)
 
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       return this.enhanceQuerySimple(currentQuery, context, relevantHistory, currentBranch)
     }
 
@@ -673,9 +673,9 @@ Return JSON:
 
 Enhancement:`
 
-      const completion = await groq.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         messages: [{ role: 'user', content: contextPrompt }],
-        model: 'llama-3.1-8b-instant',
+        model: 'gpt-3.5-turbo',
         temperature: 0.3,
         max_tokens: 400,
       })
@@ -799,7 +799,7 @@ Enhancement:`
       return context.contextSummary
     }
 
-    if (!process.env.GROQ_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       const topicsSummary = `Topics discussed: ${context.topicsDiscussed.slice(-5).join(', ')}`
       const entitiesSummary = `Key entities: ${Array.from(context.entitiesTracked.keys()).slice(-5).join(', ')}`
       return `${topicsSummary}\n${entitiesSummary}`
@@ -834,9 +834,9 @@ Provide a detailed 3-4 sentence summary focusing on:
 
 Summary:`
 
-      const completion = await groq.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         messages: [{ role: 'user', content: summaryPrompt }],
-        model: 'llama-3.1-8b-instant',
+        model: 'gpt-3.5-turbo',
         temperature: 0.4,
         max_tokens: 250,
       })

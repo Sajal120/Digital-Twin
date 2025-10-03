@@ -634,59 +634,33 @@ async function generateEnhancedPortfolioResponse(
     }
 
     // Initialize conversation context and get enhanced query
-    // For phone: skip Groq enhancement (rate limited + slow)
-    let contextEnhanced: any
+    // Now using OpenAI for all processing (faster, no rate limits)
+    console.log(
+      phoneOptimized
+        ? '📞 Phone mode: Using OpenAI for fast enhancement'
+        : '📝 Processing with enhanced conversation context...',
+    )
 
-    if (phoneOptimized) {
-      console.log('📞 Phone mode: Skipping context enhancement (too slow)')
-      contextEnhanced = {
-        enhancedQuery: message,
-        isFollowUp: false,
-        followUpType: null,
-        relatedEntities: [],
-        topicsDiscussed: [],
-        requiresContext: false,
-      }
-    } else {
-      console.log('📝 Processing with enhanced conversation context...')
-      const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
-        interviewType: interviewType || 'general',
-      })
+    const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
+      interviewType: interviewType || 'general',
+    })
 
-      contextEnhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
-      console.log(
-        `💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`,
-      )
-      console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
-    }
+    const contextEnhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
+    console.log(`💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
+    console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
 
-    // Multi-language processing
-    // For phone: skip (uses Groq - rate limited)
-    let multiLanguageResult: any
+    // Multi-language processing (using OpenAI)
+    console.log(
+      phoneOptimized
+        ? '📞 Phone mode: Using OpenAI for fast analysis'
+        : '🌍 Processing multi-language query...',
+    )
 
-    if (phoneOptimized) {
-      console.log('📞 Phone mode: Skipping multi-language analysis (too slow)')
-      multiLanguageResult = {
-        enhancedQuery: message,
-        languageContext: {
-          detectedLanguage: 'en',
-          confidence: 1.0,
-        },
-        selectedPattern: {
-          pattern: 'standard_agentic',
-          searchQuery: message,
-          reasoning: 'Phone fast mode',
-        },
-      }
-    } else {
-      console.log('🌍 Processing multi-language query...')
-      multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
-      console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
-      console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
-      console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
-    }
+    const multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
 
-    // Create vector search function with smart filtering
+    console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
+    console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
+    console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`) // Create vector search function with smart filtering
     const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {
       try {
         console.log(`🔎 Vector search: "${query}"`)
@@ -721,11 +695,12 @@ async function generateEnhancedPortfolioResponse(
     }
 
     // Use the selected RAG pattern from multi-language analysis
-    // For phone: use simpler, faster pattern
+    // For phone: prefer standard_agentic (fast + intelligent with OpenAI)
     let ragPattern = multiLanguageResult.selectedPattern.pattern
-    if (phoneOptimized && (ragPattern === 'advanced_agentic' || ragPattern === 'multi_hop')) {
-      ragPattern = 'standard_agentic' // Simpler agentic for phone
-      console.log('📞 Phone optimization: Simplified RAG pattern')
+    if (phoneOptimized) {
+      // Use standard_agentic for phone - perfect balance of speed + intelligence
+      ragPattern = 'standard_agentic'
+      console.log('📞 Phone: Using standard_agentic with OpenAI (fast + smart)')
     }
 
     const searchQuery = multiLanguageResult.selectedPattern.searchQuery
