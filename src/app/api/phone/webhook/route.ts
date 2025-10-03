@@ -122,11 +122,12 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
           text: greeting,
           model_id: 'eleven_turbo_v2_5',
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
+            stability: 0.6,
+            similarity_boost: 0.85,
+            style: 0.2,
             use_speaker_boost: true,
           },
+          output_format: 'mp3_44100_128', // Higher quality for better volume
         }),
         signal: controller.signal,
       },

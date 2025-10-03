@@ -302,53 +302,30 @@ export class OmniChannelManager {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('🚨 MCP FAILED:', errorMessage)
       console.error('🚨 MCP Error details:', error)
-      console.warn('⚠️ Falling back to direct Groq (MCP failed)')
+      console.error('🚨 MCP Stack:', error instanceof Error ? error.stack : 'No stack')
+      console.error('🚨 User input was:', userInput)
+      console.warn('⚠️ MCP failed - using Chat API (same RAG system as web chat)...')
     }
 
-    // Fallback: For phone use DIRECT Groq (fast), for others use chat API
-    if (additionalContext.phoneCall) {
-      console.log('📞 Phone fallback: Using DIRECT Groq API (ultra-fast)')
-      console.log('📝 Groq input:', userInput)
-      try {
-        // Add 4s timeout for Groq (gives it time to respond)
-        const groqResponse = await Promise.race([
-          this.callDirectGroq(userInput, enhancedContext),
-          new Promise<string>((_, reject) =>
-            setTimeout(() => reject(new Error('Groq timeout after 4s')), 4000),
-          ),
-        ])
+    // Use Chat API - SAME architecture as web chat (no special phone fallback)
+    // This gives us the full RAG system: multi-hop, agentic, hybrid search, tool use
+    console.log('🌐 Using Chat API (full RAG system like web chat)')
+    console.log('📝 Question:', userInput)
+    console.log('🎯 Phone optimized: Brief responses, natural conversation')
 
-        if (!groqResponse || groqResponse.length < 10) {
-          console.error('❌ Groq returned empty/invalid response:', groqResponse)
-          throw new Error('Groq response too short or empty')
-        }
-
-        console.log('✅ Groq SUCCESS - Response length:', groqResponse.length)
-        console.log('📝 Groq response preview:', groqResponse.substring(0, 100))
-        return {
-          response: groqResponse,
-          source: 'groq_direct',
-          context: enhancedContext,
-          suggestions: [],
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.error('🚨 GROQ FAILED:', errorMessage)
-        console.error('🚨 Groq Error details:', error)
-        // Throw error - let phone handler deal with it
-        throw new Error('Both MCP and Groq failed: ' + errorMessage)
-      }
-    }
-
-    // For non-phone: Use chat API with timeout
     try {
-      const timeoutMs = 10000
+      const timeoutMs = additionalContext.phoneCall ? 6000 : 10000 // 6s for phone, 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
-          setTimeout(() => reject(new Error('AI response timeout')), timeoutMs),
+          setTimeout(
+            () => reject(new Error('Chat API timeout after ' + timeoutMs + 'ms')),
+            timeoutMs,
+          ),
         ),
       ])
+
+      console.log('✅ Chat API SUCCESS:', chatResponse.response.substring(0, 100))
       return {
         response: chatResponse.response,
         source: 'chat_unified',
@@ -356,7 +333,7 @@ export class OmniChannelManager {
         suggestions: chatResponse.suggestions || [],
       }
     } catch (error) {
-      console.error('❌ AI response timed out or failed')
+      console.error('❌ Chat API also failed')
       throw new Error(
         'AI generation failed: ' + (error instanceof Error ? error.message : 'Unknown error'),
       )
@@ -471,72 +448,6 @@ export class OmniChannelManager {
   /**
    * Direct Groq API call for phone (ultra-fast, no middleware)
    */
-  private async callDirectGroq(userInput: string, context: any): Promise<string> {
-    console.log('🚀 DIRECT GROQ: Starting fast AI call...')
-    console.log('📝 Question:', userInput)
-
-    if (!process.env.GROQ_API_KEY) {
-      console.error('❌ GROQ_API_KEY not set!')
-      throw new Error('GROQ_API_KEY not configured')
-    }
-
-    const Groq = require('groq-sdk')
-    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-
-    const systemPrompt = `You are Sajal Basnet on a phone call. Answer ONLY what's asked. Be specific.
-
-CORRECT INFORMATION:
-• CURRENT: Assistant Bar Manager at Kimpton Margot Hotel (Oracle Micros POS, Deputy systems)
-• RECENT: Software Developer Intern at Aubot (Dec 2024-Mar 2025, Python/Java, 15K+ users)
-• PAST: VR Developer at edgedVR (2022-2023, JavaScript, cross-platform)
-• EDUCATION: Masters in Software Development, Swinburne University, May 2024, GPA 3.688
-• SKILLS: React, Python, JavaScript, Node.js, AWS, Terraform
-• INTERESTS: AI, machine learning, security, full-stack development
-• LOCATION: Sydney, Australia
-
-PHONE RULES:
-1. Answer ONLY what they asked (don't give everything)
-2. Keep responses 20-35 words (natural phone conversation)
-3. Check conversation history - don't repeat
-4. Be conversational and specific
-5. If unsure about details, acknowledge it
-
-IMPORTANT: Prefer using the conversation context/history provided. These are just fallback facts.`
-
-    const startTime = Date.now()
-
-    // Build conversation history to maintain context
-    const messages: any[] = [{ role: 'system', content: systemPrompt }]
-
-    // Add recent conversation history for context (last 3 turns)
-    if (context.conversationHistory && context.conversationHistory.length > 0) {
-      const recentHistory = context.conversationHistory.slice(-3)
-      for (const turn of recentHistory) {
-        messages.push({ role: 'user', content: turn.userInput })
-        messages.push({ role: 'assistant', content: turn.aiResponse })
-      }
-    }
-
-    // Add current question
-    messages.push({ role: 'user', content: userInput })
-
-    console.log(
-      `💭 Using ${messages.length - 1} messages (including ${Math.floor((messages.length - 2) / 2)} history turns)`,
-    )
-
-    const completion = await groq.chat.completions.create({
-      messages,
-      model: 'llama-3.1-8b-instant', // Fastest model available
-      temperature: 0.5, // Lower for more consistent responses
-      max_tokens: 100, // Slightly higher for complete answers
-    })
-
-    const response = completion.choices[0]?.message?.content || 'Could you repeat that?'
-    const duration = Date.now() - startTime
-    console.log(`✅ DIRECT GROQ SUCCESS in ${duration}ms:`, response.substring(0, 100))
-
-    return response
-  }
 
   /**
    * Call MCP server with unified context

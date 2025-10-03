@@ -760,11 +760,12 @@ export async function POST(request: NextRequest) {
                 text: fullResponse,
                 model_id: 'eleven_turbo_v2_5', // Fastest model
                 voice_settings: {
-                  stability: 0.5,
-                  similarity_boost: 0.75,
-                  style: 0.0,
+                  stability: 0.65,
+                  similarity_boost: 0.85,
+                  style: 0.2,
                   use_speaker_boost: true,
                 },
+                output_format: 'mp3_44100_128', // Higher bitrate for better volume
               }),
               signal: controller.signal,
             },
