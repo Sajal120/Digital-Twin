@@ -271,10 +271,10 @@ export class OmniChannelManager {
     }
 
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
-    // For phone: Add timeout wrapper (3s) to prevent Twilio Error 11205
+    // For phone: Add timeout wrapper (5s accounts for network latency)
     try {
       console.log('🤖 Using MCP server for intelligent response with RAG + database')
-      const mcpTimeout = additionalContext.phoneCall ? 3000 : 10000
+      const mcpTimeout = additionalContext.phoneCall ? 5000 : 10000
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -283,6 +283,7 @@ export class OmniChannelManager {
       ])) as { success: boolean; response: string; suggestions?: string[] }
 
       if (mcpResponse.success) {
+        console.log('✅ MCP success - using intelligent RAG response')
         return {
           response: mcpResponse.response,
           source: 'mcp_unified',
@@ -292,12 +293,36 @@ export class OmniChannelManager {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.warn('⚠️ MCP server failed or timeout, trying chat API:', errorMessage)
+      console.warn('⚠️ MCP server failed or timeout, falling back to direct Groq:', errorMessage)
     }
 
-    // Fallback to enhanced chat API with timeout for phone calls
+    // Fallback: For phone use DIRECT Groq (fast), for others use chat API
+    if (additionalContext.phoneCall) {
+      console.log('📞 Phone fallback: Using DIRECT Groq API (ultra-fast)')
+      try {
+        // Add 4s timeout for Groq (should be much faster)
+        const groqResponse = await Promise.race([
+          this.callDirectGroq(userInput, enhancedContext),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('Groq timeout after 4s')), 4000),
+          ),
+        ])
+        return {
+          response: groqResponse,
+          source: 'groq_direct',
+          context: enhancedContext,
+          suggestions: [],
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error('❌ Direct Groq failed:', errorMessage)
+        throw new Error('AI generation failed: ' + errorMessage)
+      }
+    }
+
+    // For non-phone: Use chat API with timeout
     try {
-      const timeoutMs = additionalContext.phoneCall ? 3500 : 10000 // 3.5s for phone (fast with quality), 10s for others
+      const timeoutMs = 10000
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -312,7 +337,6 @@ export class OmniChannelManager {
       }
     } catch (error) {
       console.error('❌ AI response timed out or failed')
-      // Throw error to trigger proper fallback in calling code
       throw new Error(
         'AI generation failed: ' + (error instanceof Error ? error.message : 'Unknown error'),
       )
@@ -420,6 +444,56 @@ export class OmniChannelManager {
 
     console.log('❌ No quick answer found - using AI')
     return null // Use AI for other questions
+  }
+
+  /**
+   * Direct Groq API call for phone (ultra-fast, no middleware)
+   */
+  private async callDirectGroq(userInput: string, context: any): Promise<string> {
+    console.log('🚀 DIRECT GROQ: Starting fast AI call...')
+
+    if (!process.env.GROQ_API_KEY) {
+      console.error('❌ GROQ_API_KEY not set!')
+      throw new Error('GROQ_API_KEY not configured')
+    }
+
+    const Groq = require('groq-sdk')
+    const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+
+    const systemPrompt = `PHONE CALL - Be conversational and concise (15-25 words max). Answer the ACTUAL question.
+
+YOU ARE SAJAL BASNET:
+- CURRENT: Software Developer at Kimpton
+- PAST: Software dev intern at Aubot, VR dev intern at edgedVR
+- EDUCATION: Masters in Software Development, Swinburne University, May 2024, GPA 3.688
+- SKILLS: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
+- LOCATION: Sydney, Australia (from Nepal)
+
+ANSWER EXAMPLES:
+Q: "What do you do?" → "I'm a software developer at Kimpton, working with React and Python on full-stack applications."
+Q: "Tell me about your experience" → "I work at Kimpton doing full-stack development. I previously interned at Aubot and edgedVR."
+Q: "What's your education?" → "I have a Masters in Software Development from Swinburne University, graduated May 2024."
+
+BE SPECIFIC. USE REAL NAMES. ANSWER THE ACTUAL QUESTION.`
+
+    console.log('📝 Question:', userInput)
+    const startTime = Date.now()
+
+    const completion = await groq.chat.completions.create({
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userInput },
+      ],
+      model: 'mixtral-8x7b-32768',
+      temperature: 0.7,
+      max_tokens: 100,
+    })
+
+    const response = completion.choices[0]?.message?.content || 'Could you repeat that?'
+    const duration = Date.now() - startTime
+    console.log(`✅ DIRECT GROQ SUCCESS in ${duration}ms:`, response.substring(0, 100))
+
+    return response
   }
 
   /**
