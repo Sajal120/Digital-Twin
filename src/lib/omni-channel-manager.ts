@@ -333,20 +333,26 @@ export class OmniChannelManager {
    */
   private async callChatAPI(userInput: string, context: any) {
     // Build conversation history with system instruction for accurate identity
+    // Phone calls need special brief instructions
+    const isPhoneCall =
+      context.currentChannel === 'phone' ||
+      context.phoneCall ||
+      context.responseStyle === 'concise_phone'
+
     const conversationHistory = [
       {
         role: 'system',
-        content: `You are Sajal Basnet. ACCURATE INFO ONLY (NO EXAGGERATION):
-- Title: Full-Stack Software Developer (NOT senior, NOT 5+ years)
-- Education: Masters in Software Development from Swinburne University (GPA 3.688/4.0, Top 15% - Golden Key International Honour Society)
-- Location: Auburn, Sydney, NSW, Australia (originally from Nepal)
-- Current Focus: AI, Development, Security, Support
-- Recent Work: Software Developer Intern at Aubot (12/2024-03/2025), VR Developer at edgedVR (09/2021-03/2022)
-- Current Project: Digital Twin Portfolio app with chat and voice features
-- Tech Stack: React, Python, JavaScript, PHP, Java, C#, Node.js, AWS, Terraform, MySQL, MongoDB, PostgreSQL
-- Languages: English (Proficient), Nepali (Native), Hindi (Basic)
+        content: `You are Sajal Basnet. ${isPhoneCall ? 'PHONE CALL MODE - Keep responses under 40 words, 2-3 sentences MAX. Answer directly and specifically.' : ''}
 
-Speak naturally in FIRST PERSON. Vary your responses. Be conversational and authentic.`,
+ACCURATE INFO ONLY (NO EXAGGERATION):
+- Title: Full-Stack Software Developer (NOT senior, NOT 5+ years)
+- Education: Masters in Software Development from Swinburne University (GPA 3.688/4.0, Top 15%)
+- Location: Auburn, Sydney, Australia (from Nepal)
+- Recent Work: Software Developer Intern at Aubot (Dec 2024-Mar 2025)
+- Tech: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
+- Languages: English, Nepali, Hindi
+
+${isPhoneCall ? 'PHONE RULES: Answer ONLY what was asked. Be specific. No long stories. 2-3 sentences max.' : 'Speak naturally in FIRST PERSON. Be conversational.'}`,
       },
       ...(context.conversationHistory || []),
     ]
@@ -362,8 +368,9 @@ Speak naturally in FIRST PERSON. Vary your responses. Be conversational and auth
         enhancedMode: true,
         omniChannelContext: context,
         conversationHistory: conversationHistory,
-        systemInstruction:
-          'Use accurate profile info. NO EXAGGERATION. Speak in first person naturally.',
+        systemInstruction: isPhoneCall
+          ? 'PHONE CALL: Answer in 2-3 sentences max (under 40 words). Be direct and specific. No long explanations.'
+          : 'Use accurate profile info. NO EXAGGERATION. Speak in first person naturally.',
       }),
     })
 
@@ -428,6 +435,18 @@ Speak naturally in FIRST PERSON. Vary your responses. Be conversational and auth
         .replace(/,\s*,/g, ',') // Remove duplicate commas
         .replace(/\s+/g, ' ') // Remove extra spaces
         .trim()
+
+      // PHONE SPECIFIC: Force maximum 3 sentences (about 40-50 words)
+      const sentences = cleaned.split(/\.\s+/)
+      if (sentences.length > 3) {
+        cleaned = sentences.slice(0, 3).join('. ') + '.'
+      }
+
+      // If still too long, truncate at word boundary
+      const words = cleaned.split(/\s+/)
+      if (words.length > 50) {
+        cleaned = words.slice(0, 50).join(' ') + '...'
+      }
 
       // Truncate overly long responses for natural phone conversation
       if (cleaned.length > 300) {

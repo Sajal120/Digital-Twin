@@ -532,13 +532,13 @@ export async function POST(request: NextRequest) {
         // Use actual user input if audio was processed, otherwise use contextual prompt
         const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
 
-        // IMPORTANT: Only use greeting on turn 0, otherwise respond to what was said
+        // IMPORTANT: Phone responses must be BRIEF and DIRECT
         const enhancedInput =
           turnCount === 0
-            ? `This is the first phone call. Introduce yourself briefly mentioning your Masters from Swinburne. ${inputToProcess}`
+            ? `First phone call. Say: "Hello! I'm Sajal Basnet, software developer with a Masters from Swinburne. What would you like to know?" Keep it under 20 words.`
             : audioProcessingSuccess
-              ? `The caller just said: "${userMessage}". Respond directly and naturally to their question or comment. Don't repeat your introduction.`
-              : `Continue the conversation naturally based on context. Don't repeat your introduction.`
+              ? `PHONE CALL - Caller asked: "${userMessage}". Answer their EXACT question in 2-3 sentences MAX. Be specific and concise. No long explanations.`
+              : `Continue briefly. 2-3 sentences only.`
 
         console.log(
           `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
@@ -553,6 +553,9 @@ export async function POST(request: NextRequest) {
             isFirstTurn: turnCount === 0,
             hasActualSpeech: audioProcessingSuccess,
             userActualWords: audioProcessingSuccess ? userMessage : null,
+            phoneCall: true,
+            maxLength: 'brief',
+            responseStyle: 'concise_phone',
             phoneSpecificContext: {
               callDuration: duration,
               audioProcessed: audioProcessingSuccess,
@@ -850,7 +853,7 @@ export async function POST(request: NextRequest) {
     timeout="3"
     finishOnKey="#"
     transcribe="false"
-    maxLength="30"
+    maxLength="20"
     playBeep="false"
   />
 </Response>`
@@ -875,7 +878,7 @@ export async function POST(request: NextRequest) {
     timeout="3"
     finishOnKey="#"
     transcribe="false"
-    maxLength="30"
+    maxLength="20"
     playBeep="false"
   />
 </Response>`
@@ -967,16 +970,52 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
   }
 }
 
-// Transcribe audio using OpenAI Whisper
+// Transcribe audio using Groq Whisper (much faster than OpenAI!)
 async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
   try {
-    console.log('🔑 Checking OpenAI API key...')
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ OpenAI API key missing from environment')
-      throw new Error('OpenAI API key not configured')
+    console.log('� Using Groq Whisper (10x faster than OpenAI)...')
+
+    // Try Groq first (MUCH faster - typically 500ms vs 3-5s)
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const formData = new FormData()
+        const uint8Array = new Uint8Array(audioBuffer)
+        const audioBlob = new Blob([uint8Array], { type: 'audio/wav' })
+        formData.append('file', audioBlob, 'recording.wav')
+        formData.append('model', 'whisper-large-v3')
+        formData.append('language', 'en')
+        formData.append('response_format', 'json')
+
+        console.log('📤 Sending to Groq Whisper API (fast)...')
+        const groqResponse = (await Promise.race([
+          fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            },
+            body: formData,
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 5000)),
+        ])) as Response
+
+        if (groqResponse.ok) {
+          const result = await groqResponse.json()
+          console.log('✅ Groq transcription successful (fast!):', result.text?.substring(0, 50))
+          return result.text || 'Could not transcribe'
+        }
+      } catch (groqError) {
+        console.warn('⚠️ Groq failed, falling back to OpenAI:', groqError)
+      }
     }
 
-    console.log('✅ OpenAI API key found, creating transcription request...')
+    // Fallback to OpenAI Whisper if Groq fails
+    console.log('🔑 Checking OpenAI API key...')
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ No transcription API available')
+      throw new Error('No transcription API key configured')
+    }
+
+    console.log('✅ Using OpenAI Whisper fallback...')
     const formData = new FormData()
     const uint8Array = new Uint8Array(audioBuffer)
     const audioBlob = new Blob([uint8Array], { type: 'audio/wav' })
