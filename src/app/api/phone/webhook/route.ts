@@ -160,11 +160,11 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="5"
+    timeout="10"
     finishOnKey="#"
     transcribe="true"
     transcribeCallback="/api/phone/handle-transcription"
-    maxLength="60"
+    maxLength="120"
     playBeep="false"
   />
 </Response>`
@@ -184,10 +184,11 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
-    timeout="3"
+    timeout="10"
     finishOnKey="#"
-    transcribe="false"
-    maxLength="30"
+    transcribe="true"
+    transcribeCallback="/api/phone/handle-transcription"
+    maxLength="120"
     playBeep="false"
   />
 </Response>`
