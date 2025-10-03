@@ -45,10 +45,10 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="hi-IN, en-US"
+    language="en-IN"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about, study, university, swinburne, work, experience"
   >
     <Pause length="1"/>
   </Gather>
@@ -230,10 +230,10 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="hi-IN, en-US"
+    language="en-IN"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about, study, university, swinburne, work, experience"
   >
     <Pause length="1"/>
   </Gather>
@@ -262,10 +262,10 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="hi-IN, en-US"
+    language="en-IN"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about, study, university, swinburne, work, experience"
   >
     <Pause length="1"/>
   </Gather>
