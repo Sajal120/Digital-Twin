@@ -878,17 +878,17 @@ export async function POST(request: NextRequest) {
       }
     })()
 
-    // Race between processing and timeout (12s: allows Chat API full RAG pipeline)
+    // Race between processing and timeout (15s: MCP needs up to 12s to complete)
     try {
       const result = await Promise.race([
         processingPromise,
         new Promise<NextResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('Processing timeout after 12s')), 12000),
+          setTimeout(() => reject(new Error('Processing timeout after 15s')), 15000),
         ),
       ])
       return result
     } catch (timeoutError) {
-      console.error('⏱️ TIMEOUT after 12s - Chat API took too long')
+      console.error('⏱️ TIMEOUT after 15s - MCP took too long')
       console.error('Timeout error:', timeoutError)
 
       // Return intelligent fallback using conversation context (not generic!)
