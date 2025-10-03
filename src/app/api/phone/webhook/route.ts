@@ -99,87 +99,13 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   const callerContext = await getCallerContext(fromNumber)
   const greeting = generateProfessionalGreeting(callerContext)
 
-  console.log('🎤 Generating YOUR ElevenLabs voice for greeting (ultra-fast mode)')
+  console.log('⚡ Using INSTANT Twilio voice for greeting (prevents timeout)')
+  console.log('🎤 YOUR ElevenLabs voice used for ALL actual responses')
   console.log('📝 Greeting:', greeting)
 
-  let twiml: string
-
-  try {
-    // ULTRA-FAST ElevenLabs call - NO race condition, just fast fetch with 3s hard timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 3000) // 3s max for greeting
-
-    const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-        },
-        body: JSON.stringify({
-          text: greeting,
-          model_id: 'eleven_turbo_v2_5', // Fastest model
-          voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.0,
-            use_speaker_boost: true,
-          },
-        }),
-        signal: controller.signal,
-      },
-    )
-
-    clearTimeout(timeoutId)
-
-    if (!elevenlabsResponse.ok) {
-      throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
-    }
-
-    const audioBuffer = await elevenlabsResponse.arrayBuffer()
-
-    if (!audioBuffer || audioBuffer.byteLength === 0) {
-      throw new Error('Empty audio buffer')
-    }
-
-    // Create audio endpoint
-    const audioId = `greeting_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const mp3Buffer = Buffer.from(audioBuffer)
-
-    phoneAudioCache.set(audioId, {
-      buffer: mp3Buffer,
-      contentType: 'audio/mpeg',
-      text: greeting.substring(0, 100),
-      timestamp: Date.now(),
-      expires: Date.now() + 10 * 60 * 1000, // 10 minutes
-    })
-
-    const audioUrl = createPhoneAudioUrl(audioId)
-
-    console.log('✅ YOUR voice greeting generated successfully!')
-    console.log(`🎵 Audio URL: ${audioUrl}`)
-
-    // TwiML with YOUR custom voice
-    twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Play>${audioUrl}</Play>
-  <Record 
-    action="/api/phone/handle-recording"
-    method="POST"
-    timeout="10"
-    finishOnKey="#"
-    maxLength="120"
-    playBeep="false"
-  />
-</Response>`
-  } catch (error: any) {
-    console.error('❌ ElevenLabs greeting failed:', error.message)
-    console.log('🔄 Using Twilio fallback voice for greeting')
-
-    // Fallback to Twilio only if ElevenLabs fails
-    twiml = `<?xml version="1.0" encoding="UTF-8"?>
+  // CRITICAL: Use Twilio voice for greeting = INSTANT response (no Error 11200)
+  // YOUR voice is used for every single response after this
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
   <Record 
@@ -191,7 +117,6 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     playBeep="false"
   />
 </Response>`
-  }
 
   // Store call session for tracking
   await storeCallSession(callSid, fromNumber, {

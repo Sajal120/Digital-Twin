@@ -742,33 +742,34 @@ export async function POST(request: NextRequest) {
 
           const fullResponse = `${aiResponse.response}`
 
-          // Call ElevenLabs API - ULTRA FAST mode
-          const elevenlabsResponse = (await Promise.race([
-            fetch(
-              `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-              {
-                method: 'POST',
-                headers: {
-                  Accept: 'audio/mpeg',
-                  'Content-Type': 'application/json',
-                  'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-                },
-                body: JSON.stringify({
-                  text: fullResponse,
-                  model_id: 'eleven_turbo_v2_5', // Fastest model
-                  voice_settings: {
-                    stability: 0.5,
-                    similarity_boost: 0.75,
-                    style: 0.0,
-                    use_speaker_boost: true,
-                  },
-                }),
+          // Call ElevenLabs API with AbortController - ULTRA FAST (2s max)
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 2000) // 2s hard limit
+
+          const elevenlabsResponse = await fetch(
+            `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+            {
+              method: 'POST',
+              headers: {
+                Accept: 'audio/mpeg',
+                'Content-Type': 'application/json',
+                'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
               },
-            ),
-            new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('ElevenLabs timeout')), 2500),
-            ),
-          ])) as Response
+              body: JSON.stringify({
+                text: fullResponse,
+                model_id: 'eleven_turbo_v2_5', // Fastest model
+                voice_settings: {
+                  stability: 0.5,
+                  similarity_boost: 0.75,
+                  style: 0.0,
+                  use_speaker_boost: true,
+                },
+              }),
+              signal: controller.signal,
+            },
+          )
+
+          clearTimeout(timeoutId)
 
           if (!elevenlabsResponse.ok) {
             console.error(`❌ ElevenLabs API error: ${elevenlabsResponse.status}`)
