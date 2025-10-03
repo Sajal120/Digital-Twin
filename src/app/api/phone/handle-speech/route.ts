@@ -176,18 +176,41 @@ export async function POST(request: NextRequest) {
 
       const audioBuffer = await elevenlabsResponse.arrayBuffer()
 
+      if (!audioBuffer || audioBuffer.byteLength === 0) {
+        throw new Error('Empty audio buffer from ElevenLabs')
+      }
+
       // Cache audio
       const audioId = `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const audioBufferObj = Buffer.from(audioBuffer)
+
+      console.log('📁 Caching audio:', {
+        audioId,
+        bufferSize: audioBufferObj.length,
+        textPreview: aiResponse.response.substring(0, 50),
+      })
+
       phoneAudioCache.set(audioId, {
-        buffer: Buffer.from(audioBuffer),
+        buffer: audioBufferObj,
         contentType: 'audio/mpeg',
         text: aiResponse.response.substring(0, 100),
         timestamp: Date.now(),
-        expires: Date.now() + 10 * 60 * 1000,
+        expires: Date.now() + 10 * 60 * 1000, // 10 minutes
       })
+
+      // Verify it was cached
+      const cached = phoneAudioCache.get(audioId)
+      if (!cached) {
+        console.error('❌ Failed to cache audio!')
+        throw new Error('Audio caching failed')
+      }
+
+      console.log('✅ Audio cached successfully:', audioId)
+      console.log('📊 Audio size:', audioBufferObj.length, 'bytes')
 
       const audioUrl = createPhoneAudioUrl(audioId)
       console.log('✅ YOUR voice audio ready!')
+      console.log('🔗 Audio URL:', audioUrl)
 
       const duration = Date.now() - startTime
       console.log(`✅ Total time: ${duration}ms`)
