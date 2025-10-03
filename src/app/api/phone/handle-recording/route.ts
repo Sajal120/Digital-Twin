@@ -522,9 +522,9 @@ export async function POST(request: NextRequest) {
 
     let aiResponse: any
 
-    // ALWAYS USE OMNI-CHANNEL - Retry with exponential backoff if needed
+    // ALWAYS USE OMNI-CHANNEL - Single attempt for phone (speed priority)
     let retryCount = 0
-    const maxRetries = 3
+    const maxRetries = 1 // Phone needs speed, not retries
     let lastError: any = null
 
     while (retryCount < maxRetries) {
@@ -532,13 +532,13 @@ export async function POST(request: NextRequest) {
         // Use actual user input if audio was processed, otherwise use contextual prompt
         const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
 
-        // IMPORTANT: Phone responses must be BRIEF and DIRECT
+        // IMPORTANT: Ultra-direct phone responses
         const enhancedInput =
           turnCount === 0
-            ? `First phone call. Say: "Hello! I'm Sajal Basnet, software developer with a Masters from Swinburne. What would you like to know?" Keep it under 20 words.`
+            ? `Hi, I'm Sajal, software developer with a Masters from Swinburne. How can I help?`
             : audioProcessingSuccess
-              ? `PHONE CALL - Caller asked: "${userMessage}". Answer their EXACT question in 2-3 sentences MAX. Be specific and concise. No long explanations.`
-              : `Continue briefly. 2-3 sentences only.`
+              ? userMessage // Just the question, no extra instructions
+              : `Continue conversation`
 
         console.log(
           `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
@@ -548,19 +548,9 @@ export async function POST(request: NextRequest) {
           callSid,
           enhancedInput,
           {
-            conversationFocus,
             currentTurn: turnCount,
-            isFirstTurn: turnCount === 0,
-            hasActualSpeech: audioProcessingSuccess,
-            userActualWords: audioProcessingSuccess ? userMessage : null,
             phoneCall: true,
-            maxLength: 'brief',
-            responseStyle: 'concise_phone',
-            phoneSpecificContext: {
-              callDuration: duration,
-              audioProcessed: audioProcessingSuccess,
-              smartTopicAnalysis,
-            },
+            ultraBrief: true,
           },
         )
 
@@ -827,7 +817,7 @@ export async function POST(request: NextRequest) {
             },
           }),
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('ElevenLabs timeout')), 5000)),
       ])) as Response
 
       if (!elevenlabsResponse.ok) {
@@ -995,7 +985,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
             },
             body: formData,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 5000)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 3000)),
         ])) as Response
 
         if (groqResponse.ok) {

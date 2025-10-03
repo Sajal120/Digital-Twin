@@ -125,7 +125,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
           },
         }),
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('ElevenLabs timeout')), 5000)),
     ])) as Response
 
     if (!elevenlabsResponse.ok) {

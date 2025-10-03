@@ -369,7 +369,7 @@ ${isPhoneCall ? 'PHONE RULES: Answer ONLY what was asked. Be specific. No long s
         omniChannelContext: context,
         conversationHistory: conversationHistory,
         systemInstruction: isPhoneCall
-          ? 'PHONE CALL: Answer in 2-3 sentences max (under 40 words). Be direct and specific. No long explanations.'
+          ? 'PHONE: 1-2 sentences max. 25 words max. Answer ONLY the question. No extra details.'
           : 'Use accurate profile info. NO EXAGGERATION. Speak in first person naturally.',
       }),
     })
@@ -436,16 +436,18 @@ ${isPhoneCall ? 'PHONE RULES: Answer ONLY what was asked. Be specific. No long s
         .replace(/\s+/g, ' ') // Remove extra spaces
         .trim()
 
-      // PHONE SPECIFIC: Force maximum 3 sentences (about 40-50 words)
-      const sentences = cleaned.split(/\.\s+/)
-      if (sentences.length > 3) {
-        cleaned = sentences.slice(0, 3).join('. ') + '.'
+      // PHONE SPECIFIC: Ultra-aggressive truncation - Maximum 2 sentences, 30 words
+      const sentences = cleaned.split(/\.\s+/).filter((s) => s.trim().length > 0)
+      if (sentences.length > 2) {
+        cleaned = sentences.slice(0, 2).join('. ') + '.'
+      } else if (sentences.length > 0) {
+        cleaned = sentences.join('. ') + (cleaned.endsWith('.') ? '' : '.')
       }
 
-      // If still too long, truncate at word boundary
+      // Hard word limit: 30 words maximum
       const words = cleaned.split(/\s+/)
-      if (words.length > 50) {
-        cleaned = words.slice(0, 50).join(' ') + '...'
+      if (words.length > 30) {
+        cleaned = words.slice(0, 30).join(' ') + '.'
       }
 
       // Truncate overly long responses for natural phone conversation
