@@ -145,6 +145,7 @@ export async function formatForInterview(
   ragResults: VectorResult[],
   originalQuestion: string,
   interviewContext?: string,
+  detectedLanguage?: string,
 ): Promise<string> {
   if (!process.env.GROQ_API_KEY) {
     console.warn('Groq API key not configured, returning basic RAG results')
@@ -201,10 +202,12 @@ CRITICAL RULES:
 6. Keep response under 40 words, natural and conversational (short and human-like)
 7. Use "I" statements naturally
 8. CRITICAL: Answer in the SAME language as the question:
-   - If question is in Hindi (contains: aap, kahan, kya, padhe, batao) → Answer in Hindi
-   - If question is in Nepali (contains: timro, kun, k xa, padhe, kaha) → Answer in Nepali
-   - If question is in English → Answer in English
-9. DO NOT translate the question language - respond in the SAME language
+   ${detectedLanguage === 'hi' ? '- MUST ANSWER IN HINDI (हिंदी में जवाब दें)' : ''}
+   ${detectedLanguage === 'ne' ? '- MUST ANSWER IN NEPALI (नेपालीमा जवाफ दिनुहोस्)' : ''}
+   ${detectedLanguage === 'en' || !detectedLanguage ? '- Answer in English naturally' : ''}
+   - DO NOT translate to another language
+   - Use the SAME language throughout your entire response
+9. Keep response natural, conversational and in the detected language: ${detectedLanguage || 'en'}
 
 If the information above contains university names, degrees, or work experience - USE THEM EXACTLY in the SAME language as the question.
 
@@ -245,6 +248,7 @@ export async function enhancedRAGQuery(
   userQuestion: string,
   vectorSearchFunction: (query: string) => Promise<VectorResult[]>,
   interviewContext?: string,
+  detectedLanguage?: string,
 ): Promise<EnhancedRAGResult> {
   const startTime = Date.now()
   const metrics: Partial<RAGMetrics> = {}
@@ -269,6 +273,7 @@ export async function enhancedRAGQuery(
       vectorResults,
       userQuestion,
       interviewContext,
+      detectedLanguage,
     )
     metrics.responseFormattingTime = Date.now() - formatStart
 
@@ -369,12 +374,13 @@ export async function contextAwareRAG(
   question: string,
   vectorSearchFunction: (query: string) => Promise<VectorResult[]>,
   interviewType: InterviewContextType = 'general',
+  detectedLanguage?: string,
 ): Promise<EnhancedRAGResult> {
   const context = INTERVIEW_CONTEXTS[interviewType]
 
   console.log(`🎯 Processing for ${context.name} context`)
 
-  return enhancedRAGQuery(question, vectorSearchFunction, context.name)
+  return enhancedRAGQuery(question, vectorSearchFunction, context.name, detectedLanguage)
 }
 
 /**
@@ -402,6 +408,7 @@ export async function agenticRAG(
   vectorSearchFunction: (query: string) => Promise<VectorResult[]>,
   interviewType: InterviewContextType = 'general',
   sessionId: string = 'default-session',
+  detectedLanguage?: string,
 ): Promise<EnhancedRAGResult> {
   const startTime = Date.now()
   const queryId = `${sessionId}-${Date.now()}`
@@ -524,6 +531,7 @@ export async function agenticRAG(
           contextEnhancement.enhancedQuery,
           vectorSearchFunction,
           interviewType,
+          detectedLanguage,
         )
         break
     }
@@ -569,7 +577,12 @@ export async function agenticRAG(
   } catch (error) {
     console.error('Agentic RAG failed:', error)
     // Fallback to standard enhanced RAG
-    const fallbackResult = await contextAwareRAG(userQuestion, vectorSearchFunction, interviewType)
+    const fallbackResult = await contextAwareRAG(
+      userQuestion,
+      vectorSearchFunction,
+      interviewType,
+      detectedLanguage,
+    )
 
     // Still add to conversation memory on fallback
     conversationMemory.addMessage(sessionId, 'user', userQuestion)

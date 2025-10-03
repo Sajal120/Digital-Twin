@@ -842,6 +842,7 @@ async function generateEnhancedPortfolioResponse(
           vectorSearchFunction,
           interviewType || 'general',
           sessionId,
+          multiLanguageResult.languageContext.detectedLanguage,
         )
         result = agenticResult
         ragPatternUsed = 'standard_agentic'
