@@ -178,7 +178,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     // Create TwiML response for professional greeting with enhanced Twilio voice
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US" rate="medium" pitch="medium">${greeting}</Say>
+  <Say voice="alice" language="en-US">${greeting}</Say>
   <Record 
     action="/api/phone/handle-recording"
     method="POST"

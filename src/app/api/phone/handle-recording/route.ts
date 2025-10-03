@@ -764,6 +764,9 @@ export async function POST(request: NextRequest) {
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000),
             ),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('ElevenLabs timeout')), 6000),
+            ),
           ])) as Response
 
           if (!elevenlabsResponse.ok) {
@@ -862,23 +865,23 @@ export async function POST(request: NextRequest) {
       }
     })()
 
-    // Race between processing and timeout (8s - human-like response speed)
+    // Race between processing and timeout (15s - allow time for quality responses)
     try {
       const result = await Promise.race([
         processingPromise,
         new Promise<NextResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('Processing timeout after 8s')), 8000),
+          setTimeout(() => reject(new Error('Processing timeout after 15s')), 15000),
         ),
       ])
       return result
     } catch (timeoutError) {
-      console.error('⏱️ TIMEOUT after 8s - asking user to continue')
+      console.error('⏱️ TIMEOUT after 15s - asking user to continue')
       console.error('Timeout error:', timeoutError)
 
       // Return TwiML to continue conversation (don't throw!)
       const timeoutTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US" rate="medium">
+  <Say voice="alice" language="en-US">
     What else would you like to know?
   </Say>
   <Record 
