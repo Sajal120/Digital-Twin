@@ -634,23 +634,57 @@ async function generateEnhancedPortfolioResponse(
     }
 
     // Initialize conversation context and get enhanced query
-    console.log('📝 Processing with enhanced conversation context...')
-    const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
-      interviewType: interviewType || 'general',
-    })
+    // For phone: skip Groq enhancement (rate limited + slow)
+    let contextEnhanced: any
 
-    const contextEnhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
-    console.log(`💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
-    console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
+    if (phoneOptimized) {
+      console.log('📞 Phone mode: Skipping context enhancement (too slow)')
+      contextEnhanced = {
+        enhancedQuery: message,
+        isFollowUp: false,
+        followUpType: null,
+        relatedEntities: [],
+        topicsDiscussed: [],
+        requiresContext: false,
+      }
+    } else {
+      console.log('📝 Processing with enhanced conversation context...')
+      const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
+        interviewType: interviewType || 'general',
+      })
+
+      contextEnhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
+      console.log(
+        `💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`,
+      )
+      console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
+    }
 
     // Multi-language processing
-    console.log('🌍 Processing multi-language query...')
+    // For phone: skip (uses Groq - rate limited)
+    let multiLanguageResult: any
 
-    const multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
-
-    console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
-    console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
-    console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
+    if (phoneOptimized) {
+      console.log('📞 Phone mode: Skipping multi-language analysis (too slow)')
+      multiLanguageResult = {
+        enhancedQuery: message,
+        languageContext: {
+          detectedLanguage: 'en',
+          confidence: 1.0,
+        },
+        selectedPattern: {
+          pattern: 'standard_agentic',
+          searchQuery: message,
+          reasoning: 'Phone fast mode',
+        },
+      }
+    } else {
+      console.log('🌍 Processing multi-language query...')
+      multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
+      console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
+      console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
+      console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
+    }
 
     // Create vector search function with smart filtering
     const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {

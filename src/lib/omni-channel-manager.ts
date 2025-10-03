@@ -277,7 +277,7 @@ export class OmniChannelManager {
       console.log('📝 Question:', userInput)
       console.log('📊 Context channels:', enhancedContext.currentChannel)
 
-      const mcpTimeout = additionalContext.phoneCall ? 5000 : 10000
+      const mcpTimeout = additionalContext.phoneCall ? 4000 : 10000 // Reduced to 4s for phone
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -314,7 +314,7 @@ export class OmniChannelManager {
     console.log('🎯 Phone optimized: Brief responses, natural conversation')
 
     try {
-      const timeoutMs = additionalContext.phoneCall ? 8000 : 10000 // 8s for phone, 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 6000 : 10000 // 6s for phone (fast mode!), 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
