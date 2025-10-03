@@ -1010,6 +1010,15 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
 
     console.log('📥 Recording URL:', recordingUrl)
 
+    // Check if recording is in a regional endpoint (AU1, IE1, etc.)
+    // Australian recordings use: https://media.au1.twilio.com/...
+    let regionalUrl = recordingUrl
+    if (recordingUrl.includes('api.twilio.com')) {
+      // Try AU1 region for Australian phone numbers
+      regionalUrl = recordingUrl.replace('api.twilio.com', 'media.au1.twilio.com')
+      console.log('🌏 Detected non-regional URL, trying AU1 region:', regionalUrl)
+    }
+
     // Create authenticated URL using Basic Auth
     const authString = Buffer.from(`${authUsername}:${authPassword}`).toString('base64')
     console.log('🔐 Auth string length:', authString.length, 'chars')
@@ -1018,7 +1027,30 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
     let response: Response | null = null
     let lastError: Error | null = null
 
-    // Approach 1: Try with .wav extension
+    // Approach 1: Try regional URL with .wav extension (MOST LIKELY FOR AU)
+    try {
+      const wavUrl = regionalUrl.endsWith('.wav') ? regionalUrl : `${regionalUrl}.wav`
+      console.log('📥 Trying REGIONAL AU1 with .wav:', wavUrl)
+      response = await fetch(wavUrl, {
+        method: 'GET',
+        headers: {
+          Authorization: `Basic ${authString}`,
+          Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
+        },
+      })
+      if (response.ok) {
+        console.log('✅ Success with REGIONAL AU1 .wav extension!')
+      } else {
+        console.log('❌ Failed with REGIONAL AU1 .wav:', response.status)
+        throw new Error(`Failed with AU1 .wav: ${response.status}`)
+      }
+    } catch (error) {
+      console.log('⚠️ Regional AU1 .wav failed, trying original URL...')
+      lastError = error as Error
+      response = null
+    }
+
+    // Approach 2: Try with .wav extension on original URL
     try {
       const wavUrl = recordingUrl.endsWith('.wav') ? recordingUrl : `${recordingUrl}.wav`
       console.log('📥 Trying with .wav extension:', wavUrl)
@@ -1041,10 +1073,34 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
       response = null
     }
 
-    // Approach 2: Try without extension (direct API call)
+    // Approach 3: Try regional URL without extension
     if (!response || !response.ok) {
       try {
-        console.log('📥 Trying without extension:', recordingUrl)
+        console.log('📥 Trying REGIONAL AU1 without extension:', regionalUrl)
+        response = await fetch(regionalUrl, {
+          method: 'GET',
+          headers: {
+            Authorization: `Basic ${authString}`,
+            Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
+          },
+        })
+        if (response.ok) {
+          console.log('✅ Success with REGIONAL AU1 without extension!')
+        } else {
+          console.log('❌ Failed with REGIONAL AU1 direct:', response.status)
+          throw new Error(`Failed with AU1 direct: ${response.status}`)
+        }
+      } catch (error) {
+        console.log('⚠️ Regional AU1 direct failed, trying original with extension...')
+        lastError = error as Error
+        response = null
+      }
+    }
+
+    // Approach 4: Try without extension (direct API call on original URL)
+    if (!response || !response.ok) {
+      try {
+        console.log('📥 Trying original URL without extension:', recordingUrl)
         response = await fetch(recordingUrl, {
           method: 'GET',
           headers: {
@@ -1065,7 +1121,7 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
       }
     }
 
-    // Approach 3: Try with .mp3 extension
+    // Approach 5: Try with .mp3 extension
     if (!response || !response.ok) {
       try {
         const mp3Url = recordingUrl.endsWith('.mp3') ? recordingUrl : `${recordingUrl}.mp3`
