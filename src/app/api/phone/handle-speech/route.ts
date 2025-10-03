@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       console.log('❌ No speech detected, asking user to repeat')
       const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew-Neural" language="en-US">
+    <Say voice="Polly.Matthew-Neural" language="en-US">
     I didn't catch that. Could you please repeat your question?
   </Say>
   <Gather 
@@ -45,11 +45,10 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-US"
+    language="hi-IN, en-US"
     speechModel="phone_call"
-    enhanced="true"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
   >
     <Pause length="1"/>
   </Gather>
@@ -231,11 +230,10 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-US"
+    language="hi-IN, en-US"
     speechModel="phone_call"
-    enhanced="true"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
   >
     <Pause length="1"/>
   </Gather>
@@ -264,11 +262,10 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-US"
+    language="hi-IN, en-US"
     speechModel="phone_call"
-    enhanced="true"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
   >
     <Pause length="1"/>
   </Gather>
