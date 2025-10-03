@@ -295,13 +295,31 @@ export class OmniChannelManager {
       console.warn('⚠️ MCP server unavailable, using chat API fallback')
     }
 
-    // Fallback to enhanced chat API
-    const chatResponse = await this.callChatAPI(userInput, enhancedContext)
-    return {
-      response: chatResponse.response,
-      source: 'chat_unified',
-      context: enhancedContext,
-      suggestions: chatResponse.suggestions || [],
+    // Fallback to enhanced chat API with timeout for phone calls
+    try {
+      const timeoutMs = additionalContext.phoneCall ? 3000 : 10000 // 3s for phone, 10s for others
+      const chatResponse = await Promise.race([
+        this.callChatAPI(userInput, enhancedContext),
+        new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('AI response timeout')), timeoutMs),
+        ),
+      ])
+      return {
+        response: chatResponse.response,
+        source: 'chat_unified',
+        context: enhancedContext,
+        suggestions: chatResponse.suggestions || [],
+      }
+    } catch (error) {
+      console.warn('⚠️ AI response timed out or failed, using quick fallback')
+      // Return intelligent fallback instead of waiting
+      return {
+        response:
+          "I'm Sajal, working at Kimpton. I've got experience with React, Python, AWS, and I'm passionate about AI and security. What would you like to know more about?",
+        source: 'timeout_fallback',
+        context: enhancedContext,
+        suggestions: [],
+      }
     }
   }
 
@@ -319,15 +337,15 @@ export class OmniChannelManager {
       .replace(/[?.!,]/g, '')
     console.log('🔍 Quick answer check for:', normalizedQuestion)
 
-    // Experience/work questions - expanded patterns
+    // Experience/work questions - expanded patterns (match partial words too)
     if (
       normalizedQuestion.match(
-        /\b(experience|work|job|career|working|employed|what do you do|current role|position|your role|background|what you do|tell me about your|whats your|what is your)\b/,
+        /(experience|experi|work|job|career|working|employed|what.*do|current.*role|position|your.*role|background|what.*you.*do|tell.*about|whats|what.*is)/,
       )
     ) {
       console.log('⚡ Quick answer: experience')
       this.lastQuestionTopic = 'experience'
-      return "I'm working at Kimpton right now. Previously interned at Aubot and edgedVR. Really interested in AI, security, and software development."
+      return "I'm working at Kimpton. Before that, I interned at Aubot doing software development, and edgedVR doing VR work. I'm really into AI, security, and software development."
     }
 
     // Education questions
@@ -396,6 +414,12 @@ export class OmniChannelManager {
         console.log('⚡ Quick answer: follow-up on skills')
         return "I've built projects with React and Python, worked with AWS cloud infrastructure, and I'm learning more about machine learning and AI technologies."
       }
+    }
+
+    // Default answer for very short or unclear questions (prevent gibberish)
+    if (normalizedQuestion.length < 10 || !normalizedQuestion.match(/[a-z]{3,}/)) {
+      console.log('⚡ Quick answer: default (unclear question)')
+      return "I'm Sajal, a software developer working at Kimpton. Got my Masters from Swinburne. What would you like to know?"
     }
 
     console.log('❌ No quick answer found - using AI')
@@ -495,30 +519,42 @@ Be conversational, use first person, show enthusiasm for AI and tech. Sound huma
       ...(context.conversationHistory?.slice(-3) || []), // Only 3 turns for phone
     ]
 
-    const response = await fetch(`${this.baseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: userInput,
-        user_id: context.userId,
-        role: 'user',
-        content: userInput,
-        enhancedMode: true,
-        omniChannelContext: context,
-        conversationHistory: conversationHistory,
-        model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
-        systemInstruction: isPhoneCall
-          ? 'PHONE CALL: 15-20 words max. Sound human and natural. Answer the exact question asked with specific facts. Use contractions. Be conversational.'
-          : 'Use accurate profile info. Speak naturally in first person. Show enthusiasm for AI and tech.',
-      }),
-    })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), isPhoneCall ? 3000 : 10000)
 
-    if (!response.ok) throw new Error('Chat API error')
+    try {
+      const response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          message: userInput,
+          user_id: context.userId,
+          role: 'user',
+          content: userInput,
+          enhancedMode: true,
+          omniChannelContext: context,
+          conversationHistory: conversationHistory,
+          model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
+          systemInstruction: isPhoneCall
+            ? 'PHONE CALL: 15-20 words max. Sound human and natural. Answer the exact question asked with specific facts. Use contractions. Be conversational.'
+            : 'Use accurate profile info. Speak naturally in first person. Show enthusiasm for AI and tech.',
+        }),
+      })
+      clearTimeout(timeout)
 
-    const data = await response.json()
-    return {
-      response: this.cleanResponseForChannel(data.response || data.content, context.currentChannel),
-      suggestions: [],
+      if (!response.ok) throw new Error('Chat API error')
+
+      const data = await response.json()
+      return {
+        response: this.cleanResponseForChannel(
+          data.response || data.content,
+          context.currentChannel,
+        ),
+        suggestions: [],
+      }
+    } finally {
+      clearTimeout(timeout)
     }
   }
 
