@@ -147,6 +147,9 @@ export async function formatForInterview(
   interviewContext?: string,
   detectedLanguage?: string,
 ): Promise<string> {
+  console.log(`🎯 formatForInterview called with language: ${detectedLanguage || 'not provided'}`)
+  console.log(`📝 Original question: "${originalQuestion}"`)
+
   if (!process.env.GROQ_API_KEY) {
     console.warn('Groq API key not configured, returning basic RAG results')
     return ragResults
@@ -185,8 +188,37 @@ export async function formatForInterview(
   console.log('✅ Retrieved context length:', context.length, 'chars')
   console.log('📝 Context preview:', context.substring(0, 150) + '...')
 
+  // Build language-specific instruction
+  let languageInstruction = ''
+  if (detectedLanguage === 'hi') {
+    languageInstruction = `
+MANDATORY LANGUAGE REQUIREMENT:
+- You MUST respond COMPLETELY in HINDI language
+- Use Hindi words, Hindi grammar, Hindi sentence structure
+- Example: "Main Swinburne University mein padha hun" NOT "I studied at Swinburne"
+- NO ENGLISH words except proper nouns (university names, company names)
+- This is CRITICAL - user is speaking Hindi, you MUST reply in Hindi
+`
+  } else if (detectedLanguage === 'ne') {
+    languageInstruction = `
+MANDATORY LANGUAGE REQUIREMENT:
+- You MUST respond COMPLETELY in NEPALI language
+- Use Nepali words, Nepali grammar, Nepali sentence structure
+- Example: "Ma Swinburne University ma padheko" NOT "I studied at Swinburne"
+- NO ENGLISH words except proper nouns (university names, company names)
+- This is CRITICAL - user is speaking Nepali, you MUST reply in Nepali
+`
+  }
+
+  const systemPrompt =
+    detectedLanguage === 'hi'
+      ? 'You are Sajal Basnet. You MUST respond in HINDI language only. हिंदी में जवाब दें।'
+      : detectedLanguage === 'ne'
+        ? 'You are Sajal Basnet. You MUST respond in NEPALI language only. नेपालीमा जवाफ दिनुहोस्।'
+        : 'You are Sajal Basnet. Respond naturally and accurately.'
+
   const formattingPrompt = `
-You are Sajal Basnet. Answer ONLY using the EXACT information provided below.
+${languageInstruction}
 
 Question: "${originalQuestion}"
 
@@ -200,26 +232,24 @@ CRITICAL RULES:
 4. DO NOT invent information that isn't explicitly stated above
 5. If university names are mentioned above (like "Swinburne" or "Kings Own"), use them EXACTLY
 6. Keep response under 40 words, natural and conversational (short and human-like)
-7. Use "I" statements naturally
-8. CRITICAL: Answer in the SAME language as the question:
-   ${detectedLanguage === 'hi' ? '- MUST ANSWER IN HINDI (हिंदी में जवाब दें)' : ''}
-   ${detectedLanguage === 'ne' ? '- MUST ANSWER IN NEPALI (नेपालीमा जवाफ दिनुहोस्)' : ''}
-   ${detectedLanguage === 'en' || !detectedLanguage ? '- Answer in English naturally' : ''}
-   - DO NOT translate to another language
-   - Use the SAME language throughout your entire response
-9. Keep response natural, conversational and in the detected language: ${detectedLanguage || 'en'}
+7. Use "I" statements naturally (Main/Ma for Hindi/Nepali, I for English)
 
-If the information above contains university names, degrees, or work experience - USE THEM EXACTLY in the SAME language as the question.
-
-Response:
+${detectedLanguage === 'hi' ? 'अब हिंदी में जवाब दें (Answer in Hindi now):' : ''}
+${detectedLanguage === 'ne' ? 'अब नेपालीमा जवाफ दिनुहोस् (Answer in Nepali now):' : ''}
+${!detectedLanguage || detectedLanguage === 'en' ? 'Response:' : ''}
   `
+
+  console.log(`🌍 Formatting response in language: ${detectedLanguage || 'en'}`)
 
   try {
     const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: formattingPrompt }],
-      model: 'llama-3.1-8b-instant', // Updated to available model
-      temperature: 0.5, // Reduced temperature for more consistent responses
-      max_tokens: 60, // Reduced for faster, human-like responses
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: formattingPrompt },
+      ],
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.7, // Slightly higher for better multi-language generation
+      max_tokens: 80, // Increased for non-English responses
     })
 
     const formattedResponse = completion.choices[0]?.message?.content?.trim()
@@ -229,7 +259,9 @@ Response:
       return context
     }
 
-    console.log('Response formatted for interview context')
+    console.log(
+      `✅ Response generated in ${detectedLanguage || 'en'}: "${formattedResponse.substring(0, 50)}..."`,
+    )
     return formattedResponse
   } catch (error) {
     console.error('Response formatting failed:', error)

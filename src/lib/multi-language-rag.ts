@@ -6,7 +6,7 @@
  * in English, Hindi, and Nepali with proper context management.
  */
 
-import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import { parseLanguageDetectionResponse, safeJsonParse } from './json-utils'
 import { conversationToneManager, type ToneContext } from './conversation-tone-manager'
 import {
@@ -16,9 +16,9 @@ import {
 } from './natural-language-templates'
 import type { VectorResult } from './llm-enhanced-rag'
 
-// Initialize OpenAI client (more reliable than Groq, no rate limits)
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || '',
 })
 
 export interface LanguageContext {
@@ -53,48 +53,156 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
     // Quick rule-based detection for common patterns
     const messageLower = message.toLowerCase()
 
-    // Hindi patterns - most common Hindi words and phrases
-    if (
-      messageLower.includes('kaise ho') ||
-      messageLower.includes('kese ho') ||
-      messageLower.includes('bhai') ||
-      messageLower.includes('aap') ||
-      messageLower.includes('kya hai') ||
-      messageLower.includes('batao') ||
-      messageLower.includes('hindi mein') ||
-      messageLower.includes('indian language') ||
-      /\b(kuch|kaam|time|project|complete)\b/.test(messageLower)
-    ) {
+    // Hindi patterns - extensive list for Twilio transcription
+    const hindiKeywords = [
+      'kaise',
+      'kese',
+      'kaisa',
+      'kya',
+      'kahan',
+      'kahaan',
+      'kyun',
+      'kab',
+      'aap',
+      'aapka',
+      'aapki',
+      'tumhara',
+      'tumhari',
+      'tum',
+      'hai',
+      'hain',
+      'ho',
+      'hun',
+      'tha',
+      'thi',
+      'the',
+      'batao',
+      'bataiye',
+      'bataye',
+      'batana',
+      'mujhe',
+      'mera',
+      'meri',
+      'mere',
+      'padhe',
+      'padhai',
+      'padha',
+      'siksha',
+      'shiksha',
+      'study',
+      'kaam',
+      'kam',
+      'job',
+      'work',
+      'university',
+      'college',
+      'school',
+      'degree',
+      'company',
+      'office',
+      'bhai',
+      'dost',
+      'yaar',
+      'hindi',
+      'hinglish',
+      'kis',
+      'kon',
+      'koun',
+      'kaun',
+      'tha',
+      'thi',
+      'the',
+      'ho',
+      'kar',
+      'karo',
+      'karna',
+      'karte',
+      'na',
+      'nahi',
+      'nahin',
+      'mat',
+      'haan',
+      'ha',
+      'ji',
+    ]
+
+    const hindiMatches = hindiKeywords.filter((word) => messageLower.includes(word)).length
+    if (hindiMatches >= 2) {
+      // At least 2 Hindi words
+      console.log(`🇮🇳 Hindi detected: ${hindiMatches} keywords matched`)
       return {
         detectedLanguage: 'hi',
         confidence: 0.95,
-        translatedQuery: message, // Keep original for context
+        translatedQuery: message,
         culturalContext: ['casual', 'friendly'],
         preferredResponseLanguage: 'hi',
         needsTranslation: false,
       }
     }
 
-    // Nepali patterns - common Nepali words and phrases
-    if (
-      messageLower.includes('nepali') ||
-      messageLower.includes('nepalese') ||
-      messageLower.includes('kasto cha') ||
-      messageLower.includes('ke cha') ||
-      messageLower.includes('timro') ||
-      messageLower.includes('hajur') ||
-      messageLower.includes('k xa') ||
-      messageLower.includes('k cha') ||
-      messageLower.includes('thikai xa') ||
-      messageLower.includes('malai') ||
-      messageLower.includes('timilai') ||
-      messageLower.includes('nepal') ||
-      messageLower.includes('kathmandu')
-    ) {
+    // Nepali patterns - extensive list for Twilio transcription
+    const nepaliKeywords = [
+      'timro',
+      'timri',
+      'timi',
+      'tapai',
+      'tapaiko',
+      'kun',
+      'ke',
+      'kaha',
+      'kahile',
+      'kina',
+      'ho',
+      'hola',
+      'huncha',
+      'cha',
+      'chha',
+      'xa',
+      'malai',
+      'mero',
+      'meri',
+      'mere',
+      'hajur',
+      'dai',
+      'didi',
+      'bhai',
+      'padhe',
+      'padhya',
+      'padheko',
+      'siksha',
+      'shiksha',
+      'kaam',
+      'job',
+      'work',
+      'university',
+      'college',
+      'nepali',
+      'nepalese',
+      'nepal',
+      'kathmandu',
+      'pokhara',
+      'thikai',
+      'ramro',
+      'sanchai',
+      'gareko',
+      'garne',
+      'gardai',
+      'hoina',
+      'chaina',
+      'chhaina',
+      'kasto',
+      'kati',
+      'kasari',
+    ]
+
+    const nepaliMatches = nepaliKeywords.filter((word) => messageLower.includes(word)).length
+    if (nepaliMatches >= 2) {
+      // At least 2 Nepali words
+      console.log(`🇳🇵 Nepali detected: ${nepaliMatches} keywords matched`)
       return {
         detectedLanguage: 'ne',
         confidence: 0.95,
-        translatedQuery: message, // Keep original for context
+        translatedQuery: message,
         culturalContext: ['professional', 'nepali'],
         preferredResponseLanguage: 'ne',
         needsTranslation: false,
@@ -196,8 +304,8 @@ Response:`
       }
 
       if (responsePrompt) {
-        const response = await openai.chat.completions.create({
-          model: 'gpt-3.5-turbo',
+        const response = await groq.chat.completions.create({
+          model: 'llama-3.1-8b-instant',
           messages: [{ role: 'user', content: responsePrompt }],
           max_tokens: 150,
           temperature: 0.7,
