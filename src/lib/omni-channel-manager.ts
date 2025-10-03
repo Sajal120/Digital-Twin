@@ -271,42 +271,60 @@ export class OmniChannelManager {
     }
 
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
-    // For phone: Add timeout wrapper (4s for better success rate)
+    // For phone: 5s timeout (allows MCP to complete most queries)
     try {
       console.log('🤖 Using MCP server for intelligent response with RAG + database')
-      const mcpTimeout = additionalContext.phoneCall ? 4000 : 10000
+      console.log('📝 Question:', userInput)
+      console.log('📊 Context channels:', enhancedContext.currentChannel)
+
+      const mcpTimeout = additionalContext.phoneCall ? 5000 : 10000
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
-          setTimeout(() => reject(new Error('MCP timeout')), mcpTimeout),
+          setTimeout(() => reject(new Error('MCP timeout after ' + mcpTimeout + 'ms')), mcpTimeout),
         ),
       ])) as { success: boolean; response: string; suggestions?: string[] }
 
-      if (mcpResponse.success) {
-        console.log('✅ MCP success - using intelligent RAG response')
+      if (mcpResponse.success && mcpResponse.response) {
+        console.log('✅ MCP SUCCESS - Response length:', mcpResponse.response.length)
+        console.log('📝 MCP Response preview:', mcpResponse.response.substring(0, 100))
         return {
           response: mcpResponse.response,
           source: 'mcp_unified',
           context: enhancedContext,
           suggestions: mcpResponse.suggestions || [],
         }
+      } else {
+        console.error('❌ MCP returned unsuccessful response:', mcpResponse)
+        throw new Error('MCP response unsuccessful')
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      console.warn('⚠️ MCP server failed or timeout, falling back to direct Groq:', errorMessage)
+      console.error('🚨 MCP FAILED:', errorMessage)
+      console.error('🚨 MCP Error details:', error)
+      console.warn('⚠️ Falling back to direct Groq (MCP failed)')
     }
 
     // Fallback: For phone use DIRECT Groq (fast), for others use chat API
     if (additionalContext.phoneCall) {
       console.log('📞 Phone fallback: Using DIRECT Groq API (ultra-fast)')
+      console.log('📝 Groq input:', userInput)
       try {
-        // Add 3s timeout for Groq (ultra-fast response)
+        // Add 4s timeout for Groq (gives it time to respond)
         const groqResponse = await Promise.race([
           this.callDirectGroq(userInput, enhancedContext),
           new Promise<string>((_, reject) =>
-            setTimeout(() => reject(new Error('Groq timeout after 3s')), 3000),
+            setTimeout(() => reject(new Error('Groq timeout after 4s')), 4000),
           ),
         ])
+
+        if (!groqResponse || groqResponse.length < 10) {
+          console.error('❌ Groq returned empty/invalid response:', groqResponse)
+          throw new Error('Groq response too short or empty')
+        }
+
+        console.log('✅ Groq SUCCESS - Response length:', groqResponse.length)
+        console.log('📝 Groq response preview:', groqResponse.substring(0, 100))
         return {
           response: groqResponse,
           source: 'groq_direct',
@@ -315,8 +333,10 @@ export class OmniChannelManager {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        console.error('❌ Direct Groq failed:', errorMessage)
-        throw new Error('AI generation failed: ' + errorMessage)
+        console.error('🚨 GROQ FAILED:', errorMessage)
+        console.error('🚨 Groq Error details:', error)
+        // Throw error - let phone handler deal with it
+        throw new Error('Both MCP and Groq failed: ' + errorMessage)
       }
     }
 
