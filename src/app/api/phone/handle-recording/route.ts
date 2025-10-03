@@ -538,13 +538,10 @@ export async function POST(request: NextRequest) {
           // Use actual user input if audio was processed, otherwise use contextual prompt
           const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
 
-          // IMPORTANT: Ultra-direct phone responses
-          const enhancedInput =
-            turnCount === 0
-              ? `Hi, I'm Sajal, software developer with a Masters from Swinburne. How can I help?`
-              : audioProcessingSuccess
-                ? userMessage // Just the question, no extra instructions
-                : `Continue conversation`
+          // Use actual user input or contextual prompt - let AI handle intelligently
+          const enhancedInput = audioProcessingSuccess
+            ? userMessage // Always use actual question when available
+            : contextualPrompt // Use smart contextual prompt for first turn or fallback
 
           console.log(
             `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
@@ -923,7 +920,7 @@ export async function POST(request: NextRequest) {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 7000),
+        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 6000),
       ),
     ])
     return result
@@ -1017,7 +1014,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
             },
             body: formData,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 1500)), // 1.5s timeout for speed
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 1200)), // 1.5s timeout for speed
         ])) as Response
 
         if (groqResponse.ok) {
