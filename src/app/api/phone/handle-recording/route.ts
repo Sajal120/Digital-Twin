@@ -974,7 +974,11 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
         formData.append('file', audioBlob, 'recording.wav')
         formData.append('model', 'whisper-large-v3')
         formData.append('language', 'en')
-        formData.append('response_format', 'json')
+        formData.append('response_format', 'verbose_json')
+        formData.append(
+          'prompt',
+          'Phone interview with Sajal Basnet, software developer. Topics: work experience at Kimpton, Aubot, edgedVR; AI and machine learning interests; security; Masters degree from Swinburne University; skills in React, Python, JavaScript, AWS, Terraform; Sydney location; career goals. Common questions: What do you do? Your experience? Your background? Your education? Your skills? What are you interested in? Tell me about yourself.',
+        )
 
         console.log('📤 Sending to Groq Whisper API (fast)...')
         const groqResponse = (await Promise.race([

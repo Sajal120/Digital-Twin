@@ -307,31 +307,80 @@ export class OmniChannelManager {
 
   /**
    * Quick answers for common phone questions (bypass AI for speed)
+   * Store last question for follow-up context
    */
+  private lastQuestionTopic: string | null = null
+
   private getQuickPhoneAnswer(question: string): string | null {
-    // Experience/work questions
-    if (question.match(/\b(experience|work|job|career|working|employed)\b/)) {
-      return 'Software Developer Intern at Aubot. Previously VR Developer at edgedVR. Masters from Swinburne.'
+    // Experience/work questions - expanded patterns
+    if (
+      question.match(
+        /\b(experience|work|job|career|working|employed|what do you do|current role|position|your role|background|what you do)\b/,
+      )
+    ) {
+      this.lastQuestionTopic = 'experience'
+      return "I'm working at Kimpton right now. Previously interned at Aubot and edgedVR. Really interested in AI, security, and software development."
     }
 
     // Education questions
-    if (question.match(/\b(education|study|degree|masters|university|school|graduated|learn)\b/)) {
-      return 'Masters in Software Development from Swinburne University. Graduated May 2024 with GPA 3.688.'
+    if (
+      question.match(
+        /\b(education|study|degree|masters|university|school|graduated|learn|qualification|studied)\b/,
+      )
+    ) {
+      this.lastQuestionTopic = 'education'
+      return 'Got my Masters in Software Development from Swinburne University. Graduated May 2024 with a 3.69 GPA.'
     }
 
-    // Tech/skills questions
-    if (question.match(/\b(tech|skill|language|framework|tool|stack|know|use)\b/)) {
-      return 'React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB, PostgreSQL.'
+    // Tech/skills questions - expanded patterns
+    if (
+      question.match(
+        /\b(tech|skill|language|framework|tool|stack|know|use|programming|code|develop|technology)\b/,
+      )
+    ) {
+      this.lastQuestionTopic = 'skills'
+      return 'I work with React, Python, JavaScript, Node.js, AWS, and Terraform. Really into AI, machine learning, security, and data analysis.'
     }
 
     // Location questions
     if (question.match(/\b(where|location|live|based|located|from)\b/)) {
-      return 'Auburn, Sydney, Australia. Originally from Nepal.'
+      this.lastQuestionTopic = 'location'
+      return "I'm based in Auburn, Sydney. Originally from Nepal though."
     }
 
-    // About/intro questions
-    if (question.match(/\b(who are you|about yourself|tell me about|introduce)\b/)) {
-      return 'Sajal Basnet. Software Developer Intern at Aubot. Masters from Swinburne University. Based in Sydney.'
+    // Interest/passion questions - expanded patterns
+    if (
+      question.match(
+        /\b(interest|passion|focus|specialize|want|goal|career goal|passionate about|like|enjoy)\b/,
+      )
+    ) {
+      this.lastQuestionTopic = 'interests'
+      return "I'm really passionate about AI and machine learning, security, software development, and data analysis. That's what I'm focusing on at Kimpton."
+    }
+
+    // About/intro questions - expanded patterns
+    if (
+      question.match(
+        /\b(who are you|about yourself|tell me about|introduce|your name|who is this|yourself)\b/,
+      )
+    ) {
+      this.lastQuestionTopic = 'intro'
+      return "I'm Sajal Basnet, software developer working at Kimpton. I'm into AI, security, and development. Got my Masters from Swinburne and I'm based in Sydney."
+    }
+
+    // Follow-up questions - use last topic for context
+    if (
+      question.match(
+        /\b(tell me more|more about|what else|anything else|elaborate|details|can you expand)\b/,
+      )
+    ) {
+      if (this.lastQuestionTopic === 'experience') {
+        return "At Aubot, I worked on software development. At edgedVR, I did VR development. Now at Kimpton, I'm applying my tech skills while pursuing AI opportunities."
+      } else if (this.lastQuestionTopic === 'education') {
+        return 'I graduated top 15% from Swinburne, made it into the Golden Key International Honour Society. Focused on full-stack development and cloud systems.'
+      } else if (this.lastQuestionTopic === 'skills') {
+        return "I've built projects with React and Python, worked with AWS cloud infrastructure, and I'm learning more about machine learning and AI technologies."
+      }
     }
 
     return null // Use AI for other questions
@@ -389,36 +438,43 @@ export class OmniChannelManager {
       {
         role: 'system',
         content: isPhoneCall
-          ? `You are Sajal Basnet on a PHONE CALL. Answer in 15-25 words MAX.
+          ? `You're Sajal Basnet on a phone call. Be natural and conversational. Answer in 15-20 words MAX.
 
-FACTS:
-- Education: Masters from Swinburne University (Sep 2022-May 2024)
-- Work: Software Developer Intern at Aubot (Dec 2024-Mar 2025)
-- Previous: VR Developer at edgedVR (2021-2022)
-- Tech: React, Python, Node.js, AWS, Terraform
-- Location: Auburn, Sydney
+ABOUT YOU:
+- Currently working at Kimpton
+- Passionate about AI, machine learning, security, and software development
+- Masters from Swinburne (GPA 3.69, graduated May 2024)
+- Previous internships: Aubot (software dev) and edgedVR (VR dev)
+- Skills: React, Python, JavaScript, Node.js, AWS, Terraform
+- Based in Sydney, originally from Nepal
 
-IMPORTANT EXAMPLES:
+CONVERSATION STYLE:
+- Speak like a human, use contractions (I'm, I've, that's)
+- Answer the EXACT question asked, don't add extra info
+- Be enthusiastic about AI and tech
+- Keep it brief and natural
 
+EXAMPLES:
 Q: "What's your experience?"
-BAD: "I can help you with software development..."
-GOOD: "Software Developer Intern at Aubot. Previously VR Developer at edgedVR. Masters from Swinburne."
+❌ "I can help you with software development"
+✅ "I'm working at Kimpton now. Previously interned at Aubot and edgedVR. Really into AI and security."
 
-Q: "What tech do you use?"
-BAD: "I work with various technologies..."
-GOOD: "React, Python, Node.js, AWS, Terraform, MySQL, MongoDB."
+Q: "What are your skills?"
+❌ "I have skills in many technologies"
+✅ "I work with React, Python, AWS, and Terraform. Learning more about AI and machine learning."
 
-RULE: Answer EXACTLY what was asked. NO generic statements. NO offers to help. Just FACTS.`
-          : `You are Sajal Basnet.
+RULE: Natural, brief, specific answers. Sound human, not robotic.`
+          : `You're Sajal Basnet. Speak naturally and conversationally.
 
-ACCURATE INFO:
-- Title: Full-Stack Software Developer
-- Education: Masters from Swinburne University (GPA 3.688/4.0)
-- Location: Auburn, Sydney, Australia (from Nepal)
-- Recent Work: Software Developer Intern at Aubot (Dec 2024-Mar 2025)
-- Tech: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
+YOUR PROFILE:
+- Software Developer at Kimpton
+- Passionate about AI, machine learning, security, data analysis
+- Masters in Software Development from Swinburne (GPA 3.688/4.0)
+- Based in Sydney, Australia (from Nepal)
+- Intern experience: Aubot (software dev), edgedVR (VR development)
+- Tech stack: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
 
-Speak naturally in FIRST PERSON. Be conversational.`,
+Be conversational, use first person, show enthusiasm for AI and tech. Sound human!`,
       },
       ...(context.conversationHistory?.slice(-3) || []), // Only 3 turns for phone
     ]
@@ -434,9 +490,10 @@ Speak naturally in FIRST PERSON. Be conversational.`,
         enhancedMode: true,
         omniChannelContext: context,
         conversationHistory: conversationHistory,
+        model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
         systemInstruction: isPhoneCall
-          ? 'PHONE: 15-25 words. Answer EXACT question with FACTS only. NO "I can help", NO "let me tell you", NO generic statements. Just specific facts.'
-          : 'Use accurate profile info. NO EXAGGERATION. Speak in first person naturally.',
+          ? 'PHONE CALL: 15-20 words max. Sound human and natural. Answer the exact question asked with specific facts. Use contractions. Be conversational.'
+          : 'Use accurate profile info. Speak naturally in first person. Show enthusiasm for AI and tech.',
       }),
     })
 
