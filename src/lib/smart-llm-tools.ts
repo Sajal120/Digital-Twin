@@ -6,12 +6,12 @@
  * based on the user's query. The LLM can call multiple tools and combine their results.
  */
 
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 import { githubService } from '@/lib/github-integration'
 import { linkedinService } from '@/lib/linkedin-integration'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface ExternalTool {
@@ -163,8 +163,9 @@ export async function smartLLMWithTools(
         ...EXTERNAL_TOOLS,
         linkedin_profile: {
           ...EXTERNAL_TOOLS.linkedin_profile,
-          execute: async (params: any) => await linkedinService.generateProfileResponse(accessToken)
-        }
+          execute: async (params: any) =>
+            await linkedinService.generateProfileResponse(accessToken),
+        },
       }
 
       for (const toolCall of toolDecision.tools) {
@@ -272,9 +273,9 @@ If no tools are needed, return empty tools array.
 
 Decision:`
 
-  const response = await groq.chat.completions.create({
+  const response = await openai.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama-3.1-8b-instant',
+    model: 'gpt-3.5-turbo',
     temperature: 0.3,
     max_tokens: 500,
   })
@@ -290,7 +291,7 @@ Decision:`
       }
     } catch (error) {
       console.error('Failed to parse LLM tool decision:', error)
-      
+
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
@@ -304,20 +305,28 @@ Decision:`
           console.error('Second JSON parse attempt failed:', secondError)
         }
       }
-      
+
       // Heuristic fallback based on content analysis
       const tools = []
       const lowerContent = content.toLowerCase()
-      
-      if (lowerContent.includes('github') || lowerContent.includes('repository') || lowerContent.includes('repo')) {
+
+      if (
+        lowerContent.includes('github') ||
+        lowerContent.includes('repository') ||
+        lowerContent.includes('repo')
+      ) {
         tools.push({ tool: 'github_repos', params: {} })
       }
-      if (lowerContent.includes('project') || lowerContent.includes('work') || lowerContent.includes('experience')) {
-        if (!tools.some(t => t.tool === 'github_repos')) {
+      if (
+        lowerContent.includes('project') ||
+        lowerContent.includes('work') ||
+        lowerContent.includes('experience')
+      ) {
+        if (!tools.some((t) => t.tool === 'github_repos')) {
           tools.push({ tool: 'github_repos', params: {} })
         }
       }
-      
+
       return {
         tools,
         reasoning: `Heuristic: ${lowerContent.includes('github') ? 'GitHub repositories query detected' : 'General project query detected'}`,
@@ -355,7 +364,11 @@ Decision:`
     queryLower.includes('certificates') ||
     queryLower.includes('certifications')
   ) {
-    if (queryLower.includes('certificates') || queryLower.includes('certifications') || queryLower.includes('credentials')) {
+    if (
+      queryLower.includes('certificates') ||
+      queryLower.includes('certifications') ||
+      queryLower.includes('credentials')
+    ) {
       return {
         tools: [{ tool: 'linkedin_certificates', params: {} }],
         reasoning: 'Heuristic: LinkedIn certificates query detected',
@@ -428,9 +441,9 @@ Guidelines:
 
 Response:`
 
-  const response = await groq.chat.completions.create({
+  const response = await openai.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'llama-3.1-8b-instant',
+    model: 'gpt-3.5-turbo',
     temperature: 0.4,
     max_tokens: 800,
   })

@@ -13,13 +13,13 @@
  * - Error Handling: Graceful fallbacks when tools fail
  */
 
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 import { githubService, generateGitHubEnhancedResponse } from '@/lib/github-integration'
 import type { VectorResult } from './llm-enhanced-rag'
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface ToolDefinition {
@@ -780,9 +780,9 @@ Synthesize this information into a natural response as Sajal:
 Response:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: synthesisPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.6,
       max_tokens: 200,
     })

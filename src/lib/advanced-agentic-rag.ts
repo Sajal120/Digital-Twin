@@ -15,16 +15,16 @@
  * - Quality Assessment and Self-Correction
  */
 
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 import type { VectorResult, EnhancedRAGResult } from './llm-enhanced-rag'
 import { multiHopRAG, type MultiHopResult } from './multi-hop-rag'
 import { hybridSearch, recommendSearchStrategy, type HybridResult } from './hybrid-search'
 import { toolUseRAG, type ToolEnhancedResult } from './tool-use-rag'
 import type { ContextEnhancedQuery } from './conversation-context'
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface AgenticPlan {
@@ -265,9 +265,9 @@ Return JSON:
 Execution Plan:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: planningPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.3,
       max_tokens: 800,
     })
@@ -664,9 +664,9 @@ Create a natural response as Sajal:
 Response:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: synthesisPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.6,
       max_tokens: 250,
     })

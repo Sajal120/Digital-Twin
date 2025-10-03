@@ -15,11 +15,11 @@
 
 import type { VectorResult } from './llm-enhanced-rag'
 import { parseQueryEnhancementResponse } from './json-utils'
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface HybridResult extends VectorResult {
@@ -226,9 +226,9 @@ Return JSON:
 Enhanced queries:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: enhancementPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.4,
       max_tokens: 300,
     })

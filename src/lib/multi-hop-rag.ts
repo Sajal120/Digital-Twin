@@ -12,13 +12,13 @@
  * - Search Planning: LLM plans the search strategy
  */
 
-import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 import { parseSearchPlanResponse } from './json-utils'
 import type { VectorResult } from './llm-enhanced-rag'
 
-// Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || '',
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || '',
 })
 
 export interface SearchStep {
@@ -288,9 +288,9 @@ Return JSON:
 Analysis:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: complexityPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.3,
       max_tokens: 200,
     })
@@ -380,9 +380,9 @@ Return JSON:
 Search Plan:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: planPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.4,
       max_tokens: 400,
     })
@@ -466,9 +466,9 @@ If no follow-up search would be helpful, respond with "NONE".
 Follow-up query:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: followUpPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.5,
       max_tokens: 100,
     })
@@ -549,9 +549,9 @@ Synthesize this information into a natural, conversational response as Sajal:
 Response:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: synthesisPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.6,
       max_tokens: 200,
     })
@@ -609,9 +609,9 @@ Return JSON array: ["sub-query 1", "sub-query 2", "sub-query 3"]
 Sub-queries:`
 
   try {
-    const completion = await groq.chat.completions.create({
+    const completion = await openai.chat.completions.create({
       messages: [{ role: 'user', content: decompositionPrompt }],
-      model: 'llama-3.1-8b-instant',
+      model: 'gpt-3.5-turbo',
       temperature: 0.3,
       max_tokens: 200,
     })
