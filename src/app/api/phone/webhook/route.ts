@@ -162,8 +162,6 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     method="POST"
     timeout="10"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
     maxLength="120"
     playBeep="false"
   />
@@ -186,8 +184,6 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     method="POST"
     timeout="10"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
     maxLength="120"
     playBeep="false"
   />
@@ -202,7 +198,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   })
 
   return new NextResponse(twiml, {
-    headers: { 'Content-Type': 'text/xml' },
+    headers: { 'Content-Type': 'text/xml; charset=utf-8' },
   })
 }
 

@@ -860,8 +860,6 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
     maxLength="120"
     playBeep="false"
   />
@@ -890,7 +888,7 @@ export async function POST(request: NextRequest) {
       console.log('📤 TwiML preview:', twiml.substring(0, 200) + '...')
 
       return new NextResponse(twiml, {
-        headers: { 'Content-Type': 'text/xml' },
+        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
       })
     } catch (error) {
       console.error('❌ Recording processing error:', error)
@@ -908,8 +906,6 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
     maxLength="120"
     playBeep="false"
   />
@@ -917,7 +913,7 @@ export async function POST(request: NextRequest) {
 
       console.log('🔄 Returning fallback TwiML to continue conversation')
       return new NextResponse(fallbackTwiml, {
-        headers: { 'Content-Type': 'text/xml' },
+        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
       })
     }
   })()
@@ -943,14 +939,12 @@ export async function POST(request: NextRequest) {
     method="POST"
     timeout="10"
     finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
     maxLength="120"
     playBeep="false"
   />
 </Response>`
     return new NextResponse(quickFallbackTwiml, {
-      headers: { 'Content-Type': 'text/xml' },
+      headers: { 'Content-Type': 'text/xml; charset=utf-8' },
     })
   }
 }
