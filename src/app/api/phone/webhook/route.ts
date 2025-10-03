@@ -166,11 +166,12 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="auto"
+    speechTimeout="5"
     language="en-US"
-    speechModel="experimental_conversations"
+    speechModel="phone_call"
+    enhanced="true"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
   >
     <Pause length="1"/>
   </Gather>
@@ -180,8 +181,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     console.warn('⚠️ ElevenLabs failed, using Twilio:', error.message)
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-      <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
-    <Play>${audioUrl}</Play>
+  <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
   <Gather 
     input="speech"
     action="/api/phone/handle-speech"
@@ -189,7 +189,6 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     timeout="10"
     speechTimeout="5"
     language="en-US"
-    speechModel="phone_call"
     speechModel="phone_call"
     enhanced="true"
     profanityFilter="false"
