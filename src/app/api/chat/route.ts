@@ -21,7 +21,11 @@ import { smartLLMWithTools } from '@/lib/smart-llm-tools'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { googleService } from '@/lib/google-service'
-import { processMultiLanguageQuery, generateMultiLanguageResponse, applySmartFiltering } from '@/lib/multi-language-rag'
+import {
+  processMultiLanguageQuery,
+  generateMultiLanguageResponse,
+  applySmartFiltering,
+} from '@/lib/multi-language-rag'
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,6 +57,7 @@ export async function POST(request: NextRequest) {
       interviewType,
       sessionId = 'default-session',
       enhancedMode = !!process.env.GROQ_API_KEY,
+      phoneOptimized = false, // Fast mode for phone calls
       githubToken, // OAuth token for GitHub integration
       user, // Google auth user information
       tokens, // Object containing various OAuth tokens
@@ -96,7 +101,11 @@ export async function POST(request: NextRequest) {
     let responseMetadata = null
 
     if (enhancedMode && process.env.GROQ_API_KEY) {
-      console.log('🚀 Using Enhanced RAG with LLM processing...')
+      console.log(
+        phoneOptimized
+          ? '📞 Using FAST RAG for phone...'
+          : '🚀 Using Enhanced RAG with LLM processing...',
+      )
       const enhancedResult = await generateEnhancedPortfolioResponse(
         content.toLowerCase(),
         conversationHistory || [],
@@ -104,12 +113,18 @@ export async function POST(request: NextRequest) {
         sessionId,
         githubToken || tokens?.github,
         request,
+        phoneOptimized, // Pass phone optimization flag
       )
       aiResponse = enhancedResult.response
       responseMetadata = enhancedResult.metadata
     } else {
       console.log('📝 Using Basic RAG fallback...')
-      aiResponse = await generatePortfolioResponse(content.toLowerCase(), conversationHistory || [], githubToken || tokens?.github, request)
+      aiResponse = await generatePortfolioResponse(
+        content.toLowerCase(),
+        conversationHistory || [],
+        githubToken || tokens?.github,
+        request,
+      )
     }
 
     // Try to insert the AI response into the database, but continue if it fails
@@ -176,28 +191,32 @@ export async function POST(request: NextRequest) {
 /**
  * Meeting Booking and Action Detection
  * ===================================
- * 
+ *
  * Detects when user wants to book a meeting or perform special actions
  */
-async function detectAndHandleSpecialActions(message: string, conversationHistory: any[], request?: NextRequest) {
+async function detectAndHandleSpecialActions(
+  message: string,
+  conversationHistory: any[],
+  request?: NextRequest,
+) {
   const lowerMessage = message.toLowerCase()
-  
+
   try {
     // Check if user is authenticated with Google for meeting booking
     const session = await getServerSession(authOptions)
     const isAuthenticated = !!(session && session.user)
 
     // Check for meeting confirmation first (standalone confirmation messages)
-    const isStandaloneConfirmation = (
+    const isStandaloneConfirmation =
       lowerMessage.includes('confirm the meeting') ||
       lowerMessage.includes('yes, book it') ||
       lowerMessage.includes('go ahead and schedule') ||
       lowerMessage.includes('proceed with booking') ||
       (lowerMessage.includes('confirm') && lowerMessage.includes('meeting')) ||
-      (lowerMessage.includes('yes') && (lowerMessage.includes('meeting') || lowerMessage.includes('book'))) ||
+      (lowerMessage.includes('yes') &&
+        (lowerMessage.includes('meeting') || lowerMessage.includes('book'))) ||
       lowerMessage.includes('book it') ||
       lowerMessage.includes('schedule it')
-    )
 
     // Handle standalone confirmations
     if (isStandaloneConfirmation && isAuthenticated) {
@@ -205,32 +224,43 @@ async function detectAndHandleSpecialActions(message: string, conversationHistor
         // Get the user's email from session
         const userEmail = session.user?.email || 'anonymous@example.com'
         const userName = session.user?.name || 'Anonymous User'
-        
+
         // For confirmations, we need to use the original request time, not the confirmation message
         // Check if we have conversation history to get the original request
         let originalRequest = message // fallback to current message
         if (conversationHistory && conversationHistory.length > 0) {
           // Look for the most recent message that contains a date/time request
           for (let i = conversationHistory.length - 1; i >= 0; i--) {
-            const historyMessage = conversationHistory[i];
-            if (historyMessage.role === 'user' && 
-                (historyMessage.content.includes('book') || historyMessage.content.includes('meeting')) &&
-                (historyMessage.content.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}/) || 
-                 historyMessage.content.includes('am') || historyMessage.content.includes('pm') ||
-                 historyMessage.content.includes('tomorrow') || historyMessage.content.includes('monday') ||
-                 historyMessage.content.includes('tuesday') || historyMessage.content.includes('wednesday') ||
-                 historyMessage.content.includes('thursday') || historyMessage.content.includes('friday'))) {
-              originalRequest = historyMessage.content;
-              console.log('🕐 Found original request in history:', originalRequest);
-              break;
+            const historyMessage = conversationHistory[i]
+            if (
+              historyMessage.role === 'user' &&
+              (historyMessage.content.includes('book') ||
+                historyMessage.content.includes('meeting')) &&
+              (historyMessage.content.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}/) ||
+                historyMessage.content.includes('am') ||
+                historyMessage.content.includes('pm') ||
+                historyMessage.content.includes('tomorrow') ||
+                historyMessage.content.includes('monday') ||
+                historyMessage.content.includes('tuesday') ||
+                historyMessage.content.includes('wednesday') ||
+                historyMessage.content.includes('thursday') ||
+                historyMessage.content.includes('friday'))
+            ) {
+              originalRequest = historyMessage.content
+              console.log('🕐 Found original request in history:', originalRequest)
+              break
             }
           }
         }
-        
+
         // Parse time from the original request, not the confirmation message
         const { start, end } = googleService.parseDateTime(originalRequest)
-        console.log('🕐 Confirmation using parsed time:', { originalRequest, start: start.toLocaleString(), end: end.toLocaleString() });
-        
+        console.log('🕐 Confirmation using parsed time:', {
+          originalRequest,
+          start: start.toLocaleString(),
+          end: end.toLocaleString(),
+        })
+
         // Create meeting description with user's request
         const meetingDescription = `Meeting Request from Portfolio Visitor
 
@@ -258,9 +288,9 @@ Sajal Basnet`
           meetingDescription,
           start,
           end,
-          [userEmail, 'basnetsajal120@gmail.com'] // Invite both the user and the organizer
+          [userEmail, 'basnetsajal120@gmail.com'], // Invite both the user and the organizer
         )
-        
+
         // Send you a separate email notification about the meeting request
         try {
           await googleService.sendEmail(
@@ -289,7 +319,7 @@ Based on their request, they're interested in learning more about your work, par
 This meeting was booked through your AI-powered portfolio chatbot, demonstrating the effectiveness of your automated lead generation system!
 
 Best regards,
-Your Digital Twin Assistant`
+Your Digital Twin Assistant`,
           )
         } catch (emailError) {
           console.error('Failed to send notification email to Sajal:', emailError)
@@ -327,12 +357,11 @@ Your Digital Twin Assistant`
 You'll receive a calendar invite shortly from Sajal. I'm looking forward to our conversation! 🚀
 
 Feel free to ask me anything before our meeting!`,
-            meetingData: meetingResult
+            meetingData: meetingResult,
           }
         } else {
           throw new Error('Failed to create meeting')
         }
-        
       } catch (error) {
         console.error('Meeting creation error:', error)
         return {
@@ -349,18 +378,19 @@ Please try:
 
 You can also try signing in again with Google to refresh permissions: /api/auth/signin/google
 
-I'm here to help once we get this sorted out! 😊`
+I'm here to help once we get this sorted out! 😊`,
         }
       }
     }
 
     // Meeting booking detection - Two-step process
-    if (lowerMessage.includes('book meeting') || 
-        lowerMessage.includes('schedule meeting') || 
-        lowerMessage.includes('book with you') ||
-        lowerMessage.includes('book a meeting') ||
-        lowerMessage.includes('meeting with you')) {
-      
+    if (
+      lowerMessage.includes('book meeting') ||
+      lowerMessage.includes('schedule meeting') ||
+      lowerMessage.includes('book with you') ||
+      lowerMessage.includes('book a meeting') ||
+      lowerMessage.includes('meeting with you')
+    ) {
       if (!isAuthenticated) {
         return {
           action: 'book_meeting_auth_needed',
@@ -384,7 +414,7 @@ What would you like to discuss in our meeting? I'm excited to share my experienc
 - My internship experience at Aubot
 - Future opportunities in AI, Development, Security, and Support`,
           needsAuth: true,
-          authUrl: '/api/auth/signin/google'
+          authUrl: '/api/auth/signin/google',
         }
       }
 
@@ -392,10 +422,10 @@ What would you like to discuss in our meeting? I'm excited to share my experienc
       // First request - show confirmation dialog
       const userEmail = session.user?.email || 'anonymous@example.com'
       const userName = session.user?.name || 'Anonymous User'
-      
+
       // Parse the requested time to show in confirmation
       const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
-      
+
       return {
         action: 'meeting_confirmation_needed',
         response: `📅 I'd be happy to schedule a meeting for you!
@@ -431,22 +461,24 @@ Would you like me to proceed with booking this meeting? 🚀`,
         needsConfirmation: true,
         proposedTime: {
           start: start.toISOString(),
-          end: end.toISOString()
-        }
+          end: end.toISOString(),
+        },
       }
     }
 
     // Email detection and sending - More flexible patterns
-    if (lowerMessage.includes('send email') || 
-        lowerMessage.includes('email me') || 
-        lowerMessage.includes('send an email') ||
-        lowerMessage.includes('send you an email') ||
-        lowerMessage.includes('send you email') ||
-        lowerMessage.includes('email you') ||
-        lowerMessage.includes('send email to you') ||
-        (lowerMessage.includes('send') && lowerMessage.includes('email')) ||
-        (lowerMessage.includes('email') && (lowerMessage.includes('to you') || lowerMessage.includes('you')))) {
-      
+    if (
+      lowerMessage.includes('send email') ||
+      lowerMessage.includes('email me') ||
+      lowerMessage.includes('send an email') ||
+      lowerMessage.includes('send you an email') ||
+      lowerMessage.includes('send you email') ||
+      lowerMessage.includes('email you') ||
+      lowerMessage.includes('send email to you') ||
+      (lowerMessage.includes('send') && lowerMessage.includes('email')) ||
+      (lowerMessage.includes('email') &&
+        (lowerMessage.includes('to you') || lowerMessage.includes('you')))
+    ) {
       if (!isAuthenticated) {
         return {
           action: 'email_auth_needed',
@@ -463,7 +495,7 @@ Once authenticated, I can send emails on your behalf through Gmail.
 
 What would you like to include in your email?`,
           needsAuth: true,
-          authUrl: '/api/auth/signin/google'
+          authUrl: '/api/auth/signin/google',
         }
       }
 
@@ -490,7 +522,7 @@ They're interested in connecting with you!
 
 Best regards,
 Your Digital Twin Chatbot
-Portfolio: ${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}`
+Portfolio: ${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'}`,
         )
 
         if (emailResult.success) {
@@ -511,12 +543,11 @@ Your message has been sent to Sajal! He typically responds within 24 hours.
 - Information about his portfolio and achievements
 
 Feel free to continue exploring the portfolio or ask me more questions! 🚀`,
-            emailData: emailResult
+            emailData: emailResult,
           }
         } else {
           throw new Error('Failed to send email')
         }
-        
       } catch (error) {
         console.error('Email sending error:', error)
         return {
@@ -530,11 +561,10 @@ Please try:
 - Signing in again with Google: /api/auth/signin/google
 - Making sure you granted Gmail permissions during sign-in
 
-I'm here to help once we get this sorted out! 📧`
+I'm here to help once we get this sorted out! 📧`,
         }
       }
     }
-
   } catch (error) {
     console.error('Special action detection error:', error)
     return null
@@ -556,21 +586,28 @@ async function generateEnhancedPortfolioResponse(
   sessionId: string = 'default-session',
   githubToken?: string,
   request?: NextRequest,
+  phoneOptimized: boolean = false,
 ): Promise<{ response: string; metadata: any }> {
   try {
-    // First, check for special actions like meeting booking
-    console.log('🔍 Checking for special actions...')
-    const specialAction = await detectAndHandleSpecialActions(message, conversationHistory, request)
-    if (specialAction) {
-      console.log(`🎯 Special action detected: ${specialAction.action}`)
-      return {
-        response: specialAction.response,
-        metadata: {
-          action: specialAction.action,
-          needsAuth: specialAction.needsAuth || false,
-          ragPattern: 'special_action',
-          meetingData: specialAction.meetingData,
-          authUrl: specialAction.authUrl
+    // Skip special actions for phone (too slow)
+    if (!phoneOptimized) {
+      console.log('🔍 Checking for special actions...')
+      const specialAction = await detectAndHandleSpecialActions(
+        message,
+        conversationHistory,
+        request,
+      )
+      if (specialAction) {
+        console.log(`🎯 Special action detected: ${specialAction.action}`)
+        return {
+          response: specialAction.response,
+          metadata: {
+            action: specialAction.action,
+            needsAuth: specialAction.needsAuth || false,
+            ragPattern: 'special_action',
+            meetingData: specialAction.meetingData,
+            authUrl: specialAction.authUrl,
+          },
         }
       }
     }
@@ -578,7 +615,12 @@ async function generateEnhancedPortfolioResponse(
     // Check if Upstash Vector is available
     if (!process.env.UPSTASH_VECTOR_REST_URL || !process.env.UPSTASH_VECTOR_REST_TOKEN) {
       console.log('Upstash credentials not available, falling back to basic response')
-      const basicResponse = await generatePortfolioResponse(message, conversationHistory, undefined, request)
+      const basicResponse = await generatePortfolioResponse(
+        message,
+        conversationHistory,
+        undefined,
+        request,
+      )
       return {
         response: basicResponse,
         metadata: {
@@ -603,13 +645,9 @@ async function generateEnhancedPortfolioResponse(
 
     // Multi-language processing
     console.log('🌍 Processing multi-language query...')
-    
-    const multiLanguageResult = await processMultiLanguageQuery(
-      message,
-      contextEnhanced,
-      sessionId
-    )
-    
+
+    const multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
+
     console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
     console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
     console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
@@ -628,7 +666,7 @@ async function generateEnhancedPortfolioResponse(
         // Query vector database
         const vectorResults = await index.query({
           data: query,
-          topK: 12, // Increased for better filtering
+          topK: phoneOptimized ? 5 : 12, // Fewer for phone (faster!)
           includeMetadata: true,
           includeData: true,
         })
@@ -641,11 +679,7 @@ async function generateEnhancedPortfolioResponse(
         }))
 
         // Apply smart filtering based on language and context
-        return await applySmartFiltering(
-          results,
-          multiLanguageResult.languageContext,
-          query
-        )
+        return await applySmartFiltering(results, multiLanguageResult.languageContext, query)
       } catch (error) {
         console.error('Vector search failed:', error)
         return []
@@ -653,7 +687,13 @@ async function generateEnhancedPortfolioResponse(
     }
 
     // Use the selected RAG pattern from multi-language analysis
-    const ragPattern = multiLanguageResult.selectedPattern.pattern
+    // For phone: use simpler, faster pattern
+    let ragPattern = multiLanguageResult.selectedPattern.pattern
+    if (phoneOptimized && (ragPattern === 'advanced_agentic' || ragPattern === 'multi_hop')) {
+      ragPattern = 'standard_agentic' // Simpler agentic for phone
+      console.log('📞 Phone optimization: Simplified RAG pattern')
+    }
+
     const searchQuery = multiLanguageResult.selectedPattern.searchQuery
 
     console.log(`🎯 Executing RAG pattern: ${ragPattern}`)
@@ -664,7 +704,12 @@ async function generateEnhancedPortfolioResponse(
     switch (ragPattern) {
       case 'advanced_agentic':
         console.log('🧠 Using Advanced Agentic RAG with sophisticated planning...')
-        result = await advancedAgenticRAG(searchQuery, contextEnhanced, vectorSearchFunction, sessionId)
+        result = await advancedAgenticRAG(
+          searchQuery,
+          contextEnhanced,
+          vectorSearchFunction,
+          sessionId,
+        )
         break
 
       case 'multi_hop':
@@ -673,7 +718,7 @@ async function generateEnhancedPortfolioResponse(
           searchQuery,
           vectorSearchFunction,
           interviewType || 'general',
-          3,
+          phoneOptimized ? 2 : 3, // Fewer hops for phone
         )
         result = {
           response: multiHopResult.finalResponse,
@@ -777,7 +822,7 @@ async function generateEnhancedPortfolioResponse(
       multiLanguageResult.languageContext,
       message,
       sessionId,
-      conversationHistory
+      conversationHistory,
     )
 
     // Final cleanup to ensure no quotes in response
@@ -801,7 +846,7 @@ async function generateEnhancedPortfolioResponse(
           response: multiLanguageResponse.responseLanguage,
           translationUsed: multiLanguageResponse.translationUsed,
           searchLanguage: multiLanguageResponse.searchLanguage,
-          crossLanguageSearch: multiLanguageResponse.metadata.crossLanguageSearch
+          crossLanguageSearch: multiLanguageResponse.metadata.crossLanguageSearch,
         },
         contextEnhanced: {
           isFollowUp: contextEnhanced.isFollowUp,
@@ -816,7 +861,12 @@ async function generateEnhancedPortfolioResponse(
     console.error('Advanced portfolio response failed:', error)
 
     // Fallback to basic response
-    const basicResponse = await generatePortfolioResponse(message, conversationHistory, undefined, request)
+    const basicResponse = await generatePortfolioResponse(
+      message,
+      conversationHistory,
+      undefined,
+      request,
+    )
     return {
       response: basicResponse,
       metadata: {
@@ -849,7 +899,9 @@ async function selectRAGPattern(
   // Check for tool requirements - Force tool use for GitHub and LinkedIn queries
   const needsGitHub = /\b(github|repository|repos|code|projects|commits)\b/i.test(message)
   const needsLinkedIn =
-    /\b(linkedin|professional|work experience|career|employment|job history|aubot|kimpton|edgedvr|work at|experience at|certificates|certifications|credentials)\b/i.test(message)
+    /\b(linkedin|professional|work experience|career|employment|job history|aubot|kimpton|edgedvr|work at|experience at|certificates|certifications|credentials)\b/i.test(
+      message,
+    )
   const needsRealTime = /\b(current|recent|latest|now|today|this year)\b/i.test(message)
 
   if (needsGitHub || needsLinkedIn || needsRealTime) {
@@ -1073,10 +1125,10 @@ async function getKeywordBasedResponse(
   // Check if this is a LinkedIn/professional-related query
   if (isLinkedInQuery(message)) {
     console.log('🔍 Detected LinkedIn query, fetching professional data...')
-    
+
     // Get LinkedIn access token from cookies if available
     const linkedinToken = request?.cookies.get('linkedin-token')?.value
-    
+
     const linkedinResponse = await generateLinkedInEnhancedResponse(message, linkedinToken)
     if (linkedinResponse) {
       console.log('✅ Using LinkedIn data for response')

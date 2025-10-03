@@ -314,7 +314,7 @@ export class OmniChannelManager {
     console.log('🎯 Phone optimized: Brief responses, natural conversation')
 
     try {
-      const timeoutMs = additionalContext.phoneCall ? 6000 : 10000 // 6s for phone, 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 8000 : 10000 // 8s for phone, 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -589,6 +589,7 @@ Speak in first person. Be specific and conversational. Sound human!`,
           role: 'user',
           content: userInput,
           enhancedMode: true,
+          phoneOptimized: isPhoneCall, // Enable fast mode for phone
           omniChannelContext: context,
           conversationHistory: conversationHistory,
           model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
