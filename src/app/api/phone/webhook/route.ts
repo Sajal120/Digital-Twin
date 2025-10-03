@@ -161,28 +161,34 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
-  <Record 
-    action="/api/phone/handle-recording"
+  <Gather 
+    input="speech"
+    action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
-    finishOnKey="#"
-    maxLength="120"
-    playBeep="false"
-  />
+    timeout="5"
+    speechTimeout="auto"
+    language="en-US"
+  >
+    <Pause length="1"/>
+  </Gather>
+  <Redirect>/api/phone/handle-speech</Redirect>
 </Response>`
   } catch (error: any) {
     console.warn('⚠️ ElevenLabs failed, using Twilio:', error.message)
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
-  <Record 
-    action="/api/phone/handle-recording"
+  <Gather 
+    input="speech"
+    action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
-    finishOnKey="#"
-    maxLength="120"
-    playBeep="false"
-  />
+    timeout="5"
+    speechTimeout="auto"
+    language="en-US"
+  >
+    <Pause length="1"/>
+  </Gather>
+  <Redirect>/api/phone/handle-speech</Redirect>
 </Response>`
   }
 
