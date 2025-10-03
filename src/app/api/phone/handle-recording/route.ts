@@ -406,9 +406,9 @@ export async function POST(request: NextRequest) {
         const currentTurn = unifiedContextPreview.conversationHistory?.length || 0
         console.log(`🔢 Current turn: ${currentTurn}`)
 
-        // ONLY attempt transcription if this is NOT turn 0 (user has actually spoken)
+        // TRANSCRIPTION IS REQUIRED - no smart topic fallbacks!
         if (currentTurn > 0 && recordingUrl && duration && parseInt(duration) > 1) {
-          console.log('🔊 Attempting audio transcription for keyword detection...')
+          console.log('🔊 MANDATORY audio transcription - no fallbacks...')
           try {
             const audioProcessingResult = await processAudioWithFallback(
               recordingUrl,
@@ -419,20 +419,86 @@ export async function POST(request: NextRequest) {
               audioProcessingSuccess = true
               console.log('✅ Audio processing successful:', userMessage.substring(0, 100) + '...')
             } else {
-              console.log('⚠️ Audio processing failed, using progressive conversation system')
+              console.error('❌ Audio transcription FAILED - cannot continue without hearing user')
+              // Return TwiML asking user to repeat
+              const failTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    Sorry, I didn't catch that. Could you repeat your question?
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+              return new NextResponse(failTwiml, {
+                status: 200,
+                headers: {
+                  'Content-Type': 'text/xml; charset=utf-8',
+                  'Cache-Control': 'no-cache',
+                },
+              })
             }
           } catch (audioError: any) {
-            console.log(
-              '⚠️ Audio processing error, continuing with progressive system:',
+            console.error(
+              '❌ Audio transcription ERROR - cannot continue:',
               audioError?.message || 'Unknown error',
             )
+            // Return TwiML asking user to repeat
+            const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    I'm having trouble hearing you. Please speak clearly and try again.
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+            return new NextResponse(errorTwiml, {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/xml; charset=utf-8',
+                'Cache-Control': 'no-cache',
+              },
+            })
           }
         } else if (currentTurn === 0) {
           console.log(
             "👋 Turn 0: Skipping transcription (initial greeting, user hasn't spoken yet)",
           )
         } else {
-          console.log('📝 No audio to process, using progressive conversation flow')
+          console.error('❌ No audio to transcribe - cannot continue')
+          // Return TwiML asking user to speak
+          const noAudioTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    I didn't hear anything. Please ask your question.
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+          return new NextResponse(noAudioTwiml, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/xml; charset=utf-8',
+              'Cache-Control': 'no-cache',
+            },
+          })
         }
 
         // OMNI-CHANNEL ENHANCEMENT: Get unified conversation context across all channels
@@ -488,49 +554,17 @@ export async function POST(request: NextRequest) {
         let conversationFocus = 'general_background'
         let contextualPrompt = 'Tell me about your professional background and experience'
 
-        // Build context from previous conversation history
-        const previousTopics =
-          conversationContext.conversationHistory?.map((turn) => turn.userInput) || []
-        const conversationSummary =
-          previousTopics.length > 0
-            ? `Previous discussion covered: ${previousTopics.slice(-2).join(', ')}. `
-            : ''
-
-        // STEP 5: Enhanced topic selection with audio recognition integration
-        if (turnCount === 0) {
-          conversationFocus = 'introduction_overview'
-          contextualPrompt =
-            'Give me a professional introduction and overview of your background. This is our first interaction, so provide a comprehensive overview.'
-        } else {
-          // Use AI to determine the best next topic, incorporating audio when available
-          const smartTopic = selectSmartTopic(turnCount, smartTopicAnalysis, conversationSummary)
-          conversationFocus = smartTopic.focus
-
-          // STEP 5: Use actual user speech when audio processing succeeded
-          if (audioProcessingSuccess && userMessage !== 'Continue our professional conversation') {
-            contextualPrompt = `The caller said: "${userMessage}". ${smartTopic.prompt} Please respond directly to their question while incorporating the suggested context.`
-            console.log('🎙️ Using actual user speech in prompt')
-          } else {
-            contextualPrompt = smartTopic.prompt
-            console.log('📝 Using smart topic prompt (no audio or fallback)')
-          }
-
-          console.log(`🎯 Smart topic selected: ${conversationFocus}`)
-          console.log(`💡 Interest indicators: ${smartTopicAnalysis.detectedInterests.join(', ')}`)
-          console.log(`🔊 Audio success: ${audioProcessingSuccess}`)
-        }
+        // ONLY USE REAL TRANSCRIBED AUDIO - No fake smart topic prompts!
+        // userMessage = actual transcribed speech (set above)
+        conversationFocus = audioProcessingSuccess ? 'user_question' : 'introduction_overview'
 
         console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
-        console.log(`💬 Contextual prompt: ${contextualPrompt}`)
+        console.log(`💬 User transcription: ${userMessage}`)
 
-        // OMNI-CHANNEL AI RESPONSE: Generate unified response using enhanced context
+        // OMNI-CHANNEL AI RESPONSE: Generate unified response using REAL transcription
         console.log('🤖 Generating omni-channel AI response...')
-        console.log(
-          `📝 Input type: ${audioProcessingSuccess ? 'ACTUAL SPEECH' : 'Contextual prompt'}`,
-        )
-        console.log(
-          `💬 User said: "${audioProcessingSuccess ? userMessage : 'No audio processed'}"`,
-        )
+        console.log(`📝 Input type: ACTUAL SPEECH ONLY`)
+        console.log(`💬 User said: "${userMessage}"`)
 
         let aiResponse: any
 
@@ -541,19 +575,14 @@ export async function POST(request: NextRequest) {
 
         while (retryCount < maxRetries) {
           try {
-            // Use actual user input if audio was processed, otherwise use contextual prompt
-            // CLEAN INPUT: Send EXACTLY what user asked - no extra prompts or context
-            // This ensures MCP searches for what they actually asked
-            // Example: "education" → searches education, NOT work experience
-            const cleanInput = audioProcessingSuccess ? userMessage : contextualPrompt
+            // CLEAN INPUT: Send EXACTLY what user said - no modifications
+            const cleanInput = userMessage
 
             console.log(
-              `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with CLEAN input`,
+              `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with transcribed speech`,
             )
-            console.log(`📝 Sending EXACT question to MCP: "${cleanInput}"`)
-            console.log(
-              `🎯 Audio processed: ${audioProcessingSuccess} (clean=${audioProcessingSuccess})`,
-            )
+            console.log(`📝 Sending EXACT transcription to MCP: "${cleanInput}"`)
+            console.log(`🎯 Using real transcription: ${audioProcessingSuccess}`)
 
             const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
               callSid,
@@ -948,7 +977,6 @@ export async function POST(request: NextRequest) {
 async function downloadRecording(recordingUrl: string): Promise<Buffer> {
   try {
     console.log('🔐 Checking Twilio credentials...')
-    // Add Twilio auth to the URL
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN
 
@@ -960,22 +988,33 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
     console.log('✅ Twilio credentials found, downloading recording...')
     console.log('📥 Recording URL:', recordingUrl)
 
-    // Create authenticated URL
+    // Twilio returns recording URL without file extension
+    // We need to append .wav to get the actual audio file
+    const audioUrl = recordingUrl.endsWith('.wav') ? recordingUrl : `${recordingUrl}.wav`
+    console.log('📥 Audio URL with extension:', audioUrl)
+
+    // Create authenticated URL using Basic Auth
     const authString = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64')
 
-    const response = await fetch(recordingUrl, {
+    const response = await fetch(audioUrl, {
+      method: 'GET',
       headers: {
         Authorization: `Basic ${authString}`,
+        Accept: 'audio/wav, audio/x-wav, audio/mp3, audio/mpeg',
       },
     })
 
     console.log('📊 Download response status:', response.status, response.statusText)
+    console.log('📊 Content-Type:', response.headers.get('content-type'))
 
     if (!response.ok) {
-      throw new Error(`Failed to download recording: ${response.statusText}`)
+      console.error('❌ Twilio API error response:', await response.text())
+      throw new Error(`Failed to download recording: ${response.status} ${response.statusText}`)
     }
 
-    return Buffer.from(await response.arrayBuffer())
+    const buffer = Buffer.from(await response.arrayBuffer())
+    console.log('✅ Downloaded recording:', buffer.length, 'bytes')
+    return buffer
   } catch (error) {
     console.error('Error downloading recording:', error)
     throw error
