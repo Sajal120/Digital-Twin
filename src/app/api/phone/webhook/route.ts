@@ -165,9 +165,10 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="5"
+    timeout="8"
     speechTimeout="auto"
     language="en-US"
+    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
   >
     <Pause length="1"/>
   </Gather>
@@ -182,9 +183,10 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="5"
+    timeout="8"
     speechTimeout="auto"
     language="en-US"
+    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
   >
     <Pause length="1"/>
   </Gather>

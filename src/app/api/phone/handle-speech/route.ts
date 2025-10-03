@@ -21,6 +21,8 @@ export async function POST(request: NextRequest) {
       callSid,
       speechResult: speechResult || '(no speech)',
       confidence: confidence || 'N/A',
+      speechResultLength: speechResult?.length || 0,
+      fullWebhookData: webhookData, // Log everything to debug
     })
 
     // Validate required fields
@@ -41,9 +43,10 @@ export async function POST(request: NextRequest) {
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="5"
+    timeout="8"
     speechTimeout="auto"
     language="en-US"
+    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job"
   >
     <Pause length="1"/>
   </Gather>
@@ -223,9 +226,10 @@ export async function POST(request: NextRequest) {
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="5"
+    timeout="8"
     speechTimeout="auto"
     language="en-US"
+    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
   >
     <Pause length="1"/>
   </Gather>
@@ -253,9 +257,10 @@ export async function POST(request: NextRequest) {
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="5"
+    timeout="8"
     speechTimeout="auto"
     language="en-US"
+    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
   >
     <Pause length="1"/>
   </Gather>
