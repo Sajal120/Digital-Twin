@@ -585,6 +585,24 @@ async function makeSearchDecision(
     }
   }
 
+  // ALWAYS SEARCH for questions about professional background
+  const mustSearchPatterns = [
+    /\b(university|college|degree|education|studied?|graduated?|school|masters?|bachelors?)\b/i,
+    /\b(work|job|company|companies|employer|experience|worked?|position|role)\b/i,
+    /\b(project|built|created|developed?|skill|technology|tech)\b/i,
+    /\b(swinburne|kings own|kimpton|aubot|edgedvr)\b/i,
+  ]
+
+  if (mustSearchPatterns.some((pattern) => pattern.test(userQuestion))) {
+    console.log('Professional background question detected - FORCING SEARCH')
+    return {
+      action: 'SEARCH',
+      reasoning: 'Question about professional background requires database search',
+      confidence: 95,
+      searchQuery: userQuestion,
+    }
+  }
+
   if (!process.env.GROQ_API_KEY) {
     // Default to search if no LLM available
     return {
