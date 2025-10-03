@@ -805,11 +805,11 @@ export async function POST(request: NextRequest) {
       const fullResponse = `${aiResponse.response}`
 
       // Call ElevenLabs API directly (faster than internal route)
-      const elevenlabsResponse = await Promise.race([
+      const elevenlabsResponse = (await Promise.race([
         fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
           method: 'POST',
           headers: {
-            'Accept': 'audio/mpeg',
+            Accept: 'audio/mpeg',
             'Content-Type': 'application/json',
             'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
           },
@@ -824,10 +824,8 @@ export async function POST(request: NextRequest) {
             },
           }),
         }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)
-        )
-      ]) as Response
+        new Promise((_, reject) => setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)),
+      ])) as Response
 
       if (!elevenlabsResponse.ok) {
         throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
@@ -987,7 +985,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
     formData.append('language', 'en')
 
     console.log('📤 Sending audio to OpenAI Whisper API...')
-    const response = await Promise.race([
+    const response = (await Promise.race([
       fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
         headers: {
@@ -995,10 +993,8 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
         },
         body: formData,
       }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Whisper timeout')), 10000)
-      )
-    ]) as Response
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Whisper timeout')), 10000)),
+    ])) as Response
 
     console.log('📊 OpenAI response status:', response.status, response.statusText)
 

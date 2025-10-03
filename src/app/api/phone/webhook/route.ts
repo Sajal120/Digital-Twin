@@ -106,11 +106,11 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     console.log('📝 Greeting:', greeting)
 
     // Generate custom voice greeting - Direct ElevenLabs call for speed
-    const elevenlabsResponse = await Promise.race([
+    const elevenlabsResponse = (await Promise.race([
       fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
         method: 'POST',
         headers: {
-          'Accept': 'audio/mpeg',
+          Accept: 'audio/mpeg',
           'Content-Type': 'application/json',
           'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
         },
@@ -125,10 +125,8 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
           },
         }),
       }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)
-      )
-    ]) as Response
+      new Promise((_, reject) => setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)),
+    ])) as Response
 
     if (!elevenlabsResponse.ok) {
       throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
