@@ -271,10 +271,10 @@ export class OmniChannelManager {
     }
 
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
-    // For phone: Add timeout wrapper (5s accounts for network latency)
+    // For phone: Add timeout wrapper (3s for fast response)
     try {
       console.log('🤖 Using MCP server for intelligent response with RAG + database')
-      const mcpTimeout = additionalContext.phoneCall ? 5000 : 10000
+      const mcpTimeout = additionalContext.phoneCall ? 3000 : 10000
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -300,11 +300,11 @@ export class OmniChannelManager {
     if (additionalContext.phoneCall) {
       console.log('📞 Phone fallback: Using DIRECT Groq API (ultra-fast)')
       try {
-        // Add 4s timeout for Groq (should be much faster)
+        // Add 3s timeout for Groq (ultra-fast response)
         const groqResponse = await Promise.race([
           this.callDirectGroq(userInput, enhancedContext),
           new Promise<string>((_, reject) =>
-            setTimeout(() => reject(new Error('Groq timeout after 4s')), 4000),
+            setTimeout(() => reject(new Error('Groq timeout after 3s')), 3000),
           ),
         ])
         return {
@@ -460,21 +460,23 @@ export class OmniChannelManager {
     const Groq = require('groq-sdk')
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-    const systemPrompt = `PHONE CALL - Be conversational and concise (15-25 words max). Answer the ACTUAL question.
+    const systemPrompt = `PHONE: Be natural and brief (15-20 words). Answer directly.
 
-YOU ARE SAJAL BASNET:
-- CURRENT: Software Developer at Kimpton
-- PAST: Software dev intern at Aubot, VR dev intern at edgedVR
-- EDUCATION: Masters in Software Development, Swinburne University, May 2024, GPA 3.688
-- SKILLS: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
-- LOCATION: Sydney, Australia (from Nepal)
+YOU ARE SAJAL BASNET - Software Developer:
+• NOW: Kimpton (full-stack, React/Python)
+• PAST: Aubot (software dev), edgedVR (VR dev)  
+• DEGREE: Masters, Swinburne University, May 2024, GPA 3.688
+• TECH: React, Python, JavaScript, Node.js, AWS, Terraform
+• INTERESTS: AI, machine learning, security
+• LOCATION: Sydney (from Nepal)
 
-ANSWER EXAMPLES:
-Q: "What do you do?" → "I'm a software developer at Kimpton, working with React and Python on full-stack applications."
-Q: "Tell me about your experience" → "I work at Kimpton doing full-stack development. I previously interned at Aubot and edgedVR."
-Q: "What's your education?" → "I have a Masters in Software Development from Swinburne University, graduated May 2024."
+EXAMPLES:
+Q: "What do you do?" → "I'm a full-stack developer at Kimpton, working with React and Python."
+Q: "Experience?" → "I work at Kimpton. Previously interned at Aubot doing software development and edgedVR doing VR."
+Q: "Education?" → "Masters in Software Development from Swinburne, graduated May 2024."
+Q: "What are you passionate about?" → "I'm really into AI, machine learning, and security."
 
-BE SPECIFIC. USE REAL NAMES. ANSWER THE ACTUAL QUESTION.`
+CRITICAL: Use REAL company names (Kimpton, Aubot, edgedVR, Swinburne). NO generic phrases. Answer what they asked.`
 
     console.log('📝 Question:', userInput)
     const startTime = Date.now()
@@ -484,9 +486,9 @@ BE SPECIFIC. USE REAL NAMES. ANSWER THE ACTUAL QUESTION.`
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userInput },
       ],
-      model: 'mixtral-8x7b-32768',
+      model: 'llama-3.1-8b-instant', // Fastest model available
       temperature: 0.7,
-      max_tokens: 100,
+      max_tokens: 80, // Shorter for faster responses (15-20 words)
     })
 
     const response = completion.choices[0]?.message?.content || 'Could you repeat that?'

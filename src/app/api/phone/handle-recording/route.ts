@@ -738,7 +738,7 @@ export async function POST(request: NextRequest) {
 
           const fullResponse = `${aiResponse.response}`
 
-          // Call ElevenLabs API - FAST mode
+          // Call ElevenLabs API - ULTRA FAST mode
           const elevenlabsResponse = (await Promise.race([
             fetch(
               `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
@@ -754,7 +754,7 @@ export async function POST(request: NextRequest) {
                   model_id: 'eleven_turbo_v2_5', // Fastest model
                   voice_settings: {
                     stability: 0.5,
-                    similarity_boost: 0.75, // Slightly lower for speed
+                    similarity_boost: 0.75,
                     style: 0.0,
                     use_speaker_boost: true,
                   },
@@ -762,7 +762,7 @@ export async function POST(request: NextRequest) {
               },
             ),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000),
+              setTimeout(() => reject(new Error('ElevenLabs timeout')), 2500),
             ),
           ])) as Response
 
@@ -862,24 +862,24 @@ export async function POST(request: NextRequest) {
       }
     })()
 
-    // Race between processing and timeout (9s - MUST be under Twilio's 10s limit)
+    // Race between processing and timeout (7s for faster response)
     try {
       const result = await Promise.race([
         processingPromise,
         new Promise<NextResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('Processing timeout after 9s')), 9000),
+          setTimeout(() => reject(new Error('Processing timeout after 7s')), 7000),
         ),
       ])
       return result
     } catch (timeoutError) {
-      console.error('⏱️ TIMEOUT after 9s - asking user to continue')
+      console.error('⏱️ TIMEOUT after 7s - returning quick response')
       console.error('Timeout error:', timeoutError)
 
-      // Return TwiML to continue conversation (don't throw!)
+      // Return intelligent fallback using conversation context (not generic!)
       const timeoutTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US">
-    What else would you like to know?
+    Could you please repeat that?
   </Say>
   <Record 
     action="/api/phone/handle-recording"

@@ -131,19 +131,19 @@ setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000)
 
 ## New Timeline
 
-### Optimized Flow (7-9 seconds total)
+### Optimized Flow (5-7 seconds total) ⚡
 ```
 0s:   User finishes speaking
 0-1s: Groq transcribes audio ✅
-1-4s: MCP tries (RAG + vector search + AI) ✅
+1-4s: MCP tries (RAG + vector search + AI) - 3s timeout ✅
       IF MCP succeeds → Use MCP response ✅
-      IF MCP timeout (3s) → Fall back to fast GPT ✅
-4-7s: Fast GPT generates (if MCP timed out) ✅
-7-10s: ElevenLabs generates voice ✅
-      IF ElevenLabs timeout → Twilio Say with AI text ✅
+      IF MCP timeout → Fall back to Direct Groq ⚡
+4-6s: Direct Groq generates (llama-3.1-8b-instant) ✅
+6-7s: ElevenLabs voice (turbo_v2_5, 2.5s timeout) ✅
+      IF timeout → Twilio Say with AI text ✅
       
-TOTAL: 7-9 seconds
-RESULT: User hears intelligent response ✅
+TOTAL: 5-7 seconds
+RESULT: Fast, natural, genuine responses ✅
 ```
 
 ### What Happens in Each Scenario
