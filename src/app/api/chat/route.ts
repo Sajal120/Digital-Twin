@@ -661,23 +661,27 @@ async function generateEnhancedPortfolioResponse(
     }
 
     // Multi-language processing
-    // For phone: skip (uses Groq - rate limited)
+    // For phone: use FAST rule-based detection (no Groq LLM needed)
     let multiLanguageResult: any
 
     if (phoneOptimized) {
-      console.log('📞 Phone mode: Skipping multi-language analysis (too slow)')
+      console.log('📞 Phone mode: Using FAST rule-based language detection')
+      // Fast language detection without Groq
+      const { detectLanguageContext } = await import('@/lib/multi-language-rag')
+      const languageContext = await detectLanguageContext(message)
+
       multiLanguageResult = {
         enhancedQuery: message,
-        languageContext: {
-          detectedLanguage: 'en',
-          confidence: 1.0,
-        },
+        languageContext,
         selectedPattern: {
           pattern: 'standard_agentic',
           searchQuery: message,
-          reasoning: 'Phone fast mode',
+          reasoning: 'Phone fast mode with language detection',
         },
       }
+      console.log(
+        `📞 Detected language: ${languageContext.detectedLanguage} (${languageContext.preferredResponseLanguage})`,
+      )
     } else {
       console.log('🌍 Processing multi-language query...')
       multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
