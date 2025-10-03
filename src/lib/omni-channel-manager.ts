@@ -287,7 +287,7 @@ export class OmniChannelManager {
 
     // Fallback to enhanced chat API with timeout for phone calls
     try {
-      const timeoutMs = additionalContext.phoneCall ? 4000 : 10000 // 4s for phone (fast but allows AI processing), 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 2000 : 10000 // 2s for phone (FAST!), 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>

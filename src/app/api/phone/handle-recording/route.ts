@@ -808,7 +808,7 @@ export async function POST(request: NextRequest) {
 
         const fullResponse = `${aiResponse.response}`
 
-        // Call ElevenLabs API directly (faster than internal route)
+        // Call ElevenLabs API directly - MUST use your voice (no fallback!)
         const elevenlabsResponse = (await Promise.race([
           fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
             method: 'POST',
@@ -829,25 +829,30 @@ export async function POST(request: NextRequest) {
             }),
           }),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('ElevenLabs timeout')), 5000),
+            setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000),
           ),
         ])) as Response
 
         if (!elevenlabsResponse.ok) {
+          console.error(`❌ ElevenLabs API error: ${elevenlabsResponse.status}`)
           throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
         }
 
         const audioBuffer = await elevenlabsResponse.arrayBuffer()
 
-        if (audioBuffer && audioBuffer.byteLength > 0) {
-          // Create audio URL for Twilio to play
-          const audioUrl = await createPhoneAudioEndpoint(audioBuffer, fullResponse)
+        if (!audioBuffer || audioBuffer.byteLength === 0) {
+          console.error('❌ ElevenLabs returned empty audio')
+          throw new Error('Empty audio buffer from ElevenLabs')
+        }
 
-          console.log('✅ Custom voice audio generated successfully')
-          console.log(`🎵 Audio URL: ${audioUrl.substring(0, 60)}...`)
+        // Create audio URL for Twilio to play
+        const audioUrl = await createPhoneAudioEndpoint(audioBuffer, fullResponse)
 
-          // TwiML with custom voice audio
-          twiml = `<?xml version="1.0" encoding="UTF-8"?>
+        console.log('✅ ElevenLabs voice audio generated successfully')
+        console.log(`🎵 Audio URL: ${audioUrl.substring(0, 60)}...`)
+
+        // TwiML with custom voice audio
+        twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
   <Record 
@@ -862,33 +867,11 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
 
-          console.log('🎯 Using custom voice TwiML')
-        } else {
-          throw new Error('Empty audio buffer from voice service')
-        }
+        console.log('✅ Using ElevenLabs voice (your cloned voice)')
       } catch (voiceError: any) {
-        console.warn(
-          '⚠️ Custom voice generation failed, using Twilio voice fallback:',
-          voiceError.message,
-        )
-
-        // Fallback to Twilio voice with enhanced naturalness
-        twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en-US" rate="medium" pitch="medium">${escapeXml(aiResponse.response)}</Say>
-  <Record 
-    action="/api/phone/handle-recording"
-    method="POST"
-    timeout="10"
-    finishOnKey="#"
-    transcribe="true"
-    transcribeCallback="/api/phone/handle-transcription"
-    maxLength="120"
-    playBeep="false"
-  />
-</Response>`
-
-        console.log('🔄 Using enhanced Twilio voice fallback')
+        console.error('❌ ElevenLabs voice failed:', voiceError.message)
+        // Don't use robotic Twilio voice - throw error to trigger timeout fallback
+        throw voiceError
       }
 
       // STEP 5: Store conversation history with actual user input when available
@@ -939,21 +922,21 @@ export async function POST(request: NextRequest) {
     }
   })()
 
-  // Race between processing and timeout (max 6 seconds total - transcription + AI)
+  // Race between processing and timeout (max 10 seconds total)
   try {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 6000),
+        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 10000),
       ),
     ])
     return result
   } catch (timeoutError) {
-    console.error('⏱️ TIMEOUT: Returning INSTANT fallback (5s limit reached)')
+    console.error('⏱️ TIMEOUT: Returning fallback (processing took too long)')
     const quickFallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice" language="en-US" rate="medium">
-    I work at Kimpton. I interned at Aubot and edgedVR. Got my Masters from Swinburne. What do you want to know?
+  <Say voice="alice" language="en-US" rate="fast">
+    I work at Kimpton. Interned at Aubot and edgedVR. Masters from Swinburne. What else?
   </Say>
   <Record 
     action="/api/phone/handle-recording"
