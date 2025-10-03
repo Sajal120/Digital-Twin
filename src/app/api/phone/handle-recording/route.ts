@@ -987,6 +987,10 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
 
     console.log('✅ Twilio credentials found, downloading recording...')
     console.log('📥 Recording URL:', recordingUrl)
+    console.log('🔑 Account SID length:', twilioAccountSid.length, 'chars')
+    console.log('🔑 Auth Token length:', twilioAuthToken.length, 'chars')
+    console.log('🔑 Account SID starts with:', twilioAccountSid.substring(0, 5))
+    console.log('🔑 Auth Token starts with:', twilioAuthToken.substring(0, 5))
 
     // Twilio returns recording URL without file extension
     // We need to append .wav to get the actual audio file
@@ -995,6 +999,7 @@ async function downloadRecording(recordingUrl: string): Promise<Buffer> {
 
     // Create authenticated URL using Basic Auth
     const authString = Buffer.from(`${twilioAccountSid}:${twilioAuthToken}`).toString('base64')
+    console.log('🔐 Auth string length:', authString.length, 'chars')
 
     const response = await fetch(audioUrl, {
       method: 'GET',
