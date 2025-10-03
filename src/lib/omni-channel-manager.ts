@@ -249,6 +249,20 @@ export class OmniChannelManager {
 
     console.log(`🤖 Generating unified response for ${context.currentChannel.type} channel`)
 
+    // PHONE OPTIMIZATION: Quick answers for common questions (bypass AI for speed)
+    if (additionalContext.phoneCall || additionalContext.ultraBrief) {
+      const quickAnswer = this.getQuickPhoneAnswer(userInput.toLowerCase())
+      if (quickAnswer) {
+        console.log('⚡ Using quick answer (bypassed AI for speed)')
+        return {
+          response: quickAnswer,
+          source: 'quick_answer',
+          context: { userId, currentChannel: context.currentChannel.type },
+          suggestions: [],
+        }
+      }
+    }
+
     // Prepare enhanced context for MCP server
     const enhancedContext = {
       userId,
@@ -289,6 +303,38 @@ export class OmniChannelManager {
       context: enhancedContext,
       suggestions: chatResponse.suggestions || [],
     }
+  }
+
+  /**
+   * Quick answers for common phone questions (bypass AI for speed)
+   */
+  private getQuickPhoneAnswer(question: string): string | null {
+    // Experience/work questions
+    if (question.match(/\b(experience|work|job|career|working|employed)\b/)) {
+      return 'Software Developer Intern at Aubot. Previously VR Developer at edgedVR. Masters from Swinburne.'
+    }
+
+    // Education questions
+    if (question.match(/\b(education|study|degree|masters|university|school|graduated|learn)\b/)) {
+      return 'Masters in Software Development from Swinburne University. Graduated May 2024 with GPA 3.688.'
+    }
+
+    // Tech/skills questions
+    if (question.match(/\b(tech|skill|language|framework|tool|stack|know|use)\b/)) {
+      return 'React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB, PostgreSQL.'
+    }
+
+    // Location questions
+    if (question.match(/\b(where|location|live|based|located|from)\b/)) {
+      return 'Auburn, Sydney, Australia. Originally from Nepal.'
+    }
+
+    // About/intro questions
+    if (question.match(/\b(who are you|about yourself|tell me about|introduce)\b/)) {
+      return 'Sajal Basnet. Software Developer Intern at Aubot. Masters from Swinburne University. Based in Sydney.'
+    }
+
+    return null // Use AI for other questions
   }
 
   /**
@@ -342,19 +388,39 @@ export class OmniChannelManager {
     const conversationHistory = [
       {
         role: 'system',
-        content: `You are Sajal Basnet. ${isPhoneCall ? 'PHONE CALL MODE - Keep responses under 40 words, 2-3 sentences MAX. Answer directly and specifically.' : ''}
+        content: isPhoneCall
+          ? `You are Sajal Basnet on a PHONE CALL. Answer in 15-25 words MAX.
 
-ACCURATE INFO ONLY (NO EXAGGERATION):
-- Title: Full-Stack Software Developer (NOT senior, NOT 5+ years)
-- Education: Masters in Software Development from Swinburne University (GPA 3.688/4.0, Top 15%)
+FACTS:
+- Education: Masters from Swinburne University (Sep 2022-May 2024)
+- Work: Software Developer Intern at Aubot (Dec 2024-Mar 2025)
+- Previous: VR Developer at edgedVR (2021-2022)
+- Tech: React, Python, Node.js, AWS, Terraform
+- Location: Auburn, Sydney
+
+IMPORTANT EXAMPLES:
+
+Q: "What's your experience?"
+BAD: "I can help you with software development..."
+GOOD: "Software Developer Intern at Aubot. Previously VR Developer at edgedVR. Masters from Swinburne."
+
+Q: "What tech do you use?"
+BAD: "I work with various technologies..."
+GOOD: "React, Python, Node.js, AWS, Terraform, MySQL, MongoDB."
+
+RULE: Answer EXACTLY what was asked. NO generic statements. NO offers to help. Just FACTS.`
+          : `You are Sajal Basnet.
+
+ACCURATE INFO:
+- Title: Full-Stack Software Developer
+- Education: Masters from Swinburne University (GPA 3.688/4.0)
 - Location: Auburn, Sydney, Australia (from Nepal)
 - Recent Work: Software Developer Intern at Aubot (Dec 2024-Mar 2025)
 - Tech: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
-- Languages: English, Nepali, Hindi
 
-${isPhoneCall ? 'PHONE RULES: Answer ONLY what was asked. Be specific. No long stories. 2-3 sentences max.' : 'Speak naturally in FIRST PERSON. Be conversational.'}`,
+Speak naturally in FIRST PERSON. Be conversational.`,
       },
-      ...(context.conversationHistory || []),
+      ...(context.conversationHistory?.slice(-3) || []), // Only 3 turns for phone
     ]
 
     const response = await fetch(`${this.baseUrl}/api/chat`, {
@@ -369,7 +435,7 @@ ${isPhoneCall ? 'PHONE RULES: Answer ONLY what was asked. Be specific. No long s
         omniChannelContext: context,
         conversationHistory: conversationHistory,
         systemInstruction: isPhoneCall
-          ? 'PHONE: 1-2 sentences max. 25 words max. Answer ONLY the question. No extra details.'
+          ? 'PHONE: 15-25 words. Answer EXACT question with FACTS only. NO "I can help", NO "let me tell you", NO generic statements. Just specific facts.'
           : 'Use accurate profile info. NO EXAGGERATION. Speak in first person naturally.',
       }),
     })
@@ -436,18 +502,31 @@ ${isPhoneCall ? 'PHONE RULES: Answer ONLY what was asked. Be specific. No long s
         .replace(/\s+/g, ' ') // Remove extra spaces
         .trim()
 
-      // PHONE SPECIFIC: Ultra-aggressive truncation - Maximum 2 sentences, 30 words
-      const sentences = cleaned.split(/\.\s+/).filter((s) => s.trim().length > 0)
+      // PHONE SPECIFIC: Remove generic fluff phrases
+      cleaned = cleaned
+        .replace(
+          /^(I can help you|Let me tell you|I'd be happy to|Allow me to|I'm here to help).*?[.!]/i,
+          '',
+        )
+        .replace(
+          /(how can I help|what would you like to know|is there anything else|feel free to ask).*?[.!]/gi,
+          '',
+        )
+        .replace(/\bwith (software development|technology|programming|coding)\b/gi, '')
+        .trim()
+
+      // PHONE SPECIFIC: Ultra-aggressive truncation - Maximum 2 sentences, 25 words
+      const sentences = cleaned.split(/\.\s+/).filter((s) => s.trim().length > 3)
       if (sentences.length > 2) {
         cleaned = sentences.slice(0, 2).join('. ') + '.'
       } else if (sentences.length > 0) {
         cleaned = sentences.join('. ') + (cleaned.endsWith('.') ? '' : '.')
       }
 
-      // Hard word limit: 30 words maximum
-      const words = cleaned.split(/\s+/)
-      if (words.length > 30) {
-        cleaned = words.slice(0, 30).join(' ') + '.'
+      // Hard word limit: 25 words maximum
+      const words = cleaned.split(/\s+/).filter((w) => w.length > 0)
+      if (words.length > 25) {
+        cleaned = words.slice(0, 25).join(' ') + '.'
       }
 
       // Truncate overly long responses for natural phone conversation
