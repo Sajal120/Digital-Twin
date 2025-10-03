@@ -344,13 +344,16 @@ export class OmniChannelManager {
   }
 
   /**
-   * Quick answers for common phone questions (bypass AI for speed)
-   * Store last question for follow-up context
+   * DISABLED: Quick answers removed - always use MCP for accurate information
    */
   private lastQuestionTopic: string | null = null
 
   private getQuickPhoneAnswer(question: string): string | null {
-    // Normalize question: lowercase, trim, remove punctuation
+    // ALWAYS use MCP/AI - no hardcoded responses
+    console.log('🚫 Quick answers DISABLED - forcing MCP/AI for accuracy')
+    return null
+
+    /* OLD HARDCODED LOGIC DISABLED
     const normalizedQuestion = question
       .toLowerCase()
       .trim()
@@ -442,8 +445,7 @@ export class OmniChannelManager {
       return "I'm Sajal, a software developer working at Kimpton. Got my Masters from Swinburne. What would you like to know?"
     }
 
-    console.log('❌ No quick answer found - using AI')
-    return null // Use AI for other questions
+    // END OF DISABLED CODE */
   }
 
   /**
@@ -461,30 +463,25 @@ export class OmniChannelManager {
     const Groq = require('groq-sdk')
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
 
-    const systemPrompt = `You are Sajal Basnet answering a phone call. Be SPECIFIC and DIRECT.
+    const systemPrompt = `You are Sajal Basnet on a phone call. Answer ONLY what's asked. Be specific.
 
-YOUR INFORMATION:
-• CURRENT JOB: Full-stack Software Developer at Kimpton (React, Python)
-• PAST EXPERIENCE: 
-  - Aubot: Software Development Intern
-  - edgedVR: VR Developer Intern
+CORRECT INFORMATION:
+• CURRENT: Assistant Bar Manager at Kimpton Margot Hotel (Oracle Micros POS, Deputy systems)
+• RECENT: Software Developer Intern at Aubot (Dec 2024-Mar 2025, Python/Java, 15K+ users)
+• PAST: VR Developer at edgedVR (2022-2023, JavaScript, cross-platform)
 • EDUCATION: Masters in Software Development, Swinburne University, May 2024, GPA 3.688
-• TECHNICAL SKILLS: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
-• INTERESTS: AI, machine learning, security, cloud architecture
-• LOCATION: Sydney, Australia (originally from Nepal)
+• SKILLS: React, Python, JavaScript, Node.js, AWS, Terraform
+• INTERESTS: AI, machine learning, security, full-stack development
+• LOCATION: Sydney, Australia
 
-IMPORTANT RULES:
-1. Answer the SPECIFIC question asked
-2. Use REAL company/university names (Kimpton, Aubot, edgedVR, Swinburne)
-3. Keep answers to 15-25 words for phone
-4. Don't repeat yourself - check conversation history
-5. Be conversational but specific
+PHONE RULES:
+1. Answer ONLY what they asked (don't give everything)
+2. Keep responses 20-35 words (natural phone conversation)
+3. Check conversation history - don't repeat
+4. Be conversational and specific
+5. If unsure about details, acknowledge it
 
-EXAMPLES:
-Q: "What's your work experience?" → "I work at Kimpton as a full-stack developer. Previously, I interned at Aubot doing software development and at edgedVR as a VR developer."
-Q: "Tell me about yourself" → "I'm Sajal Basnet, a software developer at Kimpton. I have a Masters from Swinburne and I'm passionate about AI and security."
-Q: "What do you do?" → "I'm a full-stack developer at Kimpton, working with React and Python on web applications."
-Q: "Your education?" → "Masters in Software Development from Swinburne University, graduated May 2024 with a 3.688 GPA."`
+IMPORTANT: Prefer using the conversation context/history provided. These are just fallback facts.`
 
     const startTime = Date.now()
 
@@ -601,15 +598,16 @@ Q: "What are you passionate about?" → "I'm really into AI and machine learning
 ALWAYS: Answer what they actually asked. Use context from conversation. Be helpful and engaging.`
           : `You're Sajal Basnet. Speak naturally and conversationally.
 
-YOUR PROFILE:
-- Software Developer at Kimpton
-- Passionate about AI, machine learning, security, data analysis
-- Masters in Software Development from Swinburne (GPA 3.688/4.0)
-- Based in Sydney, Australia (from Nepal)
-- Intern experience: Aubot (software dev), edgedVR (VR development)
-- Tech stack: React, Python, JavaScript, Node.js, AWS, Terraform, MySQL, MongoDB
+KEY FACTS (prefer conversation context over this):
+- Current: Assistant Bar Manager at Kimpton Margot Hotel (Oracle Micros POS, Deputy systems)
+- Recent: Software Developer Intern at Aubot (Dec 2024-Mar 2025, Python/Java)
+- Past: VR Developer at edgedVR (2022-2023, JavaScript, VR)
+- Education: Masters, Swinburne University, May 2024, GPA 3.688
+- Skills: React, Python, JavaScript, Node.js, AWS, Terraform
+- Interests: AI, machine learning, security, full-stack development
+- Location: Sydney, Australia
 
-Be conversational, use first person, show enthusiasm for AI and tech. Sound human!`,
+Speak in first person. Be specific and conversational. Sound human!`,
       },
       ...(context.conversationHistory?.slice(-5) || []), // 5 turns for better context
     ]
@@ -783,24 +781,16 @@ Be conversational, use first person, show enthusiasm for AI and tech. Sound huma
   }
 
   /**
-   * Load professional profile from MCP server
+   * Load professional profile - minimal fallback, prefer MCP data
    */
   private async loadProfessionalProfile(): Promise<ProfessionalProfile> {
-    // ACCURATE professional profile based on actual CV - NO EXAGGERATION
+    // Minimal profile - MCP database has the accurate, detailed information
     return {
       personalInfo: {
         name: 'Sajal Basnet',
-        title: 'Full-Stack Software Developer',
-        expertise: [
-          'Full-Stack Development',
-          'AI Development',
-          'React & JavaScript',
-          'Python',
-          'Cloud & DevOps',
-          'Security',
-        ],
-        experience:
-          'Masters in Software Development graduate from Swinburne University (GPA 3.688/4.0, Top 15%), based in Auburn, Sydney. Software Developer Intern at Aubot and former VR Developer at edgedVR. Currently focused on AI, development, security, and support with hands-on experience in React, Python, JavaScript, AWS, and building a digital twin portfolio with chat and voice features.',
+        title: 'Software Developer & AI Engineer',
+        expertise: ['Software Development', 'AI/ML', 'VR Development', 'Full-Stack'],
+        experience: 'See MCP database for accurate, up-to-date work experience details.',
       },
       conversationStyle: {
         tone: 'professional',
