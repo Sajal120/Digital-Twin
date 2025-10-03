@@ -165,6 +165,8 @@ export async function formatForInterview(
       // Try different fields for content
       return (
         result.data ||
+        result.metadata?.fullText || // Check fullText first (our professional profile)
+        result.metadata?.text || // Then text field
         result.metadata?.content ||
         result.metadata?.description ||
         result.metadata?.title ||
