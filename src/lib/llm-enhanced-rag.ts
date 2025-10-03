@@ -500,7 +500,12 @@ export async function agenticRAG(
       case 'SEARCH':
         console.log('🔍 Executing enhanced RAG search...')
         const searchQuery = searchDecision.searchQuery || contextEnhancement.enhancedQuery
-        result = await contextAwareRAG(searchQuery, vectorSearchFunction, interviewType)
+        result = await contextAwareRAG(
+          searchQuery,
+          vectorSearchFunction,
+          interviewType,
+          detectedLanguage,
+        )
         break
 
       case 'DIRECT':
@@ -510,6 +515,7 @@ export async function agenticRAG(
           searchDecision.reasoning,
           interviewType,
           context.topicsDiscussed,
+          detectedLanguage,
         )
         result = {
           response: directResponse,
@@ -536,6 +542,7 @@ export async function agenticRAG(
           userQuestion,
           searchDecision.reasoning,
           context.topicsDiscussed,
+          detectedLanguage,
         )
         result = {
           response: clarificationResponse,
@@ -840,7 +847,9 @@ async function generateDirectResponse(
   reasoning: string,
   interviewType: InterviewContextType,
   topicsDiscussed: string[] = [],
+  detectedLanguage?: string,
 ): Promise<string> {
+  console.log(`💬 Direct response in language: ${detectedLanguage || 'en'}`)
   // Handle simple name/greeting questions directly without LLM
   const simpleNamePatterns = [
     /^naam\s+k\s*[\?\.]?\s*ho$/i,
@@ -876,8 +885,23 @@ async function generateDirectResponse(
 
   const context = INTERVIEW_CONTEXTS[interviewType]
 
-  const directPrompt = `
-You are Sajal Basnet, a software developer from Nepal. Answer this question naturally and factually.
+  const systemPrompt =
+    detectedLanguage === 'hi'
+      ? 'You are Sajal Basnet. You MUST respond in HINDI language only. हिंदी में जवाब दें।'
+      : detectedLanguage === 'ne'
+        ? 'You are Sajal Basnet. You MUST respond in NEPALI language only. नेपालीमा जवाफ दिनुहोस्।'
+        : 'You are Sajal Basnet, a software developer from Nepal.'
+
+  const languageInstruction =
+    detectedLanguage === 'hi'
+      ? '\nMUST respond in HINDI: Use Hindi words like "Main", "Mera", "Hun". हिंदी में जवाब दें।'
+      : detectedLanguage === 'ne'
+        ? '\nMUST respond in NEPALI: Use Nepali words like "Ma", "Mero", "Chu". नेपालीमा जवाफ दिनुहोस्।'
+        : ''
+
+  const directPrompt = `${languageInstruction}
+
+Answer this question naturally and factually.
 
 Question: "${question}"
 Reasoning for direct response: ${reasoning}
@@ -899,11 +923,16 @@ Basic facts you can reference:
 - Focus: Software development, AI, and technology
 - Languages: English, Nepali, some Hindi
 
-Respond naturally as Sajal:`
+Respond naturally as Sajal:
+${detectedLanguage === 'hi' ? '\nअब हिंदी में जवाब दें:' : ''}
+${detectedLanguage === 'ne' ? '\nअब नेपालीमा जवाफ दिनुहोस्:' : ''}`
 
   try {
     const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: directPrompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: directPrompt },
+      ],
       model: 'llama-3.1-8b-instant',
       temperature: 0.7,
       max_tokens: 120,
@@ -929,13 +958,28 @@ async function generateClarificationRequest(
   question: string,
   reasoning: string,
   topicsDiscussed: string[] = [],
+  detectedLanguage?: string,
 ): Promise<string> {
+  console.log(`❓ Clarification request in language: ${detectedLanguage || 'en'}`)
   if (!process.env.GROQ_API_KEY) {
     return "Could you help me understand what specific information you're looking for? I want to give you the most relevant response."
   }
 
-  const clarificationPrompt = `
-You are Sajal's AI assistant helping to clarify an ambiguous question.
+  const systemPrompt =
+    detectedLanguage === 'hi'
+      ? 'You are Sajal Basnet. You MUST respond in HINDI language only. हिंदी में जवाब दें।'
+      : detectedLanguage === 'ne'
+        ? 'You are Sajal Basnet. You MUST respond in NEPALI language only. नेपालीमा जवाफ दिनुहोस्।'
+        : "You are Sajal's AI assistant."
+
+  const languageInstruction =
+    detectedLanguage === 'hi'
+      ? '\nMUST respond in HINDI. हिंदी में जवाब दें।'
+      : detectedLanguage === 'ne'
+        ? '\nMUST respond in NEPALI. नेपालीमा जवाफ दिनुहोस्।'
+        : ''
+
+  const clarificationPrompt = `${languageInstruction}
 
 Original Question: "${question}"
 Why clarification is needed: ${reasoning}
@@ -951,7 +995,10 @@ Clarification Request:`
 
   try {
     const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: clarificationPrompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: clarificationPrompt },
+      ],
       model: 'llama-3.1-8b-instant',
       temperature: 0.6,
       max_tokens: 100,
