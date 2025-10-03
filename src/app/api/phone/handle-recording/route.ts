@@ -528,9 +528,9 @@ export async function POST(request: NextRequest) {
 
       let aiResponse: any
 
-      // ALWAYS USE OMNI-CHANNEL - Single attempt for phone (speed priority)
+      // ALWAYS USE OMNI-CHANNEL - Allow 2 attempts for reliability
       let retryCount = 0
-      const maxRetries = 1 // Phone needs speed, not retries
+      const maxRetries = 2 // Balance between speed and reliability
       let lastError: any = null
 
       while (retryCount < maxRetries) {
@@ -599,10 +599,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // If all retries failed, throw error to use simple fallback
+      // If all retries failed, use emergency fallback
       if (!aiResponse) {
         console.error('💥 ALL OMNI-CHANNEL RETRIES FAILED - Using emergency fallback')
-        throw new Error(`Omni-channel failed after ${maxRetries} attempts: ${lastError?.message}`)
+        console.error(`Error details: ${lastError?.message}`)
 
         // EMERGENCY FALLBACK - Only used if omni-channel completely fails
         try {
@@ -920,7 +920,7 @@ export async function POST(request: NextRequest) {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 6000),
+        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 8000),
       ),
     ])
     return result
