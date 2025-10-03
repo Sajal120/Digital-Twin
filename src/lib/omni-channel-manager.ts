@@ -312,77 +312,93 @@ export class OmniChannelManager {
   private lastQuestionTopic: string | null = null
 
   private getQuickPhoneAnswer(question: string): string | null {
+    // Normalize question: lowercase, trim, remove punctuation
+    const normalizedQuestion = question
+      .toLowerCase()
+      .trim()
+      .replace(/[?.!,]/g, '')
+    console.log('🔍 Quick answer check for:', normalizedQuestion)
+
     // Experience/work questions - expanded patterns
     if (
-      question.match(
-        /\b(experience|work|job|career|working|employed|what do you do|current role|position|your role|background|what you do)\b/,
+      normalizedQuestion.match(
+        /\b(experience|work|job|career|working|employed|what do you do|current role|position|your role|background|what you do|tell me about your|whats your|what is your)\b/,
       )
     ) {
+      console.log('⚡ Quick answer: experience')
       this.lastQuestionTopic = 'experience'
       return "I'm working at Kimpton right now. Previously interned at Aubot and edgedVR. Really interested in AI, security, and software development."
     }
 
     // Education questions
     if (
-      question.match(
-        /\b(education|study|degree|masters|university|school|graduated|learn|qualification|studied)\b/,
+      normalizedQuestion.match(
+        /\b(education|study|degree|masters|university|school|graduated|learn|qualification|studied|whats your degree|what is your degree)\b/,
       )
     ) {
+      console.log('⚡ Quick answer: education')
       this.lastQuestionTopic = 'education'
       return 'Got my Masters in Software Development from Swinburne University. Graduated May 2024 with a 3.69 GPA.'
     }
 
     // Tech/skills questions - expanded patterns
     if (
-      question.match(
-        /\b(tech|skill|language|framework|tool|stack|know|use|programming|code|develop|technology)\b/,
+      normalizedQuestion.match(
+        /\b(tech|skill|language|framework|tool|stack|know|use|programming|code|develop|technology|what can you|what do you know)\b/,
       )
     ) {
+      console.log('⚡ Quick answer: skills')
       this.lastQuestionTopic = 'skills'
       return 'I work with React, Python, JavaScript, Node.js, AWS, and Terraform. Really into AI, machine learning, security, and data analysis.'
     }
 
     // Location questions
-    if (question.match(/\b(where|location|live|based|located|from)\b/)) {
+    if (normalizedQuestion.match(/\b(where|location|live|based|located|from)\b/)) {
+      console.log('⚡ Quick answer: location')
       this.lastQuestionTopic = 'location'
       return "I'm based in Auburn, Sydney. Originally from Nepal though."
     }
 
     // Interest/passion questions - expanded patterns
     if (
-      question.match(
-        /\b(interest|passion|focus|specialize|want|goal|career goal|passionate about|like|enjoy)\b/,
+      normalizedQuestion.match(
+        /\b(interest|passion|focus|specialize|want|goal|career goal|passionate about|like|enjoy|what are you interested)\b/,
       )
     ) {
+      console.log('⚡ Quick answer: interests')
       this.lastQuestionTopic = 'interests'
       return "I'm really passionate about AI and machine learning, security, software development, and data analysis. That's what I'm focusing on at Kimpton."
     }
 
     // About/intro questions - expanded patterns
     if (
-      question.match(
-        /\b(who are you|about yourself|tell me about|introduce|your name|who is this|yourself)\b/,
+      normalizedQuestion.match(
+        /\b(who are you|about yourself|tell me about|introduce|your name|who is this|yourself|who am i talking to|who am i speaking)\b/,
       )
     ) {
+      console.log('⚡ Quick answer: intro')
       this.lastQuestionTopic = 'intro'
       return "I'm Sajal Basnet, software developer working at Kimpton. I'm into AI, security, and development. Got my Masters from Swinburne and I'm based in Sydney."
     }
 
     // Follow-up questions - use last topic for context
     if (
-      question.match(
+      normalizedQuestion.match(
         /\b(tell me more|more about|what else|anything else|elaborate|details|can you expand)\b/,
       )
     ) {
       if (this.lastQuestionTopic === 'experience') {
         return "At Aubot, I worked on software development. At edgedVR, I did VR development. Now at Kimpton, I'm applying my tech skills while pursuing AI opportunities."
       } else if (this.lastQuestionTopic === 'education') {
+        console.log('⚡ Quick answer: follow-up on education')
         return 'I graduated top 15% from Swinburne, made it into the Golden Key International Honour Society. Focused on full-stack development and cloud systems.'
       } else if (this.lastQuestionTopic === 'skills') {
+        console.log('⚡ Quick answer: follow-up on skills')
         return "I've built projects with React and Python, worked with AWS cloud infrastructure, and I'm learning more about machine learning and AI technologies."
       }
     }
 
+    console.log('❌ No quick answer found - using AI')
     return null // Use AI for other questions
   }
 

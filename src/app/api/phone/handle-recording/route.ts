@@ -543,6 +543,7 @@ export async function POST(request: NextRequest) {
         console.log(
           `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
         )
+        console.log(`📝 Sending to AI: "${enhancedInput}"`)
 
         const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
           callSid,
@@ -974,13 +975,14 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
         formData.append('file', audioBlob, 'recording.wav')
         formData.append('model', 'whisper-large-v3')
         formData.append('language', 'en')
+        formData.append('temperature', '0') // Most accurate transcription
         formData.append('response_format', 'verbose_json')
         formData.append(
           'prompt',
           'Phone interview with Sajal Basnet, software developer. Topics: work experience at Kimpton, Aubot, edgedVR; AI and machine learning interests; security; Masters degree from Swinburne University; skills in React, Python, JavaScript, AWS, Terraform; Sydney location; career goals. Common questions: What do you do? Your experience? Your background? Your education? Your skills? What are you interested in? Tell me about yourself.',
         )
 
-        console.log('📤 Sending to Groq Whisper API (fast)...')
+        console.log('📤 Sending to Groq Whisper API (most accurate mode)...')
         const groqResponse = (await Promise.race([
           fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
             method: 'POST',
@@ -989,13 +991,16 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
             },
             body: formData,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 3000)),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 5000)), // Increased to 5s for better quality
         ])) as Response
 
         if (groqResponse.ok) {
           const result = await groqResponse.json()
-          console.log('✅ Groq transcription successful (fast!):', result.text?.substring(0, 50))
-          return result.text || 'Could not transcribe'
+          const transcribedText = result.text || 'Could not transcribe'
+          console.log('✅ Groq transcription successful!')
+          console.log('🎤 USER SAID:', transcribedText)
+          console.log('📊 Confidence:', result.segments?.[0]?.no_speech_prob || 'N/A')
+          return transcribedText
         }
       } catch (groqError) {
         console.warn('⚠️ Groq failed, falling back to OpenAI:', groqError)
