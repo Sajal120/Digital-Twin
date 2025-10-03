@@ -621,7 +621,11 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
           return new NextResponse(retryTwiml, {
-            headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+            status: 200,
+            headers: {
+              'Content-Type': 'text/xml; charset=utf-8',
+              'Cache-Control': 'no-cache',
+            },
           })
         }
 
@@ -835,7 +839,11 @@ export async function POST(request: NextRequest) {
         console.log('📤 TwiML preview:', twiml.substring(0, 200) + '...')
 
         return new NextResponse(twiml, {
-          headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+          status: 200,
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'Cache-Control': 'no-cache',
+          },
         })
       } catch (error) {
         console.error('❌ Recording processing error:', error)
@@ -857,7 +865,11 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
         return new NextResponse(errorTwiml, {
-          headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+          status: 200,
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'Cache-Control': 'no-cache',
+          },
         })
       }
     })()
@@ -891,7 +903,11 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
       return new NextResponse(timeoutTwiml, {
-        headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+        status: 200,
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        },
       })
     }
   } catch (unexpectedError) {
@@ -915,7 +931,11 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
     return new NextResponse(emergencyTwiml, {
-      headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+      status: 200,
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
     })
   }
 }
