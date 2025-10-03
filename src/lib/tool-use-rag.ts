@@ -13,13 +13,13 @@
  * - Error Handling: Graceful fallbacks when tools fail
  */
 
-import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import { githubService, generateGitHubEnhancedResponse } from '@/lib/github-integration'
 import type { VectorResult } from './llm-enhanced-rag'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || '',
 })
 
 export interface ToolDefinition {

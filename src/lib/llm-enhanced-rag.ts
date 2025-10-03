@@ -2,9 +2,9 @@
  * LLM-Enhanced RAG System
  * =====================
  *
- * Advanced RAG optimization    const completion = await openai.chat.completions.create({
+ * Advanced RAG optimization    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: formattingPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama-3.1-8b-instant', // Updated to available model
       temperature: 0.7, // Higher creativity for natural responses
       max_tokens: 150, // Reduced for more concise responses
     })LLM-powered query preprocessing and response post-processing
@@ -17,14 +17,14 @@
  * - Performance Monitoring: Tracks processing times and token usage
  */
 
-import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import { safeJsonParse } from './json-utils'
 import { conversationMemory, type ConversationMessage } from './conversation-context'
 import { ragAnalytics, type RAGPerformanceMetrics } from './rag-analytics'
 
-// Initialize OpenAI client (gpt-3.5-turbo for speed)
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || '',
 })
 
 export interface RAGMetrics {
@@ -107,11 +107,11 @@ Return only the enhanced search query (no explanation):
   `
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: enhancementPrompt }],
-      model: 'gpt-3.5-turbo',
-      temperature: 0.3, // Lower temperature for more focused enhancement
-      max_tokens: 100,
+      model: 'llama-3.1-8b-instant', // Fast model for query enhancement
+      temperature: 0.3, // Lower temperature for consistent enhancement
+      max_tokens: 150,
     })
 
     const enhancedQuery = completion.choices[0]?.message?.content?.trim()
@@ -200,9 +200,9 @@ Response:
   `
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: formattingPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama-3.1-8b-instant', // Updated to available model
       temperature: 0.5, // Reduced temperature for more consistent responses
       max_tokens: 100, // Reduced for concise responses
     })
@@ -527,7 +527,7 @@ export async function agenticRAG(
       response: result.response,
       responseLength: result.response.length,
       resultsFound: result.metadata.resultsFound,
-      modelUsed: 'gpt-3.5-turbo',
+      modelUsed: 'llama-3.1-8b-instant',
     }
 
     // Record metrics asynchronously to not slow down response
@@ -651,9 +651,9 @@ Return your response in this EXACT JSON format:
 Decision:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: decisionPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama-3.1-8b-instant',
       temperature: 0.3, // Lower temperature for consistent decisions
       max_tokens: 200,
     })
@@ -807,11 +807,11 @@ Basic facts you can reference:
 Respond naturally as Sajal:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: directPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama-3.1-8b-instant',
       temperature: 0.7,
-      max_tokens: 250,
+      max_tokens: 120,
     })
 
     return (
@@ -855,11 +855,11 @@ Generate a helpful clarification request that:
 Clarification Request:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: clarificationPrompt }],
-      model: 'gpt-3.5-turbo',
-      temperature: 0.3,
-      max_tokens: 150,
+      model: 'llama-3.1-8b-instant',
+      temperature: 0.6,
+      max_tokens: 100,
     })
 
     return (

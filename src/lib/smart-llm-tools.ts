@@ -6,12 +6,12 @@
  * based on the user's query. The LLM can call multiple tools and combine their results.
  */
 
-import OpenAI from 'openai'
+import Groq from 'groq-sdk'
 import { githubService } from '@/lib/github-integration'
 import { linkedinService } from '@/lib/linkedin-integration'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY || '',
 })
 
 export interface ExternalTool {
