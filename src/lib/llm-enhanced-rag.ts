@@ -198,10 +198,15 @@ CRITICAL RULES:
 3. DO NOT make up university names, companies, or dates
 4. DO NOT invent information that isn't explicitly stated above
 5. If university names are mentioned above (like "Swinburne" or "Kings Own"), use them EXACTLY
-6. Keep response under 50 words, natural and conversational
+6. Keep response under 40 words, natural and conversational (short and human-like)
 7. Use "I" statements naturally
+8. CRITICAL: Answer in the SAME language as the question:
+   - If question is in Hindi (contains: aap, kahan, kya, padhe, batao) → Answer in Hindi
+   - If question is in Nepali (contains: timro, kun, k xa, padhe, kaha) → Answer in Nepali
+   - If question is in English → Answer in English
+9. DO NOT translate the question language - respond in the SAME language
 
-If the information above contains university names, degrees, or work experience - USE THEM EXACTLY.
+If the information above contains university names, degrees, or work experience - USE THEM EXACTLY in the SAME language as the question.
 
 Response:
   `
@@ -211,7 +216,7 @@ Response:
       messages: [{ role: 'user', content: formattingPrompt }],
       model: 'llama-3.1-8b-instant', // Updated to available model
       temperature: 0.5, // Reduced temperature for more consistent responses
-      max_tokens: 100, // Reduced for concise responses
+      max_tokens: 60, // Reduced for faster, human-like responses
     })
 
     const formattedResponse = completion.choices[0]?.message?.content?.trim()
