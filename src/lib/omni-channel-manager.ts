@@ -270,24 +270,29 @@ export class OmniChannelManager {
       ...additionalContext,
     }
 
-    try {
-      // Try MCP server first (most comprehensive)
-      const mcpResponse = await this.callMCPServer(userInput, enhancedContext)
-      if (mcpResponse.success) {
-        return {
-          response: mcpResponse.response,
-          source: 'mcp_unified',
-          context: enhancedContext,
-          suggestions: mcpResponse.suggestions || [],
+    // PHONE OPTIMIZATION: Skip MCP server (slow), use fast chat API directly
+    if (additionalContext.phoneCall) {
+      console.log('📞 Phone call: Using fast chat API (skipping MCP)')
+    } else {
+      try {
+        // Try MCP server for non-phone channels
+        const mcpResponse = await this.callMCPServer(userInput, enhancedContext)
+        if (mcpResponse.success) {
+          return {
+            response: mcpResponse.response,
+            source: 'mcp_unified',
+            context: enhancedContext,
+            suggestions: mcpResponse.suggestions || [],
+          }
         }
+      } catch (error) {
+        console.warn('⚠️ MCP server unavailable, using chat API fallback')
       }
-    } catch (error) {
-      console.warn('⚠️ MCP server unavailable, using chat API fallback')
     }
 
     // Fallback to enhanced chat API with timeout for phone calls
     try {
-      const timeoutMs = additionalContext.phoneCall ? 2000 : 10000 // 2s for phone (FAST!), 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 3000 : 10000 // 3s for phone, 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -468,30 +473,42 @@ export class OmniChannelManager {
       {
         role: 'system',
         content: isPhoneCall
-          ? `You're Sajal Basnet on a phone call. Answer in 10-15 words MAX. Be SPECIFIC.
+          ? `PHONE CALL - Answer in 10-15 words. MUST use specific names.
 
-FACTS:
-- Work: Kimpton (current), Aubot (software dev intern), edgedVR (VR dev intern)
-- Education: Masters Software Development, Swinburne University, May 2024, GPA 3.69
-- Skills: React, Python, JavaScript, Node.js, AWS, Terraform
-- Interests: AI, machine learning, security, software development
-- Location: Sydney, Australia (from Nepal)
+YOU ARE SAJAL BASNET:
+- CURRENT JOB: Kimpton
+- PAST: Aubot (software dev intern), edgedVR (VR dev)
+- EDUCATION: Masters, Swinburne University, May 2024
+- SKILLS: React, Python, JavaScript, AWS, Terraform
+- LOCATION: Sydney, Australia
 
-RULES:
-1. Answer ONLY what's asked - nothing extra
-2. Use contractions (I'm, I've)
-3. Be specific with names (Kimpton, Aubot, edgedVR, Swinburne)
-4. 10-15 words MAX
+CRITICAL RULES:
+1. ALWAYS say company names (Kimpton, Aubot, edgedVR)
+2. ALWAYS say university name (Swinburne)
+3. NO generic statements ("I like", "I enjoy", "currently making")
+4. BE DIRECT: "I work at X", "I studied at Y", "I use Z"
 
-EXAMPLES:
-Q: "What's your experience?"
-A: "I work at Kimpton. Interned at Aubot and edgedVR doing software development."
+BAD EXAMPLES (NEVER DO THIS):
+❌ "I like to do software development"
+❌ "Currently I'm making applications"
+❌ "I enjoy working with technology"
+❌ "I studied at a university"
 
-Q: "What's your education?"
+GOOD EXAMPLES (DO THIS):
+✅ "I work at Kimpton"
+✅ "Interned at Aubot and edgedVR"
+✅ "Masters from Swinburne University"
+✅ "I use React, Python, AWS"
+
+QUESTION RESPONSES:
+Q: "What's your experience?" or "Where do you work?"
+A: "I work at Kimpton. Interned at Aubot and edgedVR."
+
+Q: "What's your education?" or "Where did you study?"
 A: "Masters from Swinburne University. Graduated May 2024."
 
-Q: "What skills do you have?"
-A: "React, Python, JavaScript, AWS, Terraform. Into AI and machine learning."`
+Q: "What skills?" or "What do you know?"
+A: "React, Python, JavaScript, AWS, Terraform."`
           : `You're Sajal Basnet. Speak naturally and conversationally.
 
 YOUR PROFILE:
@@ -525,7 +542,7 @@ Be conversational, use first person, show enthusiasm for AI and tech. Sound huma
           conversationHistory: conversationHistory,
           model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
           systemInstruction: isPhoneCall
-            ? 'PHONE CALL: Answer the EXACT question in 10-15 words. Be specific. Example: Q: "What\'s your experience?" A: "I work at Kimpton. Interned at Aubot and edgedVR doing software development."'
+            ? 'PHONE: 10-15 words. MUST say company names. NO "I like" or "currently making". DIRECT: "I work at Kimpton", "Masters from Swinburne", "I use React".'
             : 'Use accurate profile info. Speak naturally in first person. Show enthusiasm for AI and tech.',
         }),
       })

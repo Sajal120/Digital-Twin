@@ -808,7 +808,7 @@ export async function POST(request: NextRequest) {
 
         const fullResponse = `${aiResponse.response}`
 
-        // Call ElevenLabs API directly - MUST use your voice (no fallback!)
+        // Call ElevenLabs API - FAST mode
         const elevenlabsResponse = (await Promise.race([
           fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
             method: 'POST',
@@ -822,14 +822,14 @@ export async function POST(request: NextRequest) {
               model_id: 'eleven_turbo_v2_5', // Fastest model
               voice_settings: {
                 stability: 0.5,
-                similarity_boost: 0.8,
+                similarity_boost: 0.75, // Slightly lower for speed
                 style: 0.0,
                 use_speaker_boost: true,
               },
             }),
           }),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000),
+            setTimeout(() => reject(new Error('ElevenLabs timeout')), 5000),
           ),
         ])) as Response
 
@@ -922,12 +922,12 @@ export async function POST(request: NextRequest) {
     }
   })()
 
-  // Race between processing and timeout (max 10 seconds total)
+  // Race between processing and timeout (max 7 seconds total - FAST!)
   try {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 10000),
+        setTimeout(() => reject(new Error('Processing timeout - returning quick response')), 7000),
       ),
     ])
     return result
@@ -1014,7 +1014,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
           'Phone interview with Sajal Basnet, software developer. Topics: work experience at Kimpton, Aubot, edgedVR; AI and machine learning interests; security; Masters degree from Swinburne University; skills in React, Python, JavaScript, AWS, Terraform; Sydney location; career goals. Common questions: What do you do? Your experience? Your background? Your education? Your skills? What are you interested in? Tell me about yourself.',
         )
 
-        console.log('📤 Sending to Groq Whisper API (FAST mode)...')
+        console.log('📤 Sending to Groq Whisper API (ULTRA FAST)...')
         const groqResponse = (await Promise.race([
           fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
             method: 'POST',
@@ -1023,7 +1023,7 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
             },
             body: formData,
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 2000)), // 2s timeout for speed
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Groq timeout')), 1500)), // 1.5s timeout for speed
         ])) as Response
 
         if (groqResponse.ok) {
