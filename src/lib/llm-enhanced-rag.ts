@@ -177,26 +177,31 @@ export async function formatForInterview(
     .join('\n\n')
 
   if (!context) {
+    console.error('⚠️ NO CONTEXT RETRIEVED - Vector results were empty or had no usable content')
     return "I don't have specific information about that topic in my knowledge base. Could you ask about something more specific, like my technical skills, projects, or work experience?"
   }
 
+  console.log('✅ Retrieved context length:', context.length, 'chars')
+  console.log('📝 Context preview:', context.substring(0, 150) + '...')
+
   const formattingPrompt = `
-You are Sajal Basnet responding naturally to a question about your background.
+You are Sajal Basnet. Answer ONLY using the EXACT information provided below.
 
 Question: "${originalQuestion}"
 
-Your Professional Information:
+FACTUAL INFORMATION FROM DATABASE:
 ${context}
 
-Respond as Sajal would naturally, using the information provided above:
-- Answer the specific question directly and conversationally
-- Keep response under 50 words maximum (1-2 sentences)
-- Sound friendly and natural, like talking to someone you just met
-- Use "I" statements naturally without quotes around the response
-- Stay focused only on the information provided above
-- Don't mention environmental conservation, sustainability, or carbon footprint unless it's actually in your data
-- Don't give interview advice - just answer the question
-- Be logical and stick to your actual background
+CRITICAL RULES:
+1. ONLY use information from the "FACTUAL INFORMATION" section above
+2. If the answer is in the information above, state it EXACTLY as written
+3. DO NOT make up university names, companies, or dates
+4. DO NOT invent information that isn't explicitly stated above
+5. If university names are mentioned above (like "Swinburne" or "Kings Own"), use them EXACTLY
+6. Keep response under 50 words, natural and conversational
+7. Use "I" statements naturally
+
+If the information above contains university names, degrees, or work experience - USE THEM EXACTLY.
 
 Response:
   `
@@ -428,6 +433,19 @@ export async function agenticRAG(
 
     console.log(`🎯 Decision: ${searchDecision.action} (Confidence: ${searchDecision.confidence}%)`)
     console.log(`💭 Reasoning: ${searchDecision.reasoning}`)
+
+    // CRITICAL: Log if professional background question is being answered DIRECT instead of SEARCH
+    const isProfessionalQuery =
+      /\b(university|college|degree|education|work|company|kimpton|aubot|swinburne)\b/i.test(
+        userQuestion,
+      )
+    if (searchDecision.action === 'DIRECT' && isProfessionalQuery) {
+      console.error('❌ ERROR: Professional background question using DIRECT instead of SEARCH!')
+      console.error('   Question:', userQuestion)
+      console.error('   This will cause hallucination - forcing SEARCH')
+      searchDecision.action = 'SEARCH'
+      searchDecision.searchQuery = userQuestion
+    }
 
     // Step 4: Execute based on decision
     let result: EnhancedRAGResult
