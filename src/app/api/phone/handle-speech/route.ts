@@ -43,10 +43,12 @@ export async function POST(request: NextRequest) {
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="8"
-    speechTimeout="auto"
+    timeout="10"
+    speechTimeout="5"
     language="en-US"
-    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job"
+    enhanced="true"
+    profanityFilter="false"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
   >
     <Pause length="1"/>
   </Gather>
@@ -226,17 +228,18 @@ export async function POST(request: NextRequest) {
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="8"
-    speechTimeout="auto"
+    timeout="10"
+    speechTimeout="5"
     language="en-US"
-    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
+    enhanced="true"
+    profanityFilter="false"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
   >
     <Pause length="1"/>
   </Gather>
   <Say voice="Polly.Matthew-Neural" language="en-US">
     Thank you for calling. Goodbye!
   </Say>
-  <Hangup/>
 </Response>`
 
       return new NextResponse(twiml, {
@@ -252,15 +255,17 @@ export async function POST(request: NextRequest) {
       // Fallback to Twilio voice
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew-Neural" language="en-US">${aiResponse.response}</Say>
+    <Say voice="Polly.Matthew-Neural" language="en-US">${aiResponse.response}</Say>
   <Gather 
     input="speech"
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="8"
-    speechTimeout="auto"
+    timeout="10"
+    speechTimeout="5"
     language="en-US"
-    hints="kya, kaam, karte, ho, aap, tum, timro, naam, kun, ke, kahan, kaun, padhe, university, college, work, job, batao, malai"
+    enhanced="true"
+    profanityFilter="false"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise"
   >
     <Pause length="1"/>
   </Gather>
