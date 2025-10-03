@@ -542,21 +542,22 @@ export async function POST(request: NextRequest) {
         while (retryCount < maxRetries) {
           try {
             // Use actual user input if audio was processed, otherwise use contextual prompt
-            const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
-
-            // Use actual user input or contextual prompt - let AI handle intelligently
-            const enhancedInput = audioProcessingSuccess
-              ? userMessage // Always use actual question when available
-              : contextualPrompt // Use smart contextual prompt for first turn or fallback
+            // CLEAN INPUT: Send EXACTLY what user asked - no extra prompts or context
+            // This ensures MCP searches for what they actually asked
+            // Example: "education" → searches education, NOT work experience
+            const cleanInput = audioProcessingSuccess ? userMessage : contextualPrompt
 
             console.log(
-              `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
+              `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with CLEAN input`,
             )
-            console.log(`📝 Sending to AI: "${enhancedInput}"`)
+            console.log(`📝 Sending EXACT question to MCP: "${cleanInput}"`)
+            console.log(
+              `🎯 Audio processed: ${audioProcessingSuccess} (clean=${audioProcessingSuccess})`,
+            )
 
             const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
               callSid,
-              enhancedInput,
+              cleanInput,
               {
                 currentTurn: turnCount,
                 phoneCall: true,
@@ -571,7 +572,7 @@ export async function POST(request: NextRequest) {
             // Store conversation turn in omni-channel system
             await omniChannelManager.addConversationTurn(
               callSid,
-              audioProcessingSuccess ? userMessage : inputToProcess,
+              cleanInput,
               unifiedResponse.response,
               {
                 audioProcessed: audioProcessingSuccess,
@@ -824,9 +825,10 @@ export async function POST(request: NextRequest) {
           console.log('🔄 Using Twilio voice as temporary fallback')
         }
 
-        // STEP 5: Store conversation history with actual user input when available
+        // STEP 5: Store conversation history with clean user input
+        const storedInput = audioProcessingSuccess ? userMessage : contextualPrompt
         await storeConversationTurn(callSid, {
-          userInput: audioProcessingSuccess ? userMessage : contextualPrompt,
+          userInput: storedInput,
           aiResponse: aiResponse.response,
           timestamp: new Date().toISOString(),
           recordingSid: recordingSid || 'step5_audio_enabled',
