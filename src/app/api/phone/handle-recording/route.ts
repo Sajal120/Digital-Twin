@@ -363,400 +363,429 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now()
   console.log('🎙️ Recording webhook called - processing user speech...')
 
-  // CRITICAL: Wrap entire processing in timeout to prevent Twilio timeout (11205)
-  const processingPromise = (async () => {
-    try {
-      // Parse Twilio form data
-      const formData = await request.formData()
-      const webhookData = Object.fromEntries(formData.entries())
-
-      const callSid = webhookData.CallSid as string
-      const recordingUrl = webhookData.RecordingUrl as string
-      const recordingSid = webhookData.RecordingSid as string
-      const duration = webhookData.RecordingDuration as string
-
-      console.log('🎵 Recording received:', {
-        callSid,
-        recordingSid,
-        duration: `${duration}s`,
-        recordingUrl,
-      })
-
-      // Validate required fields
-      if (!callSid) {
-        console.error('❌ Missing CallSid')
-        throw new Error('Missing required webhook data')
-      }
-
-      console.log('🎤 Step 5: Enabling controlled audio recognition with keyword detection...')
-
-      // STEP 5: Controlled audio processing with smart fallbacks
-      let userMessage = 'Continue our professional conversation'
-      let audioProcessingSuccess = false
-
-      // Get turn count BEFORE attempting transcription
-      const unifiedContextPreview = await omniChannelManager.getUnifiedContext(
-        callSid,
-        'phone',
-        callSid,
-        'Twilio Voice API',
-      )
-      const currentTurn = unifiedContextPreview.conversationHistory?.length || 0
-      console.log(`🔢 Current turn: ${currentTurn}`)
-
-      // ONLY attempt transcription if this is NOT turn 0 (user has actually spoken)
-      if (currentTurn > 0 && recordingUrl && duration && parseInt(duration) > 1) {
-        console.log('🔊 Attempting audio transcription for keyword detection...')
-        try {
-          const audioProcessingResult = await processAudioWithFallback(
-            recordingUrl,
-            parseInt(duration),
-          )
-          if (audioProcessingResult.success && audioProcessingResult.transcript) {
-            userMessage = audioProcessingResult.transcript
-            audioProcessingSuccess = true
-            console.log('✅ Audio processing successful:', userMessage.substring(0, 100) + '...')
-          } else {
-            console.log('⚠️ Audio processing failed, using progressive conversation system')
-          }
-        } catch (audioError: any) {
-          console.log(
-            '⚠️ Audio processing error, continuing with progressive system:',
-            audioError?.message || 'Unknown error',
-          )
-        }
-      } else if (currentTurn === 0) {
-        console.log("👋 Turn 0: Skipping transcription (initial greeting, user hasn't spoken yet)")
-      } else {
-        console.log('📝 No audio to process, using progressive conversation flow')
-      }
-
-      // OMNI-CHANNEL ENHANCEMENT: Get unified conversation context across all channels
-      console.log('🌐 Initializing omni-channel conversation context...')
-      const unifiedContext = await omniChannelManager.getUnifiedContext(
-        callSid, // Using callSid as userId for phone channel
-        'phone',
-        callSid,
-        'Twilio Voice API',
-      )
-
-      console.log(
-        `👤 Unified context loaded: ${unifiedContext.channels.length} channels, ${unifiedContext.conversationHistory.length} total turns`,
-      )
-      console.log(`🎯 Relationship type: ${unifiedContext.relationshipContext.callerType}`)
-      console.log(
-        `📞 Current channel: ${unifiedContext.currentChannel.type} (${unifiedContext.currentChannel.platform})`,
-      )
-
-      // Get professional context for AI response (legacy compatibility)
-      const conversationContext = {
-        callSid,
-        conversationType: 'professional_phone_inquiry',
-        callerContext: unifiedContext.relationshipContext.callerType,
-        conversationHistory: unifiedContext.conversationHistory,
-        interviewType:
-          unifiedContext.relationshipContext.callerType === 'recruiter'
-            ? 'hr_screening'
-            : 'professional',
-        enhancedMode: true,
-        omniChannelData: unifiedContext,
-      }
-
-      // STEP 4 IMPROVEMENT: Smart Topic Intelligence - AI chooses best topics based on caller interest
-      const turnCount = conversationContext.conversationHistory?.length || 0
-
-      console.log(`🔢 Turn count for CallSid ${callSid}: ${turnCount}`)
-      console.log(`📜 Conversation history length: ${unifiedContext.conversationHistory.length}`)
-
-      // If this is turn 0 but we have a recordingSid, something is wrong with history loading
-      if (turnCount === 0 && recordingSid) {
-        console.warn(
-          '⚠️ WARNING: Turn count is 0 but we have a recordingSid - history might not be loading!',
-        )
-      }
-
-      // Analyze conversation pattern and caller interests
-      const smartTopicAnalysis = analyzeCallerInterests(
-        conversationContext.conversationHistory || [],
-      )
-      console.log('🧠 Smart topic analysis:', smartTopicAnalysis)
-
-      let conversationFocus = 'general_background'
-      let contextualPrompt = 'Tell me about your professional background and experience'
-
-      // Build context from previous conversation history
-      const previousTopics =
-        conversationContext.conversationHistory?.map((turn) => turn.userInput) || []
-      const conversationSummary =
-        previousTopics.length > 0
-          ? `Previous discussion covered: ${previousTopics.slice(-2).join(', ')}. `
-          : ''
-
-      // STEP 5: Enhanced topic selection with audio recognition integration
-      if (turnCount === 0) {
-        conversationFocus = 'introduction_overview'
-        contextualPrompt =
-          'Give me a professional introduction and overview of your background. This is our first interaction, so provide a comprehensive overview.'
-      } else {
-        // Use AI to determine the best next topic, incorporating audio when available
-        const smartTopic = selectSmartTopic(turnCount, smartTopicAnalysis, conversationSummary)
-        conversationFocus = smartTopic.focus
-
-        // STEP 5: Use actual user speech when audio processing succeeded
-        if (audioProcessingSuccess && userMessage !== 'Continue our professional conversation') {
-          contextualPrompt = `The caller said: "${userMessage}". ${smartTopic.prompt} Please respond directly to their question while incorporating the suggested context.`
-          console.log('🎙️ Using actual user speech in prompt')
-        } else {
-          contextualPrompt = smartTopic.prompt
-          console.log('📝 Using smart topic prompt (no audio or fallback)')
-        }
-
-        console.log(`🎯 Smart topic selected: ${conversationFocus}`)
-        console.log(`💡 Interest indicators: ${smartTopicAnalysis.detectedInterests.join(', ')}`)
-        console.log(`🔊 Audio success: ${audioProcessingSuccess}`)
-      }
-
-      console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
-      console.log(`💬 Contextual prompt: ${contextualPrompt}`)
-
-      // OMNI-CHANNEL AI RESPONSE: Generate unified response using enhanced context
-      console.log('🤖 Generating omni-channel AI response...')
-      console.log(
-        `📝 Input type: ${audioProcessingSuccess ? 'ACTUAL SPEECH' : 'Contextual prompt'}`,
-      )
-      console.log(`💬 User said: "${audioProcessingSuccess ? userMessage : 'No audio processed'}"`)
-
-      let aiResponse: any
-
-      // ALWAYS USE OMNI-CHANNEL - 2 fast attempts (no fallbacks!)
-      let retryCount = 0
-      const maxRetries = 2 // Retry once if first fails
-      let lastError: any = null
-
-      while (retryCount < maxRetries) {
-        try {
-          // Use actual user input if audio was processed, otherwise use contextual prompt
-          const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
-
-          // Use actual user input or contextual prompt - let AI handle intelligently
-          const enhancedInput = audioProcessingSuccess
-            ? userMessage // Always use actual question when available
-            : contextualPrompt // Use smart contextual prompt for first turn or fallback
-
-          console.log(
-            `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
-          )
-          console.log(`📝 Sending to AI: "${enhancedInput}"`)
-
-          const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
-            callSid,
-            enhancedInput,
-            {
-              currentTurn: turnCount,
-              phoneCall: true,
-              ultraBrief: true,
-            },
-          )
-
-          console.log('✅ Omni-channel response generated successfully!')
-          console.log(`📊 Source: ${unifiedResponse.source}`)
-          console.log(`🎯 Response preview: ${unifiedResponse.response.substring(0, 150)}...`)
-
-          // Store conversation turn in omni-channel system
-          await omniChannelManager.addConversationTurn(
-            callSid,
-            audioProcessingSuccess ? userMessage : inputToProcess,
-            unifiedResponse.response,
-            {
-              audioProcessed: audioProcessingSuccess,
-              confidence: audioProcessingSuccess ? 0.9 : 0.5,
-              keywords: smartTopicAnalysis.detectedInterests,
-              channelType: 'phone',
-              conversationFocus,
-              turnNumber: turnCount,
-            },
-          )
-
-          aiResponse = {
-            response: unifiedResponse.response,
-            success: true,
-            source: unifiedResponse.source,
-            suggestions: unifiedResponse.suggestions,
-          }
-
-          // Success - break out of retry loop
-          break
-        } catch (omniError: any) {
-          lastError = omniError
-          retryCount++
-          console.error(`❌ Omni-channel attempt ${retryCount} failed:`, omniError.message)
-          // No delay - retry immediately for speed
-        }
-      }
-
-      // If AI failed after retries, throw error (no fallbacks!)
-      if (!aiResponse) {
-        console.error('💥 AI FAILED - No fallback, will retry or skip turn')
-        console.error(`Error: ${lastError?.message}`)
-        throw new Error(`AI generation failed: ${lastError?.message}`)
-      }
-
-      console.log('🤖 Enhanced AI Response ready:', aiResponse.response.substring(0, 100) + '...')
-
-      // Create TwiML to speak AI response and continue recording
-      // TEMPORARY: Use Twilio voice while fixing audio serving issue
-      console.log('🎤 Using Twilio voice for reliable conversation flow')
-      console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
-
-      // NATURAL CONVERSATION PROMPTS: Enhanced follow-ups using omni-channel intelligence
-      let conversationPrompt = 'Please continue with your questions.'
-
-      if (turnCount === 0) {
-        // First interaction - warm professional greeting
-        const relationshipType = unifiedContext.relationshipContext.callerType
-        if (relationshipType === 'recruiter') {
-          conversationPrompt =
-            'What specific aspects of my background are most relevant to the opportunity you have in mind?'
-        } else if (relationshipType === 'colleague') {
-          conversationPrompt =
-            'What would you like to know about my experience or how we might collaborate?'
-        } else {
-          conversationPrompt =
-            'What would you like to know more about regarding my technical skills and experience?'
-        }
-      } else {
-        // Use omni-channel suggestions if available, otherwise smart follow-up
-        if (aiResponse.suggestions && aiResponse.suggestions.length > 0) {
-          const suggestion = aiResponse.suggestions[0]
-          conversationPrompt = `Would you like me to ${suggestion.toLowerCase()}, or do you have other questions?`
-        } else {
-          // Generate smart follow-up based on the topic and caller analysis
-          const smartPrompt = generateSmartFollowUp(
-            conversationFocus,
-            smartTopicAnalysis,
-            turnCount,
-          )
-          conversationPrompt = smartPrompt
-        }
-        console.log(`💬 Natural conversation prompt: ${conversationPrompt}`)
-      }
-
-      // FINAL ULTRA-AGGRESSIVE CLEAN: Remove any remaining metadata before voice generation
-      aiResponse.response = aiResponse.response
-        // First pass: Remove markdown formatting to prevent partial markers
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
-        .replace(/\*([^*]+)\*/g, '$1')
-        .replace(/#{1,6}\s+/g, '')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        // Second pass: Remove metadata patterns (including partially cleaned ones)
-        .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
-        .replace(/\(general context\):\.?\s*/gi, '')
-        .replace(/\(specific context\):\.?\s*/gi, '')
-        .replace(/Query Enhancement[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-        .replace(/Processing Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-        .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-        .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-        .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
-        // Third pass: Fix grammar issues in greetings
-        .replace(/^Hello\s+this\s+Sajal\s+Basnet/gi, "Hello, I'm Sajal Basnet")
-        .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
-        .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
-        .replace(
-          /^Sajal\s+Basnet\s+(?:is\s+)?a\s+(?:senior\s+)?software\s+(?:engineer|developer)/gi,
-          "I'm Sajal Basnet, a full-stack software developer",
-        )
-        // Fourth pass: Remove bullet points and excessive listing patterns
-        .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ') // Remove "- item," patterns
-        .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ') // Remove "- item." patterns
-        .replace(/,\s*-\s+/g, ', ') // Clean up remaining list markers
-        // Fifth pass: Catch any remaining ** or * fragments
-        .replace(/\*\*+/g, '')
-        .replace(/\*+/g, '')
-        // Remove separators
-        .replace(/---+/g, '')
-        .replace(/___+/g, '')
-        // Clean up spacing and artifacts
-        .replace(/\s+-\.\s*/g, ' ') // Remove "-. " artifacts
-        .replace(/\s+-\s*$/g, '') // Remove trailing " -"
-        .replace(/\s+\./g, '.')
-        .replace(/\.\s*\./g, '.')
-        .replace(/,\s*,/g, ',')
-        .replace(/\s+/g, ' ')
-        .trim()
-
-      // Truncate overly long responses for phone (max 300 chars for natural speech)
-      if (aiResponse.response.length > 300) {
-        const sentences = aiResponse.response.split(/\.\s+/)
-        let truncated = ''
-        for (const sentence of sentences) {
-          if ((truncated + sentence).length < 280) {
-            truncated += sentence + '. '
-          } else {
-            break
-          }
-        }
-        aiResponse.response = truncated.trim()
-        console.log('✂️ Truncated long response for natural phone conversation')
-      }
-
-      console.log(`🧹 Final cleaned response preview: ${aiResponse.response.substring(0, 100)}...`)
-
-      // CUSTOM VOICE INTEGRATION: Use your ElevenLabs cloned voice for natural conversation
-      console.log('🎤 Generating custom voice audio for phone response...')
-
-      let twiml: string
-
+  // TOP-LEVEL ERROR HANDLER: Catch ANY unhandled errors and return TwiML
+  try {
+    // CRITICAL: Wrap entire processing in timeout to prevent Twilio timeout (11205)
+    const processingPromise = (async () => {
       try {
-        // Generate custom voice audio with ElevenLabs directly for speed
-        console.log('🔊 Creating audio with your cloned voice...')
+        // Parse Twilio form data
+        const formData = await request.formData()
+        const webhookData = Object.fromEntries(formData.entries())
 
-        const fullResponse = `${aiResponse.response}`
+        const callSid = webhookData.CallSid as string
+        const recordingUrl = webhookData.RecordingUrl as string
+        const recordingSid = webhookData.RecordingSid as string
+        const duration = webhookData.RecordingDuration as string
 
-        // Call ElevenLabs API - FAST mode
-        const elevenlabsResponse = (await Promise.race([
-          fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
-            method: 'POST',
-            headers: {
-              Accept: 'audio/mpeg',
-              'Content-Type': 'application/json',
-              'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-            },
-            body: JSON.stringify({
-              text: fullResponse,
-              model_id: 'eleven_turbo_v2_5', // Fastest model
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75, // Slightly lower for speed
-                style: 0.0,
-                use_speaker_boost: true,
+        console.log('🎵 Recording received:', {
+          callSid,
+          recordingSid,
+          duration: `${duration}s`,
+          recordingUrl,
+        })
+
+        // Validate required fields
+        if (!callSid) {
+          console.error('❌ Missing CallSid')
+          throw new Error('Missing required webhook data')
+        }
+
+        console.log('🎤 Step 5: Enabling controlled audio recognition with keyword detection...')
+
+        // STEP 5: Controlled audio processing with smart fallbacks
+        let userMessage = 'Continue our professional conversation'
+        let audioProcessingSuccess = false
+
+        // Get turn count BEFORE attempting transcription
+        const unifiedContextPreview = await omniChannelManager.getUnifiedContext(
+          callSid,
+          'phone',
+          callSid,
+          'Twilio Voice API',
+        )
+        const currentTurn = unifiedContextPreview.conversationHistory?.length || 0
+        console.log(`🔢 Current turn: ${currentTurn}`)
+
+        // ONLY attempt transcription if this is NOT turn 0 (user has actually spoken)
+        if (currentTurn > 0 && recordingUrl && duration && parseInt(duration) > 1) {
+          console.log('🔊 Attempting audio transcription for keyword detection...')
+          try {
+            const audioProcessingResult = await processAudioWithFallback(
+              recordingUrl,
+              parseInt(duration),
+            )
+            if (audioProcessingResult.success && audioProcessingResult.transcript) {
+              userMessage = audioProcessingResult.transcript
+              audioProcessingSuccess = true
+              console.log('✅ Audio processing successful:', userMessage.substring(0, 100) + '...')
+            } else {
+              console.log('⚠️ Audio processing failed, using progressive conversation system')
+            }
+          } catch (audioError: any) {
+            console.log(
+              '⚠️ Audio processing error, continuing with progressive system:',
+              audioError?.message || 'Unknown error',
+            )
+          }
+        } else if (currentTurn === 0) {
+          console.log(
+            "👋 Turn 0: Skipping transcription (initial greeting, user hasn't spoken yet)",
+          )
+        } else {
+          console.log('📝 No audio to process, using progressive conversation flow')
+        }
+
+        // OMNI-CHANNEL ENHANCEMENT: Get unified conversation context across all channels
+        console.log('🌐 Initializing omni-channel conversation context...')
+        const unifiedContext = await omniChannelManager.getUnifiedContext(
+          callSid, // Using callSid as userId for phone channel
+          'phone',
+          callSid,
+          'Twilio Voice API',
+        )
+
+        console.log(
+          `👤 Unified context loaded: ${unifiedContext.channels.length} channels, ${unifiedContext.conversationHistory.length} total turns`,
+        )
+        console.log(`🎯 Relationship type: ${unifiedContext.relationshipContext.callerType}`)
+        console.log(
+          `📞 Current channel: ${unifiedContext.currentChannel.type} (${unifiedContext.currentChannel.platform})`,
+        )
+
+        // Get professional context for AI response (legacy compatibility)
+        const conversationContext = {
+          callSid,
+          conversationType: 'professional_phone_inquiry',
+          callerContext: unifiedContext.relationshipContext.callerType,
+          conversationHistory: unifiedContext.conversationHistory,
+          interviewType:
+            unifiedContext.relationshipContext.callerType === 'recruiter'
+              ? 'hr_screening'
+              : 'professional',
+          enhancedMode: true,
+          omniChannelData: unifiedContext,
+        }
+
+        // STEP 4 IMPROVEMENT: Smart Topic Intelligence - AI chooses best topics based on caller interest
+        const turnCount = conversationContext.conversationHistory?.length || 0
+
+        console.log(`🔢 Turn count for CallSid ${callSid}: ${turnCount}`)
+        console.log(`📜 Conversation history length: ${unifiedContext.conversationHistory.length}`)
+
+        // If this is turn 0 but we have a recordingSid, something is wrong with history loading
+        if (turnCount === 0 && recordingSid) {
+          console.warn(
+            '⚠️ WARNING: Turn count is 0 but we have a recordingSid - history might not be loading!',
+          )
+        }
+
+        // Analyze conversation pattern and caller interests
+        const smartTopicAnalysis = analyzeCallerInterests(
+          conversationContext.conversationHistory || [],
+        )
+        console.log('🧠 Smart topic analysis:', smartTopicAnalysis)
+
+        let conversationFocus = 'general_background'
+        let contextualPrompt = 'Tell me about your professional background and experience'
+
+        // Build context from previous conversation history
+        const previousTopics =
+          conversationContext.conversationHistory?.map((turn) => turn.userInput) || []
+        const conversationSummary =
+          previousTopics.length > 0
+            ? `Previous discussion covered: ${previousTopics.slice(-2).join(', ')}. `
+            : ''
+
+        // STEP 5: Enhanced topic selection with audio recognition integration
+        if (turnCount === 0) {
+          conversationFocus = 'introduction_overview'
+          contextualPrompt =
+            'Give me a professional introduction and overview of your background. This is our first interaction, so provide a comprehensive overview.'
+        } else {
+          // Use AI to determine the best next topic, incorporating audio when available
+          const smartTopic = selectSmartTopic(turnCount, smartTopicAnalysis, conversationSummary)
+          conversationFocus = smartTopic.focus
+
+          // STEP 5: Use actual user speech when audio processing succeeded
+          if (audioProcessingSuccess && userMessage !== 'Continue our professional conversation') {
+            contextualPrompt = `The caller said: "${userMessage}". ${smartTopic.prompt} Please respond directly to their question while incorporating the suggested context.`
+            console.log('🎙️ Using actual user speech in prompt')
+          } else {
+            contextualPrompt = smartTopic.prompt
+            console.log('📝 Using smart topic prompt (no audio or fallback)')
+          }
+
+          console.log(`🎯 Smart topic selected: ${conversationFocus}`)
+          console.log(`💡 Interest indicators: ${smartTopicAnalysis.detectedInterests.join(', ')}`)
+          console.log(`🔊 Audio success: ${audioProcessingSuccess}`)
+        }
+
+        console.log(`🎯 Turn ${turnCount}: Focus on ${conversationFocus}`)
+        console.log(`💬 Contextual prompt: ${contextualPrompt}`)
+
+        // OMNI-CHANNEL AI RESPONSE: Generate unified response using enhanced context
+        console.log('🤖 Generating omni-channel AI response...')
+        console.log(
+          `📝 Input type: ${audioProcessingSuccess ? 'ACTUAL SPEECH' : 'Contextual prompt'}`,
+        )
+        console.log(
+          `💬 User said: "${audioProcessingSuccess ? userMessage : 'No audio processed'}"`,
+        )
+
+        let aiResponse: any
+
+        // ALWAYS USE OMNI-CHANNEL - 2 fast attempts (no fallbacks!)
+        let retryCount = 0
+        const maxRetries = 2 // Retry once if first fails
+        let lastError: any = null
+
+        while (retryCount < maxRetries) {
+          try {
+            // Use actual user input if audio was processed, otherwise use contextual prompt
+            const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
+
+            // Use actual user input or contextual prompt - let AI handle intelligently
+            const enhancedInput = audioProcessingSuccess
+              ? userMessage // Always use actual question when available
+              : contextualPrompt // Use smart contextual prompt for first turn or fallback
+
+            console.log(
+              `🔄 Attempt ${retryCount + 1}/${maxRetries}: Calling omni-channel with enhanced input`,
+            )
+            console.log(`📝 Sending to AI: "${enhancedInput}"`)
+
+            const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
+              callSid,
+              enhancedInput,
+              {
+                currentTurn: turnCount,
+                phoneCall: true,
+                ultraBrief: true,
               },
-            }),
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000),
-          ),
-        ])) as Response
+            )
 
-        if (!elevenlabsResponse.ok) {
-          console.error(`❌ ElevenLabs API error: ${elevenlabsResponse.status}`)
-          throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
+            console.log('✅ Omni-channel response generated successfully!')
+            console.log(`📊 Source: ${unifiedResponse.source}`)
+            console.log(`🎯 Response preview: ${unifiedResponse.response.substring(0, 150)}...`)
+
+            // Store conversation turn in omni-channel system
+            await omniChannelManager.addConversationTurn(
+              callSid,
+              audioProcessingSuccess ? userMessage : inputToProcess,
+              unifiedResponse.response,
+              {
+                audioProcessed: audioProcessingSuccess,
+                confidence: audioProcessingSuccess ? 0.9 : 0.5,
+                keywords: smartTopicAnalysis.detectedInterests,
+                channelType: 'phone',
+                conversationFocus,
+                turnNumber: turnCount,
+              },
+            )
+
+            aiResponse = {
+              response: unifiedResponse.response,
+              success: true,
+              source: unifiedResponse.source,
+              suggestions: unifiedResponse.suggestions,
+            }
+
+            // Success - break out of retry loop
+            break
+          } catch (omniError: any) {
+            lastError = omniError
+            retryCount++
+            console.error(`❌ Omni-channel attempt ${retryCount} failed:`, omniError.message)
+            // No delay - retry immediately for speed
+          }
         }
 
-        const audioBuffer = await elevenlabsResponse.arrayBuffer()
+        // If AI failed after retries, return TwiML to continue conversation
+        if (!aiResponse) {
+          console.error('💥 AI FAILED - Asking user to repeat')
+          console.error(`Error: ${lastError?.message}`)
 
-        if (!audioBuffer || audioBuffer.byteLength === 0) {
-          console.error('❌ ElevenLabs returned empty audio')
-          throw new Error('Empty audio buffer from ElevenLabs')
+          // Return TwiML to ask user to repeat (don't throw!)
+          const retryTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    Sorry, could you repeat that?
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+          return new NextResponse(retryTwiml, {
+            headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+          })
         }
 
-        // Create audio URL for Twilio to play
-        const audioUrl = await createPhoneAudioEndpoint(audioBuffer, fullResponse)
+        console.log('🤖 Enhanced AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
-        console.log('✅ ElevenLabs voice audio generated successfully')
-        console.log(`🎵 Audio URL: ${audioUrl.substring(0, 60)}...`)
+        // Create TwiML to speak AI response and continue recording
+        // TEMPORARY: Use Twilio voice while fixing audio serving issue
+        console.log('🎤 Using Twilio voice for reliable conversation flow')
+        console.log('📝 AI Response ready:', aiResponse.response.substring(0, 100) + '...')
 
-        // TwiML with custom voice audio
-        twiml = `<?xml version="1.0" encoding="UTF-8"?>
+        // NATURAL CONVERSATION PROMPTS: Enhanced follow-ups using omni-channel intelligence
+        let conversationPrompt = 'Please continue with your questions.'
+
+        if (turnCount === 0) {
+          // First interaction - warm professional greeting
+          const relationshipType = unifiedContext.relationshipContext.callerType
+          if (relationshipType === 'recruiter') {
+            conversationPrompt =
+              'What specific aspects of my background are most relevant to the opportunity you have in mind?'
+          } else if (relationshipType === 'colleague') {
+            conversationPrompt =
+              'What would you like to know about my experience or how we might collaborate?'
+          } else {
+            conversationPrompt =
+              'What would you like to know more about regarding my technical skills and experience?'
+          }
+        } else {
+          // Use omni-channel suggestions if available, otherwise smart follow-up
+          if (aiResponse.suggestions && aiResponse.suggestions.length > 0) {
+            const suggestion = aiResponse.suggestions[0]
+            conversationPrompt = `Would you like me to ${suggestion.toLowerCase()}, or do you have other questions?`
+          } else {
+            // Generate smart follow-up based on the topic and caller analysis
+            const smartPrompt = generateSmartFollowUp(
+              conversationFocus,
+              smartTopicAnalysis,
+              turnCount,
+            )
+            conversationPrompt = smartPrompt
+          }
+          console.log(`💬 Natural conversation prompt: ${conversationPrompt}`)
+        }
+
+        // FINAL ULTRA-AGGRESSIVE CLEAN: Remove any remaining metadata before voice generation
+        aiResponse.response = aiResponse.response
+          // First pass: Remove markdown formatting to prevent partial markers
+          .replace(/\*\*([^*]+)\*\*/g, '$1')
+          .replace(/\*([^*]+)\*/g, '$1')
+          .replace(/#{1,6}\s+/g, '')
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+          // Second pass: Remove metadata patterns (including partially cleaned ones)
+          .replace(/Enhanced Interview Response[^:]*:\.?\s*/gi, '')
+          .replace(/\(general context\):\.?\s*/gi, '')
+          .replace(/\(specific context\):\.?\s*/gi, '')
+          .replace(/Query Enhancement[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Processing Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Context Mode[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Source[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          .replace(/Response Type[:\*\*:]*[^\n.]*\.?\s*/gi, '')
+          // Third pass: Fix grammar issues in greetings
+          .replace(/^Hello\s+this\s+Sajal\s+Basnet/gi, "Hello, I'm Sajal Basnet")
+          .replace(/^Hi\s+this\s+Sajal\s+Basnet/gi, "Hi, I'm Sajal Basnet")
+          .replace(/^This\s+is\s+Sajal\s+Basnet/gi, "I'm Sajal Basnet")
+          .replace(
+            /^Sajal\s+Basnet\s+(?:is\s+)?a\s+(?:senior\s+)?software\s+(?:engineer|developer)/gi,
+            "I'm Sajal Basnet, a full-stack software developer",
+          )
+          // Fourth pass: Remove bullet points and excessive listing patterns
+          .replace(/\s*-\s+[^,\n]+?,\s*/g, ' ') // Remove "- item," patterns
+          .replace(/\s*-\s+[^,\n]+?\.\s*/g, '. ') // Remove "- item." patterns
+          .replace(/,\s*-\s+/g, ', ') // Clean up remaining list markers
+          // Fifth pass: Catch any remaining ** or * fragments
+          .replace(/\*\*+/g, '')
+          .replace(/\*+/g, '')
+          // Remove separators
+          .replace(/---+/g, '')
+          .replace(/___+/g, '')
+          // Clean up spacing and artifacts
+          .replace(/\s+-\.\s*/g, ' ') // Remove "-. " artifacts
+          .replace(/\s+-\s*$/g, '') // Remove trailing " -"
+          .replace(/\s+\./g, '.')
+          .replace(/\.\s*\./g, '.')
+          .replace(/,\s*,/g, ',')
+          .replace(/\s+/g, ' ')
+          .trim()
+
+        // Truncate overly long responses for phone (max 300 chars for natural speech)
+        if (aiResponse.response.length > 300) {
+          const sentences = aiResponse.response.split(/\.\s+/)
+          let truncated = ''
+          for (const sentence of sentences) {
+            if ((truncated + sentence).length < 280) {
+              truncated += sentence + '. '
+            } else {
+              break
+            }
+          }
+          aiResponse.response = truncated.trim()
+          console.log('✂️ Truncated long response for natural phone conversation')
+        }
+
+        console.log(
+          `🧹 Final cleaned response preview: ${aiResponse.response.substring(0, 100)}...`,
+        )
+
+        // CUSTOM VOICE INTEGRATION: Use your ElevenLabs cloned voice for natural conversation
+        console.log('🎤 Generating custom voice audio for phone response...')
+
+        let twiml: string
+
+        try {
+          // Generate custom voice audio with ElevenLabs directly for speed
+          console.log('🔊 Creating audio with your cloned voice...')
+
+          const fullResponse = `${aiResponse.response}`
+
+          // Call ElevenLabs API - FAST mode
+          const elevenlabsResponse = (await Promise.race([
+            fetch(
+              `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+              {
+                method: 'POST',
+                headers: {
+                  Accept: 'audio/mpeg',
+                  'Content-Type': 'application/json',
+                  'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+                },
+                body: JSON.stringify({
+                  text: fullResponse,
+                  model_id: 'eleven_turbo_v2_5', // Fastest model
+                  voice_settings: {
+                    stability: 0.5,
+                    similarity_boost: 0.75, // Slightly lower for speed
+                    style: 0.0,
+                    use_speaker_boost: true,
+                  },
+                }),
+              },
+            ),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000),
+            ),
+          ])) as Response
+
+          if (!elevenlabsResponse.ok) {
+            console.error(`❌ ElevenLabs API error: ${elevenlabsResponse.status}`)
+            throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
+          }
+
+          const audioBuffer = await elevenlabsResponse.arrayBuffer()
+
+          if (!audioBuffer || audioBuffer.byteLength === 0) {
+            console.error('❌ ElevenLabs returned empty audio')
+            throw new Error('Empty audio buffer from ElevenLabs')
+          }
+
+          // Create audio URL for Twilio to play
+          const audioUrl = await createPhoneAudioEndpoint(audioBuffer, fullResponse)
+
+          console.log('✅ ElevenLabs voice audio generated successfully')
+          console.log(`🎵 Audio URL: ${audioUrl.substring(0, 60)}...`)
+
+          // TwiML with custom voice audio
+          twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
   <Record 
@@ -769,13 +798,13 @@ export async function POST(request: NextRequest) {
   />
 </Response>`
 
-        console.log('✅ Using ElevenLabs voice (your cloned voice)')
-      } catch (voiceError: any) {
-        console.error('❌ ElevenLabs voice failed:', voiceError.message)
-        console.warn('⚠️ Falling back to Twilio Say (will retry ElevenLabs on next turn)')
+          console.log('✅ Using ElevenLabs voice (your cloned voice)')
+        } catch (voiceError: any) {
+          console.error('❌ ElevenLabs voice failed:', voiceError.message)
+          console.warn('⚠️ Falling back to Twilio Say (will retry ElevenLabs on next turn)')
 
-        // Use Twilio Say as temporary fallback (better than timing out)
-        twiml = `<?xml version="1.0" encoding="UTF-8"?>
+          // Use Twilio Say as temporary fallback (better than timing out)
+          twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US">${aiResponse.response.substring(0, 200)}</Say>
   <Record 
@@ -787,51 +816,107 @@ export async function POST(request: NextRequest) {
     playBeep="false"
   />
 </Response>`
-        console.log('🔄 Using Twilio voice as temporary fallback')
+          console.log('🔄 Using Twilio voice as temporary fallback')
+        }
+
+        // STEP 5: Store conversation history with actual user input when available
+        await storeConversationTurn(callSid, {
+          userInput: audioProcessingSuccess ? userMessage : contextualPrompt,
+          aiResponse: aiResponse.response,
+          timestamp: new Date().toISOString(),
+          recordingSid: recordingSid || 'step5_audio_enabled',
+          duration,
+          audioProcessed: audioProcessingSuccess,
+          actualSpeech: audioProcessingSuccess ? userMessage : undefined,
+        })
+
+        const totalTime = Date.now() - startTime
+        console.log(`✅ TwiML response generated in ${totalTime}ms, returning to Twilio`)
+        console.log('📤 TwiML preview:', twiml.substring(0, 200) + '...')
+
+        return new NextResponse(twiml, {
+          headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+        })
+      } catch (error) {
+        console.error('❌ Recording processing error:', error)
+        console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+
+        // Return TwiML to continue conversation (don't throw!)
+        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    I didn't catch that. Could you say it again?
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+        return new NextResponse(errorTwiml, {
+          headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+        })
       }
+    })()
 
-      // STEP 5: Store conversation history with actual user input when available
-      await storeConversationTurn(callSid, {
-        userInput: audioProcessingSuccess ? userMessage : contextualPrompt,
-        aiResponse: aiResponse.response,
-        timestamp: new Date().toISOString(),
-        recordingSid: recordingSid || 'step5_audio_enabled',
-        duration,
-        audioProcessed: audioProcessingSuccess,
-        actualSpeech: audioProcessingSuccess ? userMessage : undefined,
-      })
+    // Race between processing and timeout (8s - human-like response speed)
+    try {
+      const result = await Promise.race([
+        processingPromise,
+        new Promise<NextResponse>((_, reject) =>
+          setTimeout(() => reject(new Error('Processing timeout after 8s')), 8000),
+        ),
+      ])
+      return result
+    } catch (timeoutError) {
+      console.error('⏱️ TIMEOUT after 8s - asking user to continue')
+      console.error('Timeout error:', timeoutError)
 
-      const totalTime = Date.now() - startTime
-      console.log(`✅ TwiML response generated in ${totalTime}ms, returning to Twilio`)
-      console.log('📤 TwiML preview:', twiml.substring(0, 200) + '...')
-
-      return new NextResponse(twiml, {
+      // Return TwiML to continue conversation (don't throw!)
+      const timeoutTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US" rate="medium">
+    What else would you like to know?
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+      return new NextResponse(timeoutTwiml, {
         headers: { 'Content-Type': 'text/xml; charset=utf-8' },
       })
-    } catch (error) {
-      console.error('❌ Recording processing error:', error)
-      console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-
-      // Re-throw to trigger outer timeout handler which will retry
-      throw error
     }
-  })()
+  } catch (unexpectedError) {
+    // TOP-LEVEL CATCH: Handle ANY unhandled errors
+    console.error('🚨 UNEXPECTED ERROR in POST handler:', unexpectedError)
+    console.error('Stack:', unexpectedError instanceof Error ? unexpectedError.stack : 'No stack')
 
-  // Race between processing and timeout (8s - human-like response speed)
-  try {
-    const result = await Promise.race([
-      processingPromise,
-      new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout after 8s')), 8000),
-      ),
-    ])
-    return result
-  } catch (timeoutError) {
-    console.error('⏱️ TIMEOUT after 8s - call will retry or continue')
-    console.error('Timeout error:', timeoutError)
-
-    // Re-throw to let Twilio retry (no fallback responses!)
-    throw timeoutError
+    // Return TwiML to keep call alive (never return HTTP 500!)
+    const emergencyTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    Sorry, let me try again. What would you like to know?
+  </Say>
+  <Record 
+    action="/api/phone/handle-recording"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="120"
+    playBeep="false"
+  />
+</Response>`
+    return new NextResponse(emergencyTwiml, {
+      headers: { 'Content-Type': 'text/xml; charset=utf-8' },
+    })
   }
 }
 
