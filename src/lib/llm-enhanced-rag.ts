@@ -435,13 +435,15 @@ export async function agenticRAG(
     console.log(`💭 Reasoning: ${searchDecision.reasoning}`)
 
     // CRITICAL: Log if professional background question is being answered DIRECT instead of SEARCH
+    // Support multi-language (English, Hindi, Nepali)
     const isProfessionalQuery =
-      /\b(university|college|degree|education|work|company|kimpton|aubot|swinburne)\b/i.test(
+      /\b(university|college|degree|education|work|company|kimpton|aubot|swinburne|padhe|padhai|siksha|padhya|shiksha|kaam|kun|kaha)\b/i.test(
         userQuestion,
       )
     if (searchDecision.action === 'DIRECT' && isProfessionalQuery) {
       console.error('❌ ERROR: Professional background question using DIRECT instead of SEARCH!')
       console.error('   Question:', userQuestion)
+      console.error('   Language: Multi-language support (EN/HI/NE)')
       console.error('   This will cause hallucination - forcing SEARCH')
       searchDecision.action = 'SEARCH'
       searchDecision.searchQuery = userQuestion
@@ -605,16 +607,21 @@ async function makeSearchDecision(
     }
   }
 
-  // ALWAYS SEARCH for questions about professional background
+  // ALWAYS SEARCH for questions about professional background (multi-language support)
   const mustSearchPatterns = [
+    // English
     /\b(university|college|degree|education|studied?|graduated?|school|masters?|bachelors?)\b/i,
     /\b(work|job|company|companies|employer|experience|worked?|position|role)\b/i,
     /\b(project|built|created|developed?|skill|technology|tech)\b/i,
     /\b(swinburne|kings own|kimpton|aubot|edgedvr)\b/i,
+    // Hindi - education and work questions
+    /\b(padhe|padhai|siksha|university|degree|kahan|kaam|job|company|project)\b/i,
+    // Nepali - education and work questions
+    /\b(padhe|padhya|shiksha|university|degree|kun|kaam|kaha|company|project)\b/i,
   ]
 
   if (mustSearchPatterns.some((pattern) => pattern.test(userQuestion))) {
-    console.log('Professional background question detected - FORCING SEARCH')
+    console.log('Professional background question detected (multi-language) - FORCING SEARCH')
     return {
       action: 'SEARCH',
       reasoning: 'Question about professional background requires database search',
