@@ -542,37 +542,69 @@ IMPORTANT: Prefer using the conversation context/history provided. These are jus
    * Call MCP server with unified context
    */
   private async callMCPServer(userInput: string, context: any) {
-    const response = await fetch(`${this.mcpServerUrl}/api/mcp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: `omni_${context.userId}_${Date.now()}`,
-        method: 'tools/call',
-        params: {
-          name: 'ask_digital_twin',
-          arguments: {
-            question: userInput,
-            omniChannelContext: context,
-            enhancedMode: true,
-            maxResults: 8,
+    console.log('🚀 Calling MCP server...')
+    const startTime = Date.now()
+
+    // Create AbortController for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 4500) // 4.5s timeout
+
+    try {
+      const response = await fetch(`${this.mcpServerUrl}/api/mcp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: `omni_${context.userId}_${Date.now()}`,
+          method: 'tools/call',
+          params: {
+            name: 'ask_digital_twin',
+            arguments: {
+              question: userInput,
+              omniChannelContext: context,
+              enhancedMode: true,
+              maxResults: 5, // Reduced for faster queries
+            },
           },
-        },
-      }),
-    })
+        }),
+      })
 
-    if (!response.ok) throw new Error('MCP server error')
+      clearTimeout(timeoutId)
+      const duration = Date.now() - startTime
+      console.log(`🔍 MCP fetch completed in ${duration}ms`)
 
-    const data = await response.json()
-    if (data.result?.content?.[0]?.text) {
-      return {
-        success: true,
-        response: this.cleanResponseForChannel(data.result.content[0].text, context.currentChannel),
-        suggestions: this.extractSuggestions(data.result.content[0].text),
+      if (!response.ok) {
+        console.error(`❌ MCP server returned ${response.status}`)
+        throw new Error(`MCP server error: ${response.status}`)
       }
-    }
 
-    throw new Error('Invalid MCP response')
+      const data = await response.json()
+      const totalDuration = Date.now() - startTime
+      console.log(`✅ MCP total time: ${totalDuration}ms`)
+
+      if (data.result?.content?.[0]?.text) {
+        console.log('📝 MCP response length:', data.result.content[0].text.length)
+        return {
+          success: true,
+          response: this.cleanResponseForChannel(
+            data.result.content[0].text,
+            context.currentChannel,
+          ),
+          suggestions: this.extractSuggestions(data.result.content[0].text),
+        }
+      }
+
+      console.error('❌ MCP invalid response structure:', data)
+      throw new Error('Invalid MCP response structure')
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('⏱️ MCP fetch aborted after 4.5s')
+        throw new Error('MCP fetch timeout')
+      }
+      throw error
+    }
   }
 
   /**
