@@ -270,29 +270,25 @@ export class OmniChannelManager {
       ...additionalContext,
     }
 
-    // PHONE OPTIMIZATION: Skip MCP server (slow), use fast chat API directly
-    if (additionalContext.phoneCall) {
-      console.log('📞 Phone call: Using fast chat API (skipping MCP)')
-    } else {
-      try {
-        // Try MCP server for non-phone channels
-        const mcpResponse = await this.callMCPServer(userInput, enhancedContext)
-        if (mcpResponse.success) {
-          return {
-            response: mcpResponse.response,
-            source: 'mcp_unified',
-            context: enhancedContext,
-            suggestions: mcpResponse.suggestions || [],
-          }
+    // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
+    try {
+      console.log('🤖 Using MCP server for intelligent response with RAG + database')
+      const mcpResponse = await this.callMCPServer(userInput, enhancedContext)
+      if (mcpResponse.success) {
+        return {
+          response: mcpResponse.response,
+          source: 'mcp_unified',
+          context: enhancedContext,
+          suggestions: mcpResponse.suggestions || [],
         }
-      } catch (error) {
-        console.warn('⚠️ MCP server unavailable, using chat API fallback')
       }
+    } catch (error) {
+      console.warn('⚠️ MCP server failed, trying chat API')
     }
 
     // Fallback to enhanced chat API with timeout for phone calls
     try {
-      const timeoutMs = additionalContext.phoneCall ? 4000 : 10000 // 4s for phone, 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 3000 : 10000 // 3s for phone (human-like speed), 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>

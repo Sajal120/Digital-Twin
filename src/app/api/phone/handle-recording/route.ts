@@ -528,9 +528,9 @@ export async function POST(request: NextRequest) {
 
       let aiResponse: any
 
-      // ALWAYS USE OMNI-CHANNEL - Allow 2 attempts for reliability
+      // ALWAYS USE OMNI-CHANNEL - 2 fast attempts (no fallbacks!)
       let retryCount = 0
-      const maxRetries = 2 // Balance between speed and reliability
+      const maxRetries = 2 // Retry once if first fails
       let lastError: any = null
 
       while (retryCount < maxRetries) {
@@ -590,108 +590,15 @@ export async function POST(request: NextRequest) {
           lastError = omniError
           retryCount++
           console.error(`❌ Omni-channel attempt ${retryCount} failed:`, omniError.message)
-
-          if (retryCount < maxRetries) {
-            const waitTime = Math.pow(2, retryCount) * 1000 // Exponential backoff
-            console.log(`⏳ Waiting ${waitTime}ms before retry...`)
-            await new Promise((resolve) => setTimeout(resolve, waitTime))
-          }
+          // No delay - retry immediately for speed
         }
       }
 
-      // If all retries failed, use emergency fallback
+      // If AI failed after retries, throw error (no fallbacks!)
       if (!aiResponse) {
-        console.error('💥 ALL OMNI-CHANNEL RETRIES FAILED - Using emergency fallback')
-        console.error(`Error details: ${lastError?.message}`)
-
-        // EMERGENCY FALLBACK - Only used if omni-channel completely fails
-        try {
-          console.error('⚠️ EMERGENCY: Using direct chat API fallback')
-
-          const inputToProcess = audioProcessingSuccess ? userMessage : contextualPrompt
-
-          // Call chat API directly as last resort
-          const chatResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'}/api/chat`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                message:
-                  turnCount === 0
-                    ? `Introduce yourself briefly for a phone call. ${inputToProcess}`
-                    : audioProcessingSuccess
-                      ? `Caller said: "${userMessage}". Respond naturally to their question.`
-                      : inputToProcess,
-                role: 'user',
-                user_id: callSid,
-                enhancedMode: true,
-                conversationHistory: conversationContext.conversationHistory || [],
-              }),
-            },
-          )
-
-          if (!chatResponse.ok) {
-            throw new Error(`Chat API returned ${chatResponse.status}`)
-          }
-
-          const chatData = await chatResponse.json()
-          const fallbackResponse = { response: chatData.response || chatData.content }
-
-          // Clean the response EXTREMELY aggressively for phone (MULTI-PASS)
-          let cleanedResponse = fallbackResponse.response
-
-          // PASS 1: Remove markdown formatting FIRST
-          cleanedResponse = cleanedResponse
-            .replace(/\*\*(.+?)\*\*/g, '$1')
-            .replace(/\*(.+?)\*/g, '$1')
-            .replace(/#+\s+/g, '')
-            .replace(/\*+/g, '')
-            .replace(/\n+/g, '. ')
-            .replace(/\.\s*\./g, '.')
-            .replace(/\s+/g, ' ')
-            .trim()
-
-          // Truncate if too long for phone
-          if (cleanedResponse.length > 300) {
-            const sentences = cleanedResponse.split(/\.\s+/)
-            let truncated = ''
-            for (const sentence of sentences) {
-              if ((truncated + sentence).length < 280) {
-                truncated += sentence + '. '
-              } else break
-            }
-            cleanedResponse = truncated.trim()
-          }
-
-          aiResponse = {
-            response: cleanedResponse,
-            success: true,
-            source: 'enhanced_fallback',
-            suggestions: [],
-          }
-
-          console.log('✅ Enhanced fallback response generated')
-        } catch (fallbackError: any) {
-          console.error('❌ Even fallback failed:', fallbackError.message)
-
-          // Last resort - simple intelligent responses (ACCURATE profile)
-          const simpleResponses = [
-            "Hi, I'm Sajal Basnet. I recently completed my Masters in Software Development from Swinburne University here in Sydney. What would you like to know about my experience?",
-            "Hello! I'm Sajal, a full-stack developer from Nepal based in Sydney. I just finished my Masters at Swinburne and I'm passionate about AI and modern web technologies. How can I help you?",
-            "Thanks for calling! I'm Sajal Basnet. I've got my Masters in Software Development and I'm currently focused on AI, full-stack development, and security. What specific areas interest you?",
-            "Hello! I'm Sajal, originally from Nepal, now in Sydney. I completed my Masters at Swinburne and recently worked as a Software Developer Intern at Aubot. What would you like to discuss?",
-          ]
-
-          const responseIndex = turnCount % simpleResponses.length
-
-          aiResponse = {
-            response: simpleResponses[responseIndex],
-            success: true,
-            source: 'intelligent_fallback',
-            suggestions: [],
-          }
-        }
+        console.error('💥 AI FAILED - No fallback, will retry or skip turn')
+        console.error(`Error: ${lastError?.message}`)
+        throw new Error(`AI generation failed: ${lastError?.message}`)
       }
 
       console.log('🤖 Enhanced AI Response ready:', aiResponse.response.substring(0, 100) + '...')
@@ -826,7 +733,7 @@ export async function POST(request: NextRequest) {
             }),
           }),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('ElevenLabs timeout')), 6000),
+            setTimeout(() => reject(new Error('ElevenLabs timeout')), 3000),
           ),
         ])) as Response
 
@@ -910,30 +817,21 @@ export async function POST(request: NextRequest) {
     }
   })()
 
-  // Race between processing and timeout (15s - allows full AI + voice generation)
+  // Race between processing and timeout (8s - human-like response speed)
   try {
     const result = await Promise.race([
       processingPromise,
       new Promise<NextResponse>((_, reject) =>
-        setTimeout(() => reject(new Error('Processing timeout after 15s')), 15000),
+        setTimeout(() => reject(new Error('Processing timeout after 8s')), 8000),
       ),
     ])
     return result
   } catch (timeoutError) {
-    console.error('⏱️ CRITICAL TIMEOUT after 15s - This should rarely happen')
+    console.error('⏱️ TIMEOUT after 8s - call will retry or continue')
     console.error('Timeout error:', timeoutError)
 
-    // Return error TwiML to end call gracefully (user waited too long)
-    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice" language="en-US">
-    I'm experiencing technical difficulties. Please try calling back in a moment.
-  </Say>
-  <Hangup/>
-</Response>`
-    return new NextResponse(errorTwiml, {
-      headers: { 'Content-Type': 'text/xml; charset=utf-8' },
-    })
+    // Re-throw to let Twilio retry (no fallback responses!)
+    throw timeoutError
   }
 }
 
