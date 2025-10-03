@@ -360,6 +360,7 @@ function extractKeywords(transcript: string): string[] {
 
 // Handle recorded audio from Twilio and process with AI
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
   console.log('🎙️ Recording webhook called - processing user speech...')
 
   try {
@@ -798,18 +799,41 @@ export async function POST(request: NextRequest) {
     let twiml: string
 
     try {
-      // Generate custom voice audio for both response and prompt
+      // Generate custom voice audio with ElevenLabs directly for speed
       console.log('🔊 Creating audio with your cloned voice...')
 
-      const fullResponse = `${aiResponse.response}. ${conversationPrompt}`
+      const fullResponse = `${aiResponse.response}`
 
-      // Use your existing voice service to generate audio
-      const audioBuffer = await voiceService.generateSpeech(fullResponse, {
-        provider: 'elevenlabs',
-        voiceId: process.env.ELEVENLABS_VOICE_ID,
-        stability: 0.6,
-        similarityBoost: 0.8,
-      })
+      // Call ElevenLabs API directly (faster than internal route)
+      const elevenlabsResponse = await Promise.race([
+        fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+          },
+          body: JSON.stringify({
+            text: fullResponse,
+            model_id: 'eleven_turbo_v2_5', // Fastest model
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.8,
+              style: 0.0,
+              use_speaker_boost: true,
+            },
+          }),
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)
+        )
+      ]) as Response
+
+      if (!elevenlabsResponse.ok) {
+        throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
+      }
+
+      const audioBuffer = await elevenlabsResponse.arrayBuffer()
 
       if (audioBuffer && audioBuffer.byteLength > 0) {
         // Create audio URL for Twilio to play
@@ -822,7 +846,6 @@ export async function POST(request: NextRequest) {
         twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
-  <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
@@ -848,7 +871,6 @@ export async function POST(request: NextRequest) {
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US" rate="medium" pitch="medium">${escapeXml(aiResponse.response)}</Say>
-  <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
@@ -874,7 +896,8 @@ export async function POST(request: NextRequest) {
       actualSpeech: audioProcessingSuccess ? userMessage : undefined,
     })
 
-    console.log('✅ TwiML response generated, returning to Twilio')
+    const totalTime = Date.now() - startTime
+    console.log(`✅ TwiML response generated in ${totalTime}ms, returning to Twilio`)
     console.log('📤 TwiML preview:', twiml.substring(0, 200) + '...')
 
     return new NextResponse(twiml, {
@@ -964,13 +987,18 @@ async function transcribeAudio(audioBuffer: Buffer): Promise<string> {
     formData.append('language', 'en')
 
     console.log('📤 Sending audio to OpenAI Whisper API...')
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: formData,
-    })
+    const response = await Promise.race([
+      fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: formData,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Whisper timeout')), 10000)
+      )
+    ]) as Response
 
     console.log('📊 OpenAI response status:', response.status, response.statusText)
 

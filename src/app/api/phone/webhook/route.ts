@@ -105,13 +105,36 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     console.log('🎤 Generating custom voice greeting...')
     console.log('📝 Greeting:', greeting)
 
-    // Generate custom voice greeting
-    const audioBuffer = await voiceService.generateSpeech(greeting, {
-      provider: 'elevenlabs',
-      voiceId: process.env.ELEVENLABS_VOICE_ID,
-      stability: 0.6,
-      similarityBoost: 0.8,
-    })
+    // Generate custom voice greeting - Direct ElevenLabs call for speed
+    const elevenlabsResponse = await Promise.race([
+      fetch(`https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'audio/mpeg',
+          'Content-Type': 'application/json',
+          'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+        },
+        body: JSON.stringify({
+          text: greeting,
+          model_id: 'eleven_turbo_v2_5', // Fastest model
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.8,
+            style: 0.0,
+            use_speaker_boost: true,
+          },
+        }),
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('ElevenLabs timeout')), 8000)
+      )
+    ]) as Response
+
+    if (!elevenlabsResponse.ok) {
+      throw new Error(`ElevenLabs failed: ${elevenlabsResponse.status}`)
+    }
+
+    const audioBuffer = await elevenlabsResponse.arrayBuffer()
 
     if (audioBuffer && audioBuffer.byteLength > 0) {
       // Create audio endpoint
@@ -160,7 +183,6 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="alice" language="en-US" rate="medium" pitch="medium">${greeting}</Say>
-  <Pause length="1"/>
   <Record 
     action="/api/phone/handle-recording"
     method="POST"
