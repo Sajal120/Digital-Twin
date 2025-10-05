@@ -167,10 +167,10 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-IN"
+    language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about, study, swinburne"
+    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about, study, swinburne, university, sydney, australia, experience"
   >
     <Pause length="1"/>
   </Gather>
@@ -187,7 +187,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-IN"
+    language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
     hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"

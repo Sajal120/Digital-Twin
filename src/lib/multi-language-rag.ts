@@ -121,7 +121,7 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       pattern.test(messageLower),
     ).length
 
-    if (hindiPhoneticMatches >= 2) {
+    if (hindiPhoneticMatches >= 3) {
       console.log(`🇮🇳 Hindi detected via PHONETIC patterns: ${hindiPhoneticMatches} matches`)
       return {
         detectedLanguage: 'hi',
@@ -133,7 +133,7 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       }
     }
 
-    if (nepaliPhoneticMatches >= 2) {
+    if (nepaliPhoneticMatches >= 3) {
       console.log(`🇳🇵 Nepali detected via PHONETIC patterns: ${nepaliPhoneticMatches} matches`)
       return {
         detectedLanguage: 'ne',
