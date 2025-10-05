@@ -219,8 +219,8 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
     ]
 
     const hindiMatches = hindiKeywords.filter((word) => messageLower.includes(word)).length
-    if (hindiMatches >= 2) {
-      // At least 2 Hindi words
+    if (hindiMatches >= 3) {
+      // At least 3 Hindi words
       console.log(`🇮🇳 Hindi detected: ${hindiMatches} keywords matched`)
       return {
         detectedLanguage: 'hi',
@@ -288,8 +288,8 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
     ]
 
     const nepaliMatches = nepaliKeywords.filter((word) => messageLower.includes(word)).length
-    if (nepaliMatches >= 2) {
-      // At least 2 Nepali words
+    if (nepaliMatches >= 3) {
+      // At least 3 Nepali words
       console.log(`🇳🇵 Nepali detected: ${nepaliMatches} keywords matched`)
       return {
         detectedLanguage: 'ne',
