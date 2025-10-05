@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, kaise, kese, timro, naam, kun, ke, malai, tapai, huncha, cha, hai, hain, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about, doing"
+    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
   >
     <Pause length="1"/>
   </Gather>
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
     language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, kaise, kese, timro, naam, kun, ke, malai, tapai, huncha, cha, hai, hain, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about, doing"
+    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
   >
     <Pause length="1"/>
   </Gather>
@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
     language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, kaise, kese, timro, naam, kun, ke, malai, tapai, huncha, cha, hai, hain, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about, doing"
+    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
   >
     <Pause length="1"/>
   </Gather>

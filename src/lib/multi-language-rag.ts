@@ -55,241 +55,338 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
 
     console.log(`🔍 Detecting language for: "${message}"`)
 
-    // PHONETIC PATTERNS - Twilio transcribes Hindi/Nepali as English-sounding words
-    // "Kya kaam karte ho?" might become "Kya cam carte ho" or similar
-    // Excluding common English words to avoid false positives
-    const phoneticHindiPatterns = [
-      /\bkya\b/i,
-      /\bkia\b/i,
-      /\bkiya\b/i, // क्या (what)
-      /\bkaam\b/i,
-      /\bkam\b/i,
-      /\bcam\b/i, // काम (work)
-      /\bkarte\b/i,
-      /\bcarte\b/i,
-      /\bkarta\b/i, // करते (do)
-      /\baap\b/i, // आप (you)
-      /\btum\b/i, // तुम (you)
-      /\bhai\b/i,
-      /\bhay\b/i, // है (is)
-      /\bkahan\b/i,
-      /\bkaha\b/i,
-      /\bkhan\b/i, // कहाँ (where)
-      /\bkaun\b/i,
-      /\bkon\b/i, // कौन (who)
-      /\bkaise\b/i,
-      /\bkese\b/i, // कैसे (how)
-      /\bbatao\b/i,
-      /\bbataiye\b/i, // बताओ (tell)
-    ]
+    // MULTI-LANGUAGE DETECTION - Support for 20+ languages
+    // Keywords that are distinctive to each language
+    const languagePatterns = {
+      hi: {
+        name: 'Hindi',
+        flag: '🇮🇳',
+        keywords: [
+          'kya',
+          'kaam',
+          'karte',
+          'aap',
+          'tum',
+          'hai',
+          'ho',
+          'kaise',
+          'kahan',
+          'kaun',
+          'batao',
+          'mujhe',
+          'mera',
+          'tumhara',
+          'kab',
+          'kyun',
+        ],
+      },
+      ne: {
+        name: 'Nepali',
+        flag: '🇳🇵',
+        keywords: [
+          'timro',
+          'kun',
+          'malai',
+          'tapai',
+          'huncha',
+          'cha',
+          'gareko',
+          'garne',
+          'kaha',
+          'kahile',
+          'kina',
+        ],
+      },
+      zh: {
+        name: 'Chinese',
+        flag: '🇨🇳',
+        keywords: [
+          '你好',
+          '你',
+          '我',
+          '是',
+          '的',
+          '什么',
+          '怎么',
+          '哪里',
+          '谁',
+          '为什么',
+          'ni hao',
+          'ni',
+          'wo',
+          'shi',
+          'de',
+          'shenme',
+          'zenme',
+        ],
+      },
+      es: {
+        name: 'Spanish',
+        flag: '🇪🇸',
+        keywords: [
+          'hola',
+          'que',
+          'como',
+          'donde',
+          'cuando',
+          'por',
+          'para',
+          'tu',
+          'yo',
+          'el',
+          'la',
+          'gracias',
+          'por favor',
+          'habla',
+          'hablas',
+        ],
+      },
+      fr: {
+        name: 'French',
+        flag: '🇫🇷',
+        keywords: [
+          'bonjour',
+          'comment',
+          'quoi',
+          'ou',
+          'qui',
+          'pourquoi',
+          'tu',
+          'vous',
+          'je',
+          'le',
+          'la',
+          'merci',
+          'parle',
+          'parlez',
+        ],
+      },
+      tl: {
+        name: 'Filipino/Tagalog',
+        flag: '🇵🇭',
+        keywords: [
+          'kumusta',
+          'ano',
+          'paano',
+          'saan',
+          'sino',
+          'bakit',
+          'ikaw',
+          'ako',
+          'salamat',
+          'trabaho',
+          'gawa',
+          'nag',
+        ],
+      },
+      id: {
+        name: 'Indonesian',
+        flag: '🇮🇩',
+        keywords: [
+          'halo',
+          'apa',
+          'bagaimana',
+          'dimana',
+          'siapa',
+          'mengapa',
+          'kamu',
+          'saya',
+          'terima kasih',
+          'kerja',
+          'bekerja',
+        ],
+      },
+      th: {
+        name: 'Thai',
+        flag: '🇹🇭',
+        keywords: [
+          'สวัสดี',
+          'คุณ',
+          'ฉัน',
+          'อะไร',
+          'ที่ไหน',
+          'ทำไม',
+          'sawasdee',
+          'khun',
+          'chan',
+          'arai',
+          'tee nai',
+          'tam mai',
+        ],
+      },
+      vi: {
+        name: 'Vietnamese',
+        flag: '🇻🇳',
+        keywords: [
+          'xin chào',
+          'bạn',
+          'tôi',
+          'gì',
+          'ở đâu',
+          'tại sao',
+          'làm',
+          'việc',
+          'cảm ơn',
+          'xin',
+          'chao',
+        ],
+      },
+      ar: {
+        name: 'Arabic',
+        flag: '🇸🇦',
+        keywords: [
+          'مرحبا',
+          'أنت',
+          'أنا',
+          'ماذا',
+          'أين',
+          'لماذا',
+          'marhaba',
+          'anta',
+          'ana',
+          'madha',
+          'ayna',
+          'limadha',
+        ],
+      },
+      ja: {
+        name: 'Japanese',
+        flag: '🇯🇵',
+        keywords: [
+          'こんにちは',
+          'あなた',
+          '私',
+          '何',
+          'どこ',
+          'なぜ',
+          'konnichiwa',
+          'anata',
+          'watashi',
+          'nani',
+          'doko',
+          'naze',
+        ],
+      },
+      ko: {
+        name: 'Korean',
+        flag: '🇰🇷',
+        keywords: [
+          '안녕하세요',
+          '당신',
+          '나',
+          '무엇',
+          '어디',
+          '왜',
+          'annyeong',
+          'dangsin',
+          'na',
+          'mueot',
+          'eodi',
+          'wae',
+        ],
+      },
+      pt: {
+        name: 'Portuguese',
+        flag: '🇧🇷',
+        keywords: [
+          'ola',
+          'olá',
+          'como',
+          'que',
+          'onde',
+          'quando',
+          'por',
+          'tu',
+          'voce',
+          'você',
+          'eu',
+          'obrigado',
+          'fala',
+        ],
+      },
+      ru: {
+        name: 'Russian',
+        flag: '🇷🇺',
+        keywords: [
+          'привет',
+          'ты',
+          'я',
+          'что',
+          'где',
+          'почему',
+          'privet',
+          'ty',
+          'ya',
+          'chto',
+          'gde',
+          'pochemu',
+        ],
+      },
+      de: {
+        name: 'German',
+        flag: '��',
+        keywords: [
+          'hallo',
+          'wie',
+          'was',
+          'wo',
+          'wer',
+          'warum',
+          'du',
+          'ich',
+          'danke',
+          'sprechen',
+          'sprichst',
+        ],
+      },
+      it: {
+        name: 'Italian',
+        flag: '🇮🇹',
+        keywords: [
+          'ciao',
+          'come',
+          'cosa',
+          'dove',
+          'chi',
+          'perche',
+          'tu',
+          'io',
+          'grazie',
+          'parla',
+          'parli',
+        ],
+      },
+    }
 
-    const phoneticNepaliPatterns = [
-      /\btimro\b/i,
-      /\btimero\b/i,
-      /\btimrow\b/i, // तिम्रो (your)
-      /\bkun\b/i,
-      /\bkoon\b/i,
-      /\bkune\b/i, // कुन (which)
-      /\bmalai\b/i,
-      /\bmala\b/i,
-      /\bmalay\b/i, // मलाई (to me)
-      /\btapai\b/i,
-      /\btapaiko\b/i, // तपाईं (you formal)
-      /\bhuncha\b/i,
-      /\bhunchha\b/i, // हुन्छ (is/will be)
-      /\bgareko\b/i,
-      /\bgarne\b/i, // गरेको (done/doing)
-    ]
+    // Check each language for keyword matches
+    let bestMatch = { lang: 'en', count: 0, name: 'English', flag: '🇬🇧' }
 
-    // Check phonetic patterns first (for Twilio transcription)
-    const hindiPhoneticMatches = phoneticHindiPatterns.filter((pattern) =>
-      pattern.test(messageLower),
-    ).length
-    const nepaliPhoneticMatches = phoneticNepaliPatterns.filter((pattern) =>
-      pattern.test(messageLower),
-    ).length
+    for (const [langCode, langData] of Object.entries(languagePatterns)) {
+      const matches = langData.keywords.filter((keyword) =>
+        messageLower.includes(keyword.toLowerCase()),
+      ).length
 
-    if (hindiPhoneticMatches >= 2) {
-      console.log(`🇮🇳 Hindi detected via PHONETIC patterns: ${hindiPhoneticMatches} matches`)
+      if (matches > bestMatch.count) {
+        bestMatch = { lang: langCode, count: matches, name: langData.name, flag: langData.flag }
+      }
+    }
+
+    // Require at least 1 match for detection
+    if (bestMatch.count >= 1) {
+      console.log(
+        `${bestMatch.flag} ${bestMatch.name} detected: ${bestMatch.count} keywords matched`,
+      )
       return {
-        detectedLanguage: 'hi',
+        detectedLanguage: bestMatch.lang,
         confidence: 0.95,
         translatedQuery: message,
-        culturalContext: ['casual', 'friendly'],
-        preferredResponseLanguage: 'hi',
+        culturalContext: ['friendly'],
+        preferredResponseLanguage: bestMatch.lang,
         needsTranslation: false,
       }
     }
 
-    if (nepaliPhoneticMatches >= 2) {
-      console.log(`🇳🇵 Nepali detected via PHONETIC patterns: ${nepaliPhoneticMatches} matches`)
-      return {
-        detectedLanguage: 'ne',
-        confidence: 0.95,
-        translatedQuery: message,
-        culturalContext: ['professional', 'nepali'],
-        preferredResponseLanguage: 'ne',
-        needsTranslation: false,
-      }
-    }
-
-    // Hindi patterns - extensive list for direct transcription
-    const hindiKeywords = [
-      'kaise',
-      'kese',
-      'kaisa',
-      'kya',
-      'kahan',
-      'kahaan',
-      'kyun',
-      'kab',
-      'aap',
-      'aapka',
-      'aapki',
-      'tumhara',
-      'tumhari',
-      'tum',
-      'hai',
-      'hain',
-      'ho',
-      'hun',
-      'tha',
-      'thi',
-      'the',
-      'batao',
-      'bataiye',
-      'bataye',
-      'batana',
-      'mujhe',
-      'mera',
-      'meri',
-      'mere',
-      'padhe',
-      'padhai',
-      'padha',
-      'siksha',
-      'shiksha',
-      'study',
-      'kaam',
-      'kam',
-      'job',
-      'work',
-      'university',
-      'college',
-      'school',
-      'degree',
-      'company',
-      'office',
-      'bhai',
-      'dost',
-      'yaar',
-      'hindi',
-      'hinglish',
-      'kis',
-      'kon',
-      'koun',
-      'kaun',
-      'tha',
-      'thi',
-      'the',
-      'ho',
-      'kar',
-      'karo',
-      'karna',
-      'karte',
-      'na',
-      'nahi',
-      'nahin',
-      'mat',
-      'haan',
-      'ha',
-      'ji',
-    ]
-
-    const hindiMatches = hindiKeywords.filter((word) => messageLower.includes(word)).length
-    if (hindiMatches >= 2) {
-      // At least 2 Hindi words
-      console.log(`🇮🇳 Hindi detected: ${hindiMatches} keywords matched`)
-      return {
-        detectedLanguage: 'hi',
-        confidence: 0.95,
-        translatedQuery: message,
-        culturalContext: ['casual', 'friendly'],
-        preferredResponseLanguage: 'hi',
-        needsTranslation: false,
-      }
-    }
-
-    // Nepali patterns - extensive list for Twilio transcription
-    const nepaliKeywords = [
-      'timro',
-      'timri',
-      'timi',
-      'tapai',
-      'tapaiko',
-      'kun',
-      'ke',
-      'kaha',
-      'kahile',
-      'kina',
-      'ho',
-      'hola',
-      'huncha',
-      'cha',
-      'chha',
-      'xa',
-      'malai',
-      'mero',
-      'meri',
-      'mere',
-      'hajur',
-      'dai',
-      'didi',
-      'bhai',
-      'padhe',
-      'padhya',
-      'padheko',
-      'siksha',
-      'shiksha',
-      'kaam',
-      'job',
-      'work',
-      'university',
-      'college',
-      'nepali',
-      'nepalese',
-      'nepal',
-      'kathmandu',
-      'pokhara',
-      'thikai',
-      'ramro',
-      'sanchai',
-      'gareko',
-      'garne',
-      'gardai',
-      'hoina',
-      'chaina',
-      'chhaina',
-      'kasto',
-      'kati',
-      'kasari',
-    ]
-
-    const nepaliMatches = nepaliKeywords.filter((word) => messageLower.includes(word)).length
-    if (nepaliMatches >= 2) {
-      // At least 2 Nepali words
-      console.log(`🇳🇵 Nepali detected: ${nepaliMatches} keywords matched`)
-      return {
-        detectedLanguage: 'ne',
-        confidence: 0.95,
-        translatedQuery: message,
-        culturalContext: ['professional', 'nepali'],
-        preferredResponseLanguage: 'ne',
-        needsTranslation: false,
-      }
-    }
-
-    // Default to English
+    // Default to English if no language detected
     console.log(`🇬🇧 English detected (default) - no Hindi/Nepali patterns found`)
     return {
       detectedLanguage: 'en',
@@ -353,38 +450,42 @@ export async function generateMultiLanguageResponse(
     if (languageContext.detectedLanguage !== 'en' && languageContext.confidence > 0.7) {
       console.log(`🌍 Generating ${languageContext.detectedLanguage} response`)
 
-      let responsePrompt = ''
+      const languageNames: Record<string, string> = {
+        hi: 'Hindi/Hinglish',
+        ne: 'Nepali',
+        zh: 'Chinese (Mandarin)',
+        es: 'Spanish',
+        fr: 'French',
+        tl: 'Filipino/Tagalog',
+        id: 'Indonesian',
+        th: 'Thai',
+        vi: 'Vietnamese',
+        ar: 'Arabic',
+        ja: 'Japanese',
+        ko: 'Korean',
+        pt: 'Portuguese',
+        ru: 'Russian',
+        de: 'German',
+        it: 'Italian',
+      }
 
-      if (languageContext.detectedLanguage === 'hi') {
-        responsePrompt = `You are Sajal Basnet responding naturally to a friend in Hinglish.
+      const langName =
+        languageNames[languageContext.detectedLanguage] || languageContext.detectedLanguage
+
+      const responsePrompt = `You are Sajal Basnet (software developer with Masters from Swinburne University, Sydney) responding to someone in ${langName}.
 
 User asked: "${originalMessage}"
 Context: ${ragResult.response.substring(0, 200)}
 
-Reply in natural Hinglish:
-- Mix Hindi and English naturally
-- Keep it short and friendly (1-2 sentences max)
-- Use "main", "hun", "karta hun", "bhai" naturally  
-- Don't be formal or robotic
-- Match the casual tone
+Reply in natural ${langName}:
+- Keep it conversational and friendly (1-2 sentences max)
+- Use natural grammar and common phrases
+- Be professional but warm
+- Answer the question directly
 
 Response:`
-      } else if (languageContext.detectedLanguage === 'ne') {
-        responsePrompt = `You are Sajal Basnet responding in natural Nepali.
 
-User asked: "${originalMessage}" 
-Context: ${ragResult.response.substring(0, 200)}
-
-Reply in natural Nepali:
-- Use proper Nepali grammar
-- Keep it conversational (1-2 sentences max)
-- Use "ma", "chu", "garchu", "huncha" correctly
-- Be friendly and natural
-
-Response:`
-      }
-
-      if (responsePrompt) {
+      try {
         const response = await groq.chat.completions.create({
           model: 'llama-3.1-8b-instant',
           messages: [{ role: 'user', content: responsePrompt }],
@@ -397,6 +498,9 @@ Response:`
           finalResponse = cleanQuotes(generatedText.trim())
           translationUsed = true
         }
+      } catch (error) {
+        console.error(`Error generating ${langName} response:`, error)
+        // Fallback to English if translation fails
       }
     }
 

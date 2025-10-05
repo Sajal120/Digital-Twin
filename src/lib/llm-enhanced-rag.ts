@@ -189,33 +189,41 @@ export async function formatForInterview(
   console.log('📝 Context preview:', context.substring(0, 150) + '...')
 
   // Build language-specific instruction
+  const languageNames: Record<string, string> = {
+    hi: 'HINDI (हिंदी)',
+    ne: 'NEPALI (नेपाली)',
+    zh: 'CHINESE (中文)',
+    es: 'SPANISH (Español)',
+    fr: 'FRENCH (Français)',
+    tl: 'FILIPINO/TAGALOG',
+    id: 'INDONESIAN (Bahasa Indonesia)',
+    th: 'THAI (ภาษาไทย)',
+    vi: 'VIETNAMESE (Tiếng Việt)',
+    ar: 'ARABIC (العربية)',
+    ja: 'JAPANESE (日本語)',
+    ko: 'KOREAN (한국어)',
+    pt: 'PORTUGUESE (Português)',
+    ru: 'RUSSIAN (Русский)',
+    de: 'GERMAN (Deutsch)',
+    it: 'ITALIAN (Italiano)',
+  }
+
+  const langName = languageNames[detectedLanguage || 'en']
   let languageInstruction = ''
-  if (detectedLanguage === 'hi') {
+
+  if (detectedLanguage && detectedLanguage !== 'en' && langName) {
     languageInstruction = `
 MANDATORY LANGUAGE REQUIREMENT:
-- You MUST respond COMPLETELY in HINDI language
-- Use Hindi words, Hindi grammar, Hindi sentence structure
-- Example: "Main Swinburne University mein padha hun" NOT "I studied at Swinburne"
-- NO ENGLISH words except proper nouns (university names, company names)
-- This is CRITICAL - user is speaking Hindi, you MUST reply in Hindi
-`
-  } else if (detectedLanguage === 'ne') {
-    languageInstruction = `
-MANDATORY LANGUAGE REQUIREMENT:
-- You MUST respond COMPLETELY in NEPALI language
-- Use Nepali words, Nepali grammar, Nepali sentence structure
-- Example: "Ma Swinburne University ma padheko" NOT "I studied at Swinburne"
-- NO ENGLISH words except proper nouns (university names, company names)
-- This is CRITICAL - user is speaking Nepali, you MUST reply in Nepali
+- You MUST respond COMPLETELY in ${langName} language
+- Use ${langName} words, grammar, and sentence structure naturally
+- Keep proper nouns in original language (university names, company names)
+- This is CRITICAL - user is speaking ${langName}, you MUST reply in ${langName}
 `
   }
 
-  const systemPrompt =
-    detectedLanguage === 'hi'
-      ? 'You are Sajal Basnet. You MUST respond in HINDI language only. हिंदी में जवाब दें।'
-      : detectedLanguage === 'ne'
-        ? 'You are Sajal Basnet. You MUST respond in NEPALI language only. नेपालीमा जवाफ दिनुहोस्।'
-        : 'You are Sajal Basnet. Respond naturally and accurately.'
+  const systemPrompt = langName
+    ? `You are Sajal Basnet. You MUST respond in ${langName} language only.`
+    : 'You are Sajal Basnet. Respond naturally and accurately.'
 
   const formattingPrompt = `
 ${languageInstruction}
@@ -234,9 +242,7 @@ CRITICAL RULES:
 6. Keep response under 40 words, natural and conversational (short and human-like)
 7. Use "I" statements naturally (Main/Ma for Hindi/Nepali, I for English)
 
-${detectedLanguage === 'hi' ? 'अब हिंदी में जवाब दें (Answer in Hindi now):' : ''}
-${detectedLanguage === 'ne' ? 'अब नेपालीमा जवाफ दिनुहोस् (Answer in Nepali now):' : ''}
-${!detectedLanguage || detectedLanguage === 'en' ? 'Response:' : ''}
+${langName ? `Answer in ${langName} now:` : 'Response:'}
   `
 
   console.log(`🌍 Formatting response in language: ${detectedLanguage || 'en'}`)
@@ -885,19 +891,34 @@ async function generateDirectResponse(
 
   const context = INTERVIEW_CONTEXTS[interviewType]
 
-  const systemPrompt =
-    detectedLanguage === 'hi'
-      ? 'You are Sajal Basnet. You MUST respond in HINDI language only. हिंदी में जवाब दें।'
-      : detectedLanguage === 'ne'
-        ? 'You are Sajal Basnet. You MUST respond in NEPALI language only. नेपालीमा जवाफ दिनुहोस्।'
-        : 'You are Sajal Basnet, a software developer from Nepal.'
+  const languageNames: Record<string, string> = {
+    hi: 'HINDI (हिंदी)',
+    ne: 'NEPALI (नेपाली)',
+    zh: 'CHINESE (中文)',
+    es: 'SPANISH',
+    fr: 'FRENCH',
+    tl: 'FILIPINO/TAGALOG',
+    id: 'INDONESIAN',
+    th: 'THAI',
+    vi: 'VIETNAMESE',
+    ar: 'ARABIC',
+    ja: 'JAPANESE',
+    ko: 'KOREAN',
+    pt: 'PORTUGUESE',
+    ru: 'RUSSIAN',
+    de: 'GERMAN',
+    it: 'ITALIAN',
+  }
 
-  const languageInstruction =
-    detectedLanguage === 'hi'
-      ? '\nMUST respond in HINDI: Use Hindi words like "Main", "Mera", "Hun". हिंदी में जवाब दें।'
-      : detectedLanguage === 'ne'
-        ? '\nMUST respond in NEPALI: Use Nepali words like "Ma", "Mero", "Chu". नेपालीमा जवाफ दिनुहोस्।'
-        : ''
+  const langName = languageNames[detectedLanguage || 'en']
+
+  const systemPrompt = langName
+    ? `You are Sajal Basnet. You MUST respond in ${langName} language only.`
+    : 'You are Sajal Basnet, a software developer from Nepal.'
+
+  const languageInstruction = langName
+    ? `\nMUST respond in ${langName}: Use natural ${langName} words and grammar.`
+    : ''
 
   const directPrompt = `${languageInstruction}
 
@@ -924,8 +945,7 @@ Basic facts you can reference:
 - Languages: English, Nepali, some Hindi
 
 Respond naturally as Sajal:
-${detectedLanguage === 'hi' ? '\nअब हिंदी में जवाब दें:' : ''}
-${detectedLanguage === 'ne' ? '\nअब नेपालीमा जवाफ दिनुहोस्:' : ''}`
+${langName ? `\nAnswer in ${langName} now:` : ''}`
 
   try {
     const completion = await groq.chat.completions.create({
@@ -965,19 +985,32 @@ async function generateClarificationRequest(
     return "Could you help me understand what specific information you're looking for? I want to give you the most relevant response."
   }
 
-  const systemPrompt =
-    detectedLanguage === 'hi'
-      ? 'You are Sajal Basnet. You MUST respond in HINDI language only. हिंदी में जवाब दें।'
-      : detectedLanguage === 'ne'
-        ? 'You are Sajal Basnet. You MUST respond in NEPALI language only. नेपालीमा जवाफ दिनुहोस्।'
-        : "You are Sajal's AI assistant."
+  const languageNames: Record<string, string> = {
+    hi: 'HINDI',
+    ne: 'NEPALI',
+    zh: 'CHINESE',
+    es: 'SPANISH',
+    fr: 'FRENCH',
+    tl: 'FILIPINO/TAGALOG',
+    id: 'INDONESIAN',
+    th: 'THAI',
+    vi: 'VIETNAMESE',
+    ar: 'ARABIC',
+    ja: 'JAPANESE',
+    ko: 'KOREAN',
+    pt: 'PORTUGUESE',
+    ru: 'RUSSIAN',
+    de: 'GERMAN',
+    it: 'ITALIAN',
+  }
 
-  const languageInstruction =
-    detectedLanguage === 'hi'
-      ? '\nMUST respond in HINDI. हिंदी में जवाब दें।'
-      : detectedLanguage === 'ne'
-        ? '\nMUST respond in NEPALI. नेपालीमा जवाफ दिनुहोस्।'
-        : ''
+  const langName = languageNames[detectedLanguage || 'en']
+
+  const systemPrompt = langName
+    ? `You are Sajal Basnet. You MUST respond in ${langName} language only.`
+    : "You are Sajal's AI assistant."
+
+  const languageInstruction = langName ? `\nMUST respond in ${langName}.` : ''
 
   const clarificationPrompt = `${languageInstruction}
 
