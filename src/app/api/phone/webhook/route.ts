@@ -167,10 +167,10 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-US"
+    language="en-US, hi-IN"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about, study, swinburne, university, sydney, australia, experience"
+    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, batana, mujhe, mera, kahan, padhe, kaun, timro, naam, kun, ke, malai, tapai, huncha, cha, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about"
   >
     <Pause length="1"/>
   </Gather>
@@ -187,10 +187,10 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     method="POST"
     timeout="10"
     speechTimeout="5"
-    language="en-US"
+    language="en-US, hi-IN"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="kya, kaam, karte, ho, aap, tum, tumhara, timro, naam, name, kun, ke, kahan, kaun, padhe, padhai, university, college, work, job, batao, batana, malai, mera, meri, hai, cha, xa, kaisa, kese, kaise, where, what, tell, about"
+    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, timro, naam, kun, ke, malai, tapai, huncha, cha, university, college, swinburne, sydney, work, study, padhai, where, what, tell, about"
   >
     <Pause length="1"/>
   </Gather>

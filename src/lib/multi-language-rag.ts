@@ -57,36 +57,30 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
 
     // PHONETIC PATTERNS - Twilio transcribes Hindi/Nepali as English-sounding words
     // "Kya kaam karte ho?" might become "Kya cam carte ho" or similar
+    // Excluding common English words to avoid false positives
     const phoneticHindiPatterns = [
       /\bkya\b/i,
       /\bkia\b/i,
       /\bkiya\b/i, // क्या (what)
       /\bkaam\b/i,
       /\bkam\b/i,
-      /\bcam\b/i,
-      /\bcome\b/i, // काम (work)
+      /\bcam\b/i, // काम (work)
       /\bkarte\b/i,
       /\bcarte\b/i,
       /\bkarta\b/i, // करते (do)
-      /\baap\b/i,
-      /\bapp\b/i, // आप (you)
-      /\btum\b/i,
-      /\btom\b/i, // तुम (you)
-      /\bho\b/i,
-      /\bhoe\b/i, // हो (are)
+      /\baap\b/i, // आप (you)
+      /\btum\b/i, // तुम (you)
       /\bhai\b/i,
-      /\bhigh\b/i,
       /\bhay\b/i, // है (is)
       /\bkahan\b/i,
       /\bkaha\b/i,
       /\bkhan\b/i, // कहाँ (where)
       /\bkaun\b/i,
-      /\bkon\b/i,
-      /\bcone\b/i,
-      /\bcorn\b/i, // कौन (who)
+      /\bkon\b/i, // कौन (who)
       /\bkaise\b/i,
-      /\bkese\b/i,
-      /\bcase\b/i, // कैसे (how)
+      /\bkese\b/i, // कैसे (how)
+      /\bbatao\b/i,
+      /\bbataiye\b/i, // बताओ (tell)
     ]
 
     const phoneticNepaliPatterns = [
@@ -96,21 +90,15 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       /\bkun\b/i,
       /\bkoon\b/i,
       /\bkune\b/i, // कुन (which)
-      /\bke\b/i,
-      /\bkay\b/i, // के (what)
-      /\bho\b/i,
-      /\bhoe\b/i, // हो (is)
-      /\bcha\b/i,
-      /\bchha\b/i,
-      /\bxa\b/i, // छ (is)
-      /\bkaha\b/i,
-      /\bkahan\b/i, // कहाँ (where)
       /\bmalai\b/i,
       /\bmala\b/i,
       /\bmalay\b/i, // मलाई (to me)
-      /\bnaam\b/i,
-      /\bname\b/i,
-      /\bnam\b/i, // नाम (name)
+      /\btapai\b/i,
+      /\btapaiko\b/i, // तपाईं (you formal)
+      /\bhuncha\b/i,
+      /\bhunchha\b/i, // हुन्छ (is/will be)
+      /\bgareko\b/i,
+      /\bgarne\b/i, // गरेको (done/doing)
     ]
 
     // Check phonetic patterns first (for Twilio transcription)
@@ -121,7 +109,7 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       pattern.test(messageLower),
     ).length
 
-    if (hindiPhoneticMatches >= 3) {
+    if (hindiPhoneticMatches >= 2) {
       console.log(`🇮🇳 Hindi detected via PHONETIC patterns: ${hindiPhoneticMatches} matches`)
       return {
         detectedLanguage: 'hi',
@@ -133,7 +121,7 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       }
     }
 
-    if (nepaliPhoneticMatches >= 3) {
+    if (nepaliPhoneticMatches >= 2) {
       console.log(`🇳🇵 Nepali detected via PHONETIC patterns: ${nepaliPhoneticMatches} matches`)
       return {
         detectedLanguage: 'ne',
@@ -219,8 +207,8 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
     ]
 
     const hindiMatches = hindiKeywords.filter((word) => messageLower.includes(word)).length
-    if (hindiMatches >= 3) {
-      // At least 3 Hindi words
+    if (hindiMatches >= 2) {
+      // At least 2 Hindi words
       console.log(`🇮🇳 Hindi detected: ${hindiMatches} keywords matched`)
       return {
         detectedLanguage: 'hi',
@@ -288,8 +276,8 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
     ]
 
     const nepaliMatches = nepaliKeywords.filter((word) => messageLower.includes(word)).length
-    if (nepaliMatches >= 3) {
-      // At least 3 Nepali words
+    if (nepaliMatches >= 2) {
+      // At least 2 Nepali words
       console.log(`🇳🇵 Nepali detected: ${nepaliMatches} keywords matched`)
       return {
         detectedLanguage: 'ne',
