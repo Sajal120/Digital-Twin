@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="5"
-    language="en-US, hi-IN"
+    speechTimeout="auto"
+    language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, timro, naam, kun, ke, malai, tapai, huncha, cha, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about"
+    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, kaise, kese, timro, naam, kun, ke, malai, tapai, huncha, cha, hai, hain, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about, doing"
   >
     <Pause length="1"/>
   </Gather>
@@ -229,11 +229,11 @@ export async function POST(request: NextRequest) {
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="5"
-    language="en-US, hi-IN"
+    speechTimeout="auto"
+    language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, timro, naam, kun, ke, malai, tapai, huncha, cha, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about"
+    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, kaise, kese, timro, naam, kun, ke, malai, tapai, huncha, cha, hai, hain, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about, doing"
   >
     <Pause length="1"/>
   </Gather>
@@ -261,11 +261,11 @@ export async function POST(request: NextRequest) {
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="5"
-    language="en-US, hi-IN"
+    speechTimeout="auto"
+    language="en-US"
     speechModel="phone_call"
     profanityFilter="false"
-    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, timro, naam, kun, ke, malai, tapai, huncha, cha, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about"
+    hints="namaste, kya, kaam, karte, ho, aap, tumhara, batao, bataiye, kaise, kese, timro, naam, kun, ke, malai, tapai, huncha, cha, hai, hain, university, college, swinburne, sydney, australia, work, experience, study, padhai, job, company, where, what, tell, about, doing"
   >
     <Pause length="1"/>
   </Gather>
