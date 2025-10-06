@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { omniChannelManager } from '../../../../lib/omni-channel-manager'
 import { voiceService } from '../../../../services/voiceService'
-import { phoneAudioCache, createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
+import { put } from '@vercel/blob'
+import { createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
 // DEEPGRAM VERSION 2.2 - ULTRA FAST MODE + SYNTAX FIXES
 const VERSION = 'v2.7-instant-return-oct6'
@@ -166,14 +167,15 @@ export async function POST(request: NextRequest) {
         if (elevenlabsResponse.ok) {
           const audioBuffer = await elevenlabsResponse.arrayBuffer()
           const audioId = `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-          phoneAudioCache.set(audioId, {
-            buffer: Buffer.from(audioBuffer),
-            text: retryMessage,
+
+          // Upload to Vercel Blob for persistent storage
+          const blob = await put(`phone-audio/${audioId}.mp3`, Buffer.from(audioBuffer), {
+            access: 'public',
             contentType: 'audio/mpeg',
-            timestamp: Date.now(),
-            expires: Date.now() + 10 * 60 * 1000,
           })
-          const audioUrl = createPhoneAudioUrl(audioId)
+
+          console.log(`📁 Uploaded retry audio to Vercel Blob: ${blob.url}`)
+          const audioUrl = blob.url
 
           const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -402,31 +404,24 @@ export async function POST(request: NextRequest) {
       const audioId = `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       const audioBufferObj = Buffer.from(audioBuffer)
 
-      console.log('📁 Caching audio:', {
+      console.log('📁 Uploading audio to Vercel Blob:', {
         audioId,
         bufferSize: audioBufferObj.length,
         textPreview: aiResponse.response.substring(0, 50),
       })
 
-      phoneAudioCache.set(audioId, {
-        buffer: audioBufferObj,
+      // Upload to Vercel Blob for persistent serverless storage
+      const blob = await put(`phone-audio/${audioId}.mp3`, audioBufferObj, {
+        access: 'public',
         contentType: 'audio/mpeg',
-        text: aiResponse.response.substring(0, 100),
-        timestamp: Date.now(),
-        expires: Date.now() + 10 * 60 * 1000, // 10 minutes
+        addRandomSuffix: false, // Keep exact filename for retrieval
       })
 
-      // Verify it was cached
-      const cached = phoneAudioCache.get(audioId)
-      if (!cached) {
-        console.error('❌ Failed to cache audio!')
-        throw new Error('Audio caching failed')
-      }
-
-      console.log('✅ Audio cached successfully:', audioId)
+      console.log('✅ Audio uploaded to Vercel Blob successfully:', audioId)
       console.log('📊 Audio size:', audioBufferObj.length, 'bytes')
+      console.log('🔗 Blob URL:', blob.url)
 
-      const audioUrl = createPhoneAudioUrl(audioId)
+      const audioUrl = blob.url
       console.log('✅ YOUR voice audio ready!')
       console.log('🔗 Audio URL:', audioUrl)
 

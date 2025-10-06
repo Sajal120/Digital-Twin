@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { phoneAudioCache } from '../../../../../lib/phone-audio-cache'
+import { head } from '@vercel/blob'
 
 // Allow cross-origin access for audio streaming endpoint
-// Updated: Fix Vercel build issue with dynamic routes
+// Updated: Use Vercel Blob for persistent serverless audio storage
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -15,44 +15,49 @@ export async function GET(request: NextRequest, { params }: { params: { audioId:
     const audioId = params.audioId
     console.log(`🎵 Streaming audio request for: ${audioId}`)
 
-    // Get audio from cache
-    const audioEntry = phoneAudioCache.get(audioId)
+    // Try to get from Vercel Blob Storage
+    try {
+      const blobUrl = `${process.env.BLOB_READ_WRITE_TOKEN ? 'vercel-blob://' : 'https://'}phone-audio/${audioId}.mp3`
 
-    if (!audioEntry) {
-      console.warn(`❌ Audio not found in cache: ${audioId}`)
-      console.warn(`   This is expected in serverless - cache doesn't persist across instances`)
+      // Check if blob exists
+      const blobInfo = await head(blobUrl)
+
+      if (!blobInfo) {
+        throw new Error('Blob not found')
+      }
+
+      console.log(`✅ Found audio in Vercel Blob: ${blobInfo.size} bytes`)
+
+      // Fetch the actual audio data
+      const audioResponse = await fetch(blobInfo.url)
+      const audioBuffer = await audioResponse.arrayBuffer()
+
+      console.log(`✅ Streaming audio: ${audioBuffer.byteLength} bytes`)
+
+      // Return audio stream
+      return new NextResponse(audioBuffer as BodyInit, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': audioBuffer.byteLength.toString(),
+          'Accept-Ranges': 'bytes',
+          ...CORS_HEADERS,
+        },
+      })
+    } catch (blobError) {
+      console.warn(`❌ Audio not found in Vercel Blob: ${audioId}`)
+      console.warn(`   This can happen if audio was just generated`)
       console.warn(`   Twilio will fall back to <Say> verb in TwiML`)
 
       // Return 404 - Twilio will handle gracefully and skip to next verb
-      return new NextResponse('Audio not found in serverless cache', {
+      return new NextResponse('Audio not found in blob storage', {
         status: 404,
         headers: {
           'X-Cache-Miss': 'true',
-          'X-Serverless-Note': 'Audio cache cleared between requests',
+          'X-Serverless-Note': 'Audio not yet uploaded to blob storage',
         },
       })
     }
-
-    // Check if expired
-    if (audioEntry.expires < Date.now()) {
-      phoneAudioCache.delete(audioId)
-      console.warn(`⏰ Audio expired: ${audioId}`)
-      return new NextResponse('Audio expired', { status: 410 })
-    }
-
-    console.log(`✅ Streaming audio: ${audioEntry.buffer.length} bytes`)
-    console.log(`📝 Audio text preview: ${audioEntry.text}`)
-
-    // Return audio stream
-    return new NextResponse(audioEntry.buffer as BodyInit, {
-      status: 200,
-      headers: {
-        'Content-Type': audioEntry.contentType,
-        'Content-Length': audioEntry.buffer.length.toString(),
-        'Accept-Ranges': 'bytes',
-        ...CORS_HEADERS,
-      },
-    })
   } catch (error) {
     console.error('❌ Audio streaming error:', error)
     return new NextResponse('Internal server error', { status: 500 })
