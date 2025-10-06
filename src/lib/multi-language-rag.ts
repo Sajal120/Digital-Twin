@@ -371,10 +371,13 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
       }
     }
 
-    // Require at least 1 match for detection
-    if (bestMatch.count >= 1) {
+    // Require at least 2 matches for short messages, 1 match for longer messages
+    const wordCount = message.split(/\s+/).length
+    const requiredMatches = wordCount >= 10 ? 1 : 2
+
+    if (bestMatch.count >= requiredMatches) {
       console.log(
-        `${bestMatch.flag} ${bestMatch.name} detected: ${bestMatch.count} keywords matched`,
+        `${bestMatch.flag} ${bestMatch.name} detected: ${bestMatch.count} keywords matched (required: ${requiredMatches})`,
       )
       return {
         detectedLanguage: bestMatch.lang,

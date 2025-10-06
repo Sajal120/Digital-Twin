@@ -277,7 +277,7 @@ export class OmniChannelManager {
       console.log('📝 Question:', userInput)
       console.log('📊 Context channels:', enhancedContext.currentChannel)
 
-      const mcpTimeout = 10000 // 10s for both phone and web - MCP MUST complete
+      const mcpTimeout = additionalContext.phoneCall ? 15000 : 20000 // 15s for phone, 20s for web
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
