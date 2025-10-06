@@ -22,7 +22,7 @@ importers:
         version: 3.54.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@payloadcms/db-postgres':
         specifier: 3.54.0
-        version: 3.54.0(@opentelemetry/api@1.9.0)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))
+        version: 3.54.0(@opentelemetry/api@1.9.0)(@upstash/redis@1.35.5)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))
       '@payloadcms/live-preview-react':
         specifier: 3.54.0
         version: 3.54.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -92,6 +92,9 @@ importers:
       '@types/pg':
         specifier: ^8.15.5
         version: 8.15.5
+      '@upstash/redis':
+        specifier: ^1.35.5
+        version: 1.35.5
       '@upstash/vector':
         specifier: ^1.2.2
         version: 1.2.2
@@ -2904,6 +2907,9 @@ packages:
     resolution: {integrity: sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==}
     cpu: [x64]
     os: [win32]
+
+  '@upstash/redis@1.35.5':
+    resolution: {integrity: sha512-KdLdNAspQGOTGeC++o2LDBzNbMXrfInnmW5nUJfNXabnVh8X4NPrlJ0X4j75cBUShiMpXB3uI1ql4KpFQeqrHQ==}
 
   '@upstash/vector@1.2.2':
     resolution: {integrity: sha512-ptQ9xnxtKqmpNK52PCcHCszlPOLxIBfjsv7ty8RoF95pkjctS9rSjTQ3Pl9bx5VFbpDj+0dMXw88WLt6swDkgQ==}
@@ -5830,6 +5836,9 @@ packages:
     resolution: {integrity: sha512-nWJ91DjeOkej/TA8pXQ3myruKpKEYgqvpw9lz4OPHj/NWFNluYrjbz9j01CJ8yKQd2g4jFoOkINCTW2I5LEEyw==}
     engines: {node: '>= 0.4'}
 
+  uncrypto@0.1.3:
+    resolution: {integrity: sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==}
+
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
@@ -7892,13 +7901,13 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
 
-  '@payloadcms/db-postgres@3.54.0(@opentelemetry/api@1.9.0)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))':
+  '@payloadcms/db-postgres@3.54.0(@opentelemetry/api@1.9.0)(@upstash/redis@1.35.5)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))':
     dependencies:
-      '@payloadcms/drizzle': 3.54.0(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))(pg@8.16.3)
+      '@payloadcms/drizzle': 3.54.0(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(@upstash/redis@1.35.5)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))(pg@8.16.3)
       '@types/pg': 8.10.2
       console-table-printer: 2.12.1
       drizzle-kit: 0.31.4
-      drizzle-orm: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(pg@8.16.3)
+      drizzle-orm: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(@upstash/redis@1.35.5)(pg@8.16.3)
       payload: 3.54.0(graphql@16.11.0)(typescript@5.7.3)
       pg: 8.16.3
       prompts: 2.4.2
@@ -7935,11 +7944,11 @@ snapshots:
       - sqlite3
       - supports-color
 
-  '@payloadcms/drizzle@3.54.0(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))(pg@8.16.3)':
+  '@payloadcms/drizzle@3.54.0(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(@upstash/redis@1.35.5)(payload@3.54.0(graphql@16.11.0)(typescript@5.7.3))(pg@8.16.3)':
     dependencies:
       console-table-printer: 2.12.1
       dequal: 2.0.3
-      drizzle-orm: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(pg@8.16.3)
+      drizzle-orm: 0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(@upstash/redis@1.35.5)(pg@8.16.3)
       payload: 3.54.0(graphql@16.11.0)(typescript@5.7.3)
       prompts: 2.4.2
       to-snake-case: 1.0.0
@@ -9336,6 +9345,10 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
+  '@upstash/redis@1.35.5':
+    dependencies:
+      uncrypto: 0.1.3
+
   '@upstash/vector@1.2.2': {}
 
   '@vitejs/plugin-react@4.5.2(vite@7.1.5(@types/node@22.5.4)(jiti@1.21.7)(sass@1.77.4)(tsx@4.20.3)(yaml@2.8.1))':
@@ -9951,10 +9964,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(pg@8.16.3):
+  drizzle-orm@0.44.2(@opentelemetry/api@1.9.0)(@types/pg@8.10.2)(@upstash/redis@1.35.5)(pg@8.16.3):
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/pg': 8.10.2
+      '@upstash/redis': 1.35.5
       pg: 8.16.3
 
   dunder-proto@1.0.1:
@@ -12733,6 +12747,8 @@ snapshots:
       has-bigints: 1.1.0
       has-symbols: 1.1.0
       which-boxed-primitive: 1.1.1
+
+  uncrypto@0.1.3: {}
 
   undici-types@5.26.5: {}
 
