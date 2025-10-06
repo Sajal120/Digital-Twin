@@ -79,15 +79,20 @@ export async function POST(request: NextRequest) {
           // Store Deepgram's detected language to pass to language detection
           const deepgramLanguage = deepgramResult.detectedLanguage
 
-          // Check if confidence is too low (<50%) - likely poor audio or unclear speech
-          if (deepgramResult.confidence < 0.5) {
-            console.warn(
-              `⚠️ Very low confidence (${(deepgramResult.confidence * 100).toFixed(1)}%) - transcript may be inaccurate: "${speechResult}"`,
-            )
-            console.log('🔄 Asking user to speak more clearly...')
+          // Check if confidence is too low - but be more lenient for multilingual
+          // Non-English languages naturally have lower confidence scores
+          const isLikelyEmpty = !speechResult || speechResult.trim().length === 0
+          const minConfidence = deepgramLanguage === 'en' ? 0.5 : 0.3 // Lower threshold for non-English
 
-            // Clear the speech result so it triggers "no speech" handler
-            speechResult = ''
+          if (deepgramResult.confidence < minConfidence && !isLikelyEmpty) {
+            console.warn(
+              `⚠️ Low confidence (${(deepgramResult.confidence * 100).toFixed(1)}%) for ${deepgramLanguage} - but keeping transcript: "${speechResult}"`,
+            )
+          } else if (isLikelyEmpty) {
+            console.warn(
+              `⚠️ Empty transcript (confidence: ${(deepgramResult.confidence * 100).toFixed(1)}%) - likely silence or background noise`,
+            )
+            speechResult = '' // Clear empty transcript
           }
 
           console.log('✅ Deepgram transcription SUCCESS:', {

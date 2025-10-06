@@ -834,8 +834,48 @@ export async function detectLanguageContext(
       const langData = languagePatterns[mappedLang as keyof typeof languagePatterns]
 
       if (langData) {
+        // VERIFICATION: Double-check Deepgram's detection against text patterns
+        // This prevents misdetections like Spanish being detected as Russian
+        console.log(`🔍 Verifying Deepgram's ${deepgramHint} detection against text patterns...`)
+
+        // Count keyword matches for Deepgram's detected language
+        const deepgramMatches = langData.keywords.filter((keyword) =>
+          messageLower.includes(keyword.toLowerCase()),
+        ).length
+
+        // Check if ANY other language has MORE matches
+        let strongerMatch = null
+        for (const [langCode, otherLangData] of Object.entries(languagePatterns)) {
+          if (langCode === mappedLang) continue // Skip Deepgram's language
+
+          const otherMatches = otherLangData.keywords.filter((keyword) =>
+            messageLower.includes(keyword.toLowerCase()),
+          ).length
+
+          // If another language has significantly more matches, it's likely the correct one
+          if (otherMatches > deepgramMatches && otherMatches >= 2) {
+            strongerMatch = { lang: langCode, data: otherLangData, matches: otherMatches }
+            break
+          }
+        }
+
+        if (strongerMatch) {
+          console.log(
+            `⚠️ Text patterns suggest ${strongerMatch.data.flag} ${strongerMatch.data.name} (${strongerMatch.matches} matches) instead of ${langData.flag} ${langData.name} (${deepgramMatches} matches)`,
+          )
+          console.log(`🔄 Overriding Deepgram's detection: ${deepgramHint} → ${strongerMatch.lang}`)
+          return {
+            detectedLanguage: strongerMatch.lang,
+            confidence: 0.9, // High confidence from text pattern override
+            translatedQuery: message,
+            culturalContext: ['friendly'],
+            preferredResponseLanguage: strongerMatch.lang,
+            needsTranslation: false,
+          }
+        }
+
         console.log(
-          `🎙️ Using Deepgram's language detection: ${langData.flag} ${langData.name} (${deepgramHint})`,
+          `✅ Deepgram detection verified: ${langData.flag} ${langData.name} (${deepgramMatches} text matches)`,
         )
         return {
           detectedLanguage: mappedLang,

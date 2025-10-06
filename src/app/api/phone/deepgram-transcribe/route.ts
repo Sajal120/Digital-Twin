@@ -58,6 +58,17 @@ export async function POST(request: NextRequest) {
       url: audioUrl,
     })
 
+    // Validate minimum audio size (< 10KB is likely silence or error)
+    if (audioBuffer.byteLength < 10000) {
+      console.warn('⚠️ Very small audio file (<10KB) - likely silence or recording error')
+      return NextResponse.json({
+        transcript: '',
+        confidence: 0,
+        detectedLanguage: 'unknown',
+        warning: 'Audio too short or silent',
+      })
+    }
+
     // Log first few bytes to verify it's actual audio data
     const firstBytes = Buffer.from(audioBuffer).slice(0, 16)
     console.log('🔍 Audio header (first 16 bytes):', firstBytes.toString('hex'))
@@ -80,9 +91,13 @@ export async function POST(request: NextRequest) {
         detect_language: true, // Auto-detect language for accurate transcription
         punctuate: true,
         smart_format: true,
+        filler_words: false, // Keep filler words for natural speech
+        profanity_filter: false, // Don't censor words
+        numerals: true, // Convert numbers to words for better understanding
         diarize: false, // Single speaker (phone call)
         utterances: false, // Not needed for short recordings
         vad_events: false, // Voice activity detection events not needed
+        tier: 'nova', // Use nova tier for better accuracy
         // Let Deepgram auto-detect encoding - Twilio can send various formats
         // encoding: 'linear16', // Remove fixed encoding
         // sample_rate: 8000, // Remove fixed sample rate
