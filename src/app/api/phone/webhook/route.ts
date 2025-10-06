@@ -161,7 +161,6 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
     <Pause length="1"/>
     <Record 
       action="/api/phone/handle-speech"
