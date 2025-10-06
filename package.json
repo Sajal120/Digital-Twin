@@ -22,6 +22,7 @@
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts"
   },
   "dependencies": {
+    "@deepgram/sdk": "^4.11.2",
     "@octokit/auth-oauth-app": "^9.0.1",
     "@octokit/rest": "^22.0.0",
     "@payloadcms/admin-bar": "3.54.0",
