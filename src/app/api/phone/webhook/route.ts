@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { voiceService } from '../../../../services/voiceService'
-import { phoneAudioCache, createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
+import { put } from '@vercel/blob'
 
 // Define types for better TypeScript support
 interface Contact {
@@ -87,7 +87,72 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('❌ Twilio webhook error:', error)
-    return new NextResponse('Internal Server Error', { status: 500 })
+
+    // Generate error message with YOUR voice
+    try {
+      const errorMessage =
+        "I'm sorry, there was a technical issue. Please try calling again in a moment."
+
+      const elevenlabsResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+          },
+          body: JSON.stringify({
+            text: errorMessage,
+            model_id: 'eleven_turbo_v2_5',
+            voice_settings: { stability: 0.6, similarity_boost: 0.8 },
+            output_format: 'mp3_22050_32',
+          }),
+        },
+      )
+
+      if (elevenlabsResponse.ok) {
+        const audioBuffer = await elevenlabsResponse.arrayBuffer()
+        const audioId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+        const blob = await put(`phone-audio/${audioId}.mp3`, Buffer.from(audioBuffer), {
+          access: 'public',
+          contentType: 'audio/mpeg',
+          addRandomSuffix: false,
+        })
+
+        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${blob.url}</Play>
+  <Hangup/>
+</Response>`
+
+        return new NextResponse(errorTwiml, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'Cache-Control': 'no-cache',
+          },
+        })
+      }
+    } catch (voiceError) {
+      console.error('❌ Failed to generate error voice:', voiceError)
+    }
+
+    // Fallback to Say if voice generation fails
+    const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew-Neural">I'm sorry, there was a technical issue. Please try calling again.</Say>
+  <Hangup/>
+</Response>`
+
+    return new NextResponse(fallbackTwiml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
+    })
   }
 }
 
@@ -145,18 +210,17 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
       throw new Error('Empty audio')
     }
 
-    // Cache audio
+    // Upload greeting audio to Vercel Blob
     const audioId = `greeting_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    phoneAudioCache.set(audioId, {
-      buffer: Buffer.from(audioBuffer),
+    const blob = await put(`phone-audio/${audioId}.mp3`, Buffer.from(audioBuffer), {
+      access: 'public',
       contentType: 'audio/mpeg',
-      text: greeting.substring(0, 100),
-      timestamp: Date.now(),
-      expires: Date.now() + 10 * 60 * 1000,
+      addRandomSuffix: false,
     })
 
-    const audioUrl = createPhoneAudioUrl(audioId)
+    const audioUrl = blob.url
     console.log('✅ YOUR voice greeting ready!')
+    console.log('🔗 Blob URL:', audioUrl)
 
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
