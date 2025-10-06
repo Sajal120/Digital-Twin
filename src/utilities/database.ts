@@ -76,7 +76,7 @@ export class ChatDatabase {
     let client
     try {
       client = await pool.connect()
-      
+
       const query = `
         INSERT INTO messages (user_id, role, content)
         VALUES ($1, $2, $3)

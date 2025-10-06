@@ -162,40 +162,36 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
 <Response>
     <Play>${audioUrl}</Play>
     <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
-  <Gather 
-    input="speech"
-    action="/api/phone/handle-speech"
-    method="POST"
-    timeout="10"
-    speechTimeout="auto"
-    language="en-US"
-    speechModel="phone_call"
-    profanityFilter="false"
-    hints="namaste, kya, kaam, karte, aap, tum, batao, kaise, timro, malai, hola, como, que, donde, bonjour, comment, kumusta, ano, halo, apa, bagaimana, sawasdee, khun, xin chao, marhaba, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, job, experience, where, what, tell, about"
-  >
     <Pause length="1"/>
-  </Gather>
-  <Redirect>/api/phone/handle-speech</Redirect>
+    <Record 
+      action="/api/phone/handle-speech"
+      method="POST"
+      timeout="10"
+      finishOnKey="#"
+      maxLength="30"
+      playBeep="true"
+      transcribe="false"
+      recordingStatusCallback="/api/phone/handle-speech"
+      recordingStatusCallbackMethod="POST"
+    />
 </Response>`
   } catch (error: any) {
     console.warn('⚠️ ElevenLabs failed, using Twilio:', error.message)
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
-  <Gather 
-    input="speech"
+  <Pause length="1"/>
+  <Record 
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="auto"
-    language="en-US"
-    speechModel="phone_call"
-    profanityFilter="false"
-    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
-  >
-    <Pause length="1"/>
-  </Gather>
-  <Redirect>/api/phone/handle-speech</Redirect>
+    finishOnKey="#"
+    maxLength="30"
+    playBeep="true"
+    transcribe="false"
+    recordingStatusCallback="/api/phone/handle-speech"
+    recordingStatusCallbackMethod="POST"
+  />
 </Response>`
   }
 

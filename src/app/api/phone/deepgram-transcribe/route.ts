@@ -83,8 +83,9 @@ export async function POST(request: NextRequest) {
         diarize: false, // Single speaker (phone call)
         utterances: false, // Not needed for short recordings
         vad_events: false, // Voice activity detection events not needed
-        encoding: 'linear16', // WAV PCM 16-bit (Twilio's format)
-        sample_rate: 8000, // 8kHz for phone calls (Twilio standard)
+        // Let Deepgram auto-detect encoding - Twilio can send various formats
+        // encoding: 'linear16', // Remove fixed encoding
+        // sample_rate: 8000, // Remove fixed sample rate
       },
     )
 
