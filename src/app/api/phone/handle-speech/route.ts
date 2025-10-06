@@ -131,7 +131,74 @@ export async function POST(request: NextRequest) {
 
     // Check if we got speech
     if (!speechResult || speechResult.trim().length === 0) {
-      console.log('❌ No speech detected, asking user to repeat')
+      console.log('❌ No speech detected, asking user to repeat with YOUR voice')
+
+      // Generate YOUR voice for "didn't catch that" message
+      try {
+        const retryMessage = "I didn't catch that. Please speak after the beep."
+        const elevenlabsResponse = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+          {
+            method: 'POST',
+            headers: {
+              Accept: 'audio/mpeg',
+              'Content-Type': 'application/json',
+              'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+            },
+            body: JSON.stringify({
+              text: retryMessage,
+              model_id: 'eleven_turbo_v2_5',
+              voice_settings: {
+                stability: 0.6,
+                similarity_boost: 0.8,
+              },
+              output_format: 'mp3_22050_32',
+              optimize_streaming_latency: 4,
+            }),
+          },
+        )
+
+        if (elevenlabsResponse.ok) {
+          const audioBuffer = await elevenlabsResponse.arrayBuffer()
+          const audioId = `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          phoneAudioCache.set(audioId, {
+            buffer: Buffer.from(audioBuffer),
+            text: retryMessage,
+            contentType: 'audio/mpeg',
+            timestamp: Date.now(),
+            expires: Date.now() + 10 * 60 * 1000,
+          })
+          const audioUrl = createPhoneAudioUrl(audioId)
+
+          const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${audioUrl}</Play>
+  <Pause length="1"/>
+  <Record
+    action="/api/phone/handle-speech"
+    method="POST"
+    timeout="10"
+    finishOnKey="#"
+    maxLength="30"
+    playBeep="true"
+    transcribe="false"
+    recordingStatusCallback="/api/phone/handle-speech"
+    recordingStatusCallbackMethod="POST"
+  />
+</Response>`
+          return new NextResponse(noSpeechTwiml, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/xml; charset=utf-8',
+              'Cache-Control': 'no-cache',
+            },
+          })
+        }
+      } catch (error) {
+        console.warn('⚠️ ElevenLabs failed for retry message, using Say fallback')
+      }
+
+      // Fallback to Say if ElevenLabs fails
       const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">
