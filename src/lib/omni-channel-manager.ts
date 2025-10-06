@@ -327,9 +327,9 @@ export class OmniChannelManager {
         console.log(`🌍 Response will be in: ${detectedLanguage}`)
       }
 
-      const mcpTimeout = additionalContext.phoneCall ? 8000 : 20000 // 8s for phone (aggressive), 20s for web
+      const mcpTimeout = additionalContext.phoneCall ? 5000 : 18000 // 5s for phone (ULTRA aggressive), 18s for web
       console.log(
-        `⏱️ MCP timeout: ${mcpTimeout}ms (${additionalContext.phoneCall ? 'PHONE' : 'WEB'} mode)`,
+        `⏱️ MCP timeout: ${mcpTimeout}ms (${additionalContext.phoneCall ? 'PHONE ⚡' : 'WEB'} mode)`,
       )
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
@@ -348,18 +348,32 @@ export class OmniChannelManager {
           console.log(`🌍 Generating ${detectedLanguage} response...`)
           try {
             const { generateMultiLanguageResponse } = await import('@/lib/multi-language-rag')
-            const multiLangResult = await generateMultiLanguageResponse(
-              { response: mcpResponse.response, metadata: {} },
-              languageContext,
-              userInput,
-              userId,
-              context.conversationHistory || [],
-            )
+
+            // AGGRESSIVE TIMEOUT for multi-language (3s max for phone, 8s for web)
+            const multiLangTimeout = additionalContext.phoneCall ? 3000 : 8000
+            const multiLangResult = await Promise.race([
+              generateMultiLanguageResponse(
+                { response: mcpResponse.response, metadata: {} },
+                languageContext,
+                userInput,
+                userId,
+                context.conversationHistory || [],
+              ),
+              new Promise<any>((_, reject) =>
+                setTimeout(
+                  () => reject(new Error(`Multi-lang timeout after ${multiLangTimeout}ms`)),
+                  multiLangTimeout,
+                ),
+              ),
+            ])
             finalResponse = multiLangResult.response
             console.log(`✅ Multi-language response generated (${finalResponse.length} chars)`)
           } catch (error) {
-            console.error('❌ Multi-language generation failed:', error)
-            // Fall back to English response
+            console.error(
+              '❌ Multi-language generation failed or timed out, using English response:',
+              error,
+            )
+            // Fall back to English response (mcpResponse.response)
           }
         }
 
