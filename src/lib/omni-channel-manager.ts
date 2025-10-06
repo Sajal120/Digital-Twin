@@ -509,7 +509,8 @@ export class OmniChannelManager {
 
     // Create AbortController for timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 12000) // 12s timeout - MCP must complete
+    const fetchTimeout = context.phoneCall ? 15000 : 20000 // Match outer timeout - 15s for phone, 20s for web
+    const timeoutId = setTimeout(() => controller.abort(), fetchTimeout)
 
     try {
       const response = await fetch(`${this.mcpServerUrl}/api/mcp`, {
@@ -562,7 +563,8 @@ export class OmniChannelManager {
     } catch (error) {
       clearTimeout(timeoutId)
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error('⏱️ MCP fetch aborted after 4.5s')
+        const timeoutSeconds = context.phoneCall ? 15 : 20
+        console.error(`⏱️ MCP fetch aborted after ${timeoutSeconds}s`)
         throw new Error('MCP fetch timeout')
       }
       throw error
