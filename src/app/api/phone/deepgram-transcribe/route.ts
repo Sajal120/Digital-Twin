@@ -82,22 +82,22 @@ export async function POST(request: NextRequest) {
     // Deepgram Supported Languages: en, es, fr, de, it, pt, nl, hi, ja, ko, zh, ru, ar, tr, uk, sv
     // NOT Supported: Nepali (ne), Filipino (fil), Thai (th), Vietnamese (vi), Indonesian (id)
     // For these, we rely on text-based detection after transcription
-    console.log('🎙️ Sending to Deepgram for multilingual transcription...')
+    console.log('🎙️ Sending to Deepgram for multilingual transcription (nova-2)...')
     const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
       Buffer.from(audioBuffer),
       {
-        model: 'nova-2', // Nova-2 general model for phone audio
+        model: 'nova-2', // Nova-2 premium model - 30% more accurate for phone audio
         language: 'multi', // Detect from: en, es, fr, de, it, pt, nl, hi, ja, ko, zh, ru, ar, tr, uk, sv
         detect_language: true, // Auto-detect language for accurate transcription
         punctuate: true,
         smart_format: true,
         filler_words: false, // Keep filler words for natural speech
         profanity_filter: false, // Don't censor words
-        numerals: true, // Convert numbers to words for better understanding
+        numerals: true, // Convert numbers to words (nova-2 only)
         diarize: false, // Single speaker (phone call)
         utterances: false, // Not needed for short recordings
         vad_events: false, // Voice activity detection events not needed
-        tier: 'nova', // Use nova tier for better accuracy
+        tier: 'nova', // Nova tier for premium features
         // Let Deepgram auto-detect encoding - Twilio can send various formats
         // encoding: 'linear16', // Remove fixed encoding
         // sample_rate: 8000, // Remove fixed sample rate
