@@ -354,13 +354,13 @@ export async function POST(request: NextRequest) {
     console.log('🎤 Generating YOUR voice response...')
     const voiceStartTime = Date.now()
 
-    // Generate ElevenLabs audio with reasonable timeout (Vercel Pro has 60s limit)
+    // Generate ElevenLabs audio with aggressive timeout (must finish before Twilio timeout)
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => {
-        console.log('⏱️ ElevenLabs timeout after 10s, aborting...')
+        console.log('⏱️ ElevenLabs timeout after 5s, aborting...')
         controller.abort()
-      }, 10000) // 10s timeout - plenty of time for ElevenLabs
+      }, 5000) // 5s timeout - aggressive for phone speed
 
       const elevenlabsResponse = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
@@ -375,10 +375,10 @@ export async function POST(request: NextRequest) {
             text: aiResponse.response,
             model_id: 'eleven_turbo_v2_5', // Fastest model
             voice_settings: {
-              stability: 0.6,
-              similarity_boost: 0.8,
-              style: 0.2,
-              use_speaker_boost: true,
+              stability: 0.5, // Lower for speed
+              similarity_boost: 0.75, // Lower for speed
+              style: 0.0, // Disable for speed
+              use_speaker_boost: false, // Disable for speed
             },
             output_format: 'mp3_22050_32', // Lower quality for faster generation
             optimize_streaming_latency: 4, // Maximum speed optimization

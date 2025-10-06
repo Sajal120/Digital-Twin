@@ -184,4 +184,43 @@ export async function getCacheStats(): Promise<{
   }
 }
 
+/**
+ * Cache transcription results (Deepgram)
+ */
+export async function cacheTranscription(
+  audioUrl: string,
+  transcript: string,
+  language: string,
+  confidence: number,
+): Promise<void> {
+  try {
+    const key = `transcription:${audioUrl}`
+    const data = { transcript, language, confidence, timestamp: Date.now() }
+    await redis.setex(key, 1800, data) // 30 minutes
+    console.log(`💾 Cached transcription: "${transcript.substring(0, 30)}..." (${language})`)
+  } catch (error) {
+    console.error('❌ Transcription cache error:', error)
+  }
+}
+
+/**
+ * Get cached transcription
+ */
+export async function getCachedTranscription(
+  audioUrl: string,
+): Promise<{ transcript: string; language: string; confidence: number } | null> {
+  try {
+    const key = `transcription:${audioUrl}`
+    const cached = await redis.get<any>(key)
+    if (cached) {
+      console.log(`🎯 Transcription cache HIT: "${cached.transcript.substring(0, 30)}..."`)
+      return cached
+    }
+    return null
+  } catch (error) {
+    console.error('❌ Transcription cache GET error:', error)
+    return null
+  }
+}
+
 export { redis }

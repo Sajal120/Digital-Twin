@@ -4,8 +4,29 @@ import { NextRequest, NextResponse } from 'next/server'
 const deepgram = createClient(process.env.DEEPGRAM_API_KEY || '')
 
 export async function POST(request: NextRequest) {
+  console.log('🎤 Deepgram multilingual transcription endpoint called')
+
   try {
-    const { audioUrl } = await request.json()
+    const body = await request.json()
+    const { audioUrl } = body
+
+    // CHECK CACHE FIRST (avoid 7s Deepgram delay)
+    try {
+      const { getCachedTranscription } = await import('@/lib/redis-cache')
+      const cached = await getCachedTranscription(audioUrl)
+      if (cached) {
+        console.log('⚡ TRANSCRIPTION CACHE HIT! (instant)')
+        return NextResponse.json({
+          success: true,
+          transcript: cached.transcript,
+          confidence: cached.confidence,
+          detectedLanguage: cached.language,
+          source: 'cache',
+        })
+      }
+    } catch (error) {
+      console.warn('⚠️ Transcription cache check failed:', error)
+    }
 
     if (!audioUrl) {
       return NextResponse.json({ error: 'No audio URL provided' }, { status: 400 })
@@ -123,6 +144,14 @@ export async function POST(request: NextRequest) {
 
     // Return transcript AND detected language
     // Deepgram's language detection will be used as primary signal in multi-language-rag
+
+    // CACHE THE TRANSCRIPTION for future speed (avoid 7s Deepgram delay)
+    try {
+      const { cacheTranscription } = await import('@/lib/redis-cache')
+      await cacheTranscription(audioUrl, transcript, deepgramDetectedLang, confidence)
+    } catch (error) {
+      console.warn('⚠️ Failed to cache transcription:', error)
+    }
 
     return NextResponse.json({
       transcript,

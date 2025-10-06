@@ -327,7 +327,10 @@ export class OmniChannelManager {
         console.log(`🌍 Response will be in: ${detectedLanguage}`)
       }
 
-      const mcpTimeout = additionalContext.phoneCall ? 15000 : 20000 // 15s for phone, 20s for web
+      const mcpTimeout = additionalContext.phoneCall ? 8000 : 20000 // 8s for phone (aggressive), 20s for web
+      console.log(
+        `⏱️ MCP timeout: ${mcpTimeout}ms (${additionalContext.phoneCall ? 'PHONE' : 'WEB'} mode)`,
+      )
       const mcpResponse = (await Promise.race([
         this.callMCPServer(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
