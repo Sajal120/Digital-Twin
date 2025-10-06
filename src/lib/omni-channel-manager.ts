@@ -327,16 +327,17 @@ export class OmniChannelManager {
         console.log(`🌍 Response will be in: ${detectedLanguage}`)
       }
 
-      const mcpTimeout = additionalContext.phoneCall ? 5000 : 18000 // 5s for phone (ULTRA aggressive), 18s for web
+      // DISABLE MCP timeout - let it finish to avoid Chat API fallback
+      // Chat API has NO multi-lang timeout and takes 60s!
+      const mcpTimeout = additionalContext.phoneCall ? 60000 : 60000 // Give it time to finish
       console.log(
-        `⏱️ MCP timeout: ${mcpTimeout}ms (${additionalContext.phoneCall ? 'PHONE ⚡' : 'WEB'} mode)`,
+        `⏱️ MCP mode: ${additionalContext.phoneCall ? 'PHONE ⚡ (no timeout, fast multi-lang)' : 'WEB'} mode`,
       )
-      const mcpResponse = (await Promise.race([
-        this.callMCPServer(userInput, enhancedContext),
-        new Promise<any>((_, reject) =>
-          setTimeout(() => reject(new Error('MCP timeout after ' + mcpTimeout + 'ms')), mcpTimeout),
-        ),
-      ])) as { success: boolean; response: string; suggestions?: string[] }
+      const mcpResponse = (await this.callMCPServer(userInput, enhancedContext)) as {
+        success: boolean
+        response: string
+        suggestions?: string[]
+      }
 
       if (mcpResponse.success && mcpResponse.response) {
         console.log('✅ MCP SUCCESS - Response length:', mcpResponse.response.length)
