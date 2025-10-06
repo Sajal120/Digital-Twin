@@ -296,6 +296,27 @@ export class OmniChannelManager {
       }
     }
 
+    // CHECK REDIS CACHE FIRST (10x faster!)
+    try {
+      const { getCachedResponse, setCachedResponse, isCommonGreeting, cacheCommonGreeting } =
+        await import('@/lib/redis-cache')
+
+      const channel = additionalContext.phoneCall ? 'phone' : 'chat'
+      const cached = await getCachedResponse(userInput, channel, detectedLanguage)
+
+      if (cached) {
+        console.log(`⚡ CACHE HIT! Returning cached response (instant)`)
+        return {
+          response: cached.response,
+          source: 'redis_cache',
+          context: { ...enhancedContext, detectedLanguage, cached: true },
+          suggestions: [], // Cached responses don't have suggestions
+        }
+      }
+    } catch (cacheError) {
+      console.warn('⚠️ Cache check failed, continuing without cache:', cacheError)
+    }
+
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
     // NO FALLBACKS - MCP must work at any cost
     try {
@@ -337,6 +358,26 @@ export class OmniChannelManager {
             console.error('❌ Multi-language generation failed:', error)
             // Fall back to English response
           }
+        }
+
+        // CACHE THE RESPONSE for future speed
+        try {
+          const { setCachedResponse, isCommonGreeting, cacheCommonGreeting } = await import(
+            '@/lib/redis-cache'
+          )
+          const channel = additionalContext.phoneCall ? 'phone' : 'chat'
+
+          if (isCommonGreeting(userInput)) {
+            // Common greetings get 1 hour cache
+            await cacheCommonGreeting(userInput, finalResponse, channel, detectedLanguage)
+            console.log('💾 Cached common greeting (1 hour TTL)')
+          } else {
+            // Regular responses get 5 minute cache
+            await setCachedResponse(userInput, finalResponse, channel, detectedLanguage, 300)
+            console.log('💾 Cached response (5 min TTL)')
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ Failed to cache response:', cacheError)
         }
 
         return {
