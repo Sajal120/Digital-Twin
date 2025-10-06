@@ -3,10 +3,38 @@ import { omniChannelManager } from '../../../../lib/omni-channel-manager'
 import { voiceService } from '../../../../services/voiceService'
 import { phoneAudioCache, createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
+// DEEPGRAM VERSION 2.2 - ULTRA FAST MODE + SYNTAX FIXES
+const VERSION = 'v2.7-instant-return-oct6'
+
+// Map language codes to Twilio language codes
+function getTwilioLanguageCode(languageCode: string): string {
+  const languageMap: Record<string, string> = {
+    en: 'en-US',
+    hi: 'hi-IN',
+    ne: 'ne-NP',
+    zh: 'zh-CN',
+    es: 'es-ES',
+    fr: 'fr-FR',
+    tl: 'fil-PH',
+    id: 'id-ID',
+    th: 'th-TH',
+    vi: 'vi-VN',
+    ar: 'ar-SA',
+    ja: 'ja-JP',
+    ko: 'ko-KR',
+    pt: 'pt-BR',
+    ru: 'ru-RU',
+    de: 'de-DE',
+    it: 'it-IT',
+  }
+  return languageMap[languageCode] || 'en-US'
+}
+
 // Handle Twilio speech recognition results (NO recording download needed!)
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
-  console.log('🎙️ Speech webhook called - processing transcribed speech...')
+  console.log(`🎙️ [${VERSION}] Speech webhook - ultra-fast Deepgram + fixed syntax`)
+  console.log(`⚡ Performance: 6s MCP timeout, 2s Groq, multilingual fast path enabled`)
 
   try {
     // Parse Twilio form data
@@ -14,15 +42,85 @@ export async function POST(request: NextRequest) {
     const webhookData = Object.fromEntries(formData.entries())
 
     const callSid = webhookData.CallSid as string
-    const speechResult = webhookData.SpeechResult as string
+    const recordingUrl = webhookData.RecordingUrl as string
+    const recordingStatus = webhookData.RecordingStatus as string
+    let speechResult = webhookData.SpeechResult as string // Fallback to Twilio if available
     const confidence = webhookData.Confidence as string
 
-    console.log('🎤 Speech transcription received:', {
+    console.log('🎤 Webhook received:', {
+      callSid,
+      recordingUrl: recordingUrl || 'none',
+      recordingStatus: recordingStatus || 'none',
+      hasRecording: !!recordingUrl,
+      speechResult: speechResult || '(no speech)',
+      confidence: confidence || 'N/A',
+      webhookType: recordingStatus ? 'recording-status-callback' : 'action-callback',
+    })
+
+    // If we have a recording URL, use Deepgram for transcription
+    if (recordingUrl) {
+      console.log('🎙️ Transcribing with Deepgram...', { recordingUrl })
+      try {
+        const deepgramResponse = await fetch(
+          `${request.nextUrl.origin}/api/phone/deepgram-transcribe`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioUrl: recordingUrl }),
+          },
+        )
+
+        console.log('📡 Deepgram API response status:', deepgramResponse.status)
+
+        if (deepgramResponse.ok) {
+          const deepgramResult = await deepgramResponse.json()
+          speechResult = deepgramResult.transcript
+
+          // Store Deepgram's detected language to pass to language detection
+          const deepgramLanguage = deepgramResult.detectedLanguage
+
+          // Check if confidence is too low (<50%) - likely poor audio or unclear speech
+          if (deepgramResult.confidence < 0.5) {
+            console.warn(
+              `⚠️ Very low confidence (${(deepgramResult.confidence * 100).toFixed(1)}%) - transcript may be inaccurate: "${speechResult}"`,
+            )
+            console.log('🔄 Asking user to speak more clearly...')
+
+            // Clear the speech result so it triggers "no speech" handler
+            speechResult = ''
+          }
+
+          console.log('✅ Deepgram transcription SUCCESS:', {
+            transcript: speechResult,
+            deepgramDetectedLang: deepgramLanguage,
+            confidence: deepgramResult.confidence,
+          })
+
+          // Store Deepgram language for passing to omniChannelManager
+          // This will be used as a hint by multi-language-rag
+          if (deepgramLanguage && deepgramLanguage !== 'unknown') {
+            // Attach to request context to pass later
+            ;(request as any).deepgramLanguage = deepgramLanguage
+          }
+        } else {
+          const errorText = await deepgramResponse.text()
+          console.error('❌ Deepgram API failed:', {
+            status: deepgramResponse.status,
+            error: errorText,
+          })
+        }
+      } catch (deepgramError) {
+        console.error('❌ Deepgram transcription error:', deepgramError)
+      }
+    } else {
+      console.log('⚠️ No RecordingUrl found in webhook data')
+    }
+
+    console.log('🎤 Final speech result:', {
       callSid,
       speechResult: speechResult || '(no speech)',
       confidence: confidence || 'N/A',
       speechResultLength: speechResult?.length || 0,
-      fullWebhookData: webhookData, // Log everything to debug
     })
 
     // Validate required fields
@@ -36,23 +134,21 @@ export async function POST(request: NextRequest) {
       console.log('❌ No speech detected, asking user to repeat')
       const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say voice="Polly.Matthew-Neural" language="en-US">
-    I didn't catch that. Could you please repeat your question?
+  <Say voice="Polly.Matthew-Neural" language="en-US">
+    I didn't catch that. Please speak after the beep.
   </Say>
-  <Gather 
-    input="speech"
+  <Pause length="1"/>
+  <Record
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="auto"
-    language="en-US"
-    speechModel="phone_call"
-    profanityFilter="false"
-    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
-  >
-    <Pause length="1"/>
-  </Gather>
-  <Redirect>/api/phone/handle-speech</Redirect>
+    finishOnKey="#"
+    maxLength="30"
+    playBeep="true"
+    transcribe="false"
+    recordingStatusCallback="/api/phone/handle-speech"
+    recordingStatusCallbackMethod="POST"
+  />
 </Response>`
       return new NextResponse(noSpeechTwiml, {
         status: 200,
@@ -76,6 +172,14 @@ export async function POST(request: NextRequest) {
       `👤 Context: ${unifiedContext.channels.length} channels, ${unifiedContext.conversationHistory.length} turns`,
     )
 
+    // Check if we have a stored language from previous turns
+    const lastTurn =
+      unifiedContext.conversationHistory[unifiedContext.conversationHistory.length - 1]
+    const previousLanguage = (lastTurn?.metadata as any)?.detectedLanguage || null
+    console.log(
+      `📋 Previous language from conversation: ${previousLanguage || 'None (first turn)'}`,
+    )
+
     // Generate AI response using MCP
     console.log('🤖 Generating AI response with MCP...')
     console.log(`📝 User said: "${speechResult}"`)
@@ -83,6 +187,9 @@ export async function POST(request: NextRequest) {
     let aiResponse: any
 
     try {
+      console.log('⏳ CALLING generateUnifiedResponse... (15s timeout)')
+      const responseStartTime = Date.now()
+
       const unifiedResponse = await omniChannelManager.generateUnifiedResponse(
         callSid,
         speechResult,
@@ -90,13 +197,32 @@ export async function POST(request: NextRequest) {
           currentTurn: unifiedContext.conversationHistory.length,
           phoneCall: true,
           ultraBrief: true,
+          deepgramLanguage: (request as any).deepgramLanguage, // Pass Deepgram hint
+          // Enable full ChatGPT-like capabilities: MCP, database, multi-language, RAG
+          enableMCP: true,
+          enableDatabase: true,
+          enableMultiLanguage: true,
         },
       )
 
-      console.log('✅ MCP response generated!')
+      const responseDuration = Date.now() - responseStartTime
+      console.log(`✅ MCP response generated in ${responseDuration}ms!`)
       console.log(`📊 Source: ${unifiedResponse.source}`)
 
-      // Store conversation turn
+      // Extract detected language from CURRENT turn only - always re-detect, never stick to previous
+      const detectedLanguage = unifiedResponse.context?.detectedLanguage || 'en'
+      const twilioLanguage = getTwilioLanguageCode(detectedLanguage)
+
+      // Log language switch if it changed
+      if (previousLanguage && previousLanguage !== detectedLanguage) {
+        console.log(`🔄 LANGUAGE SWITCHED: ${previousLanguage} → ${detectedLanguage}`)
+      }
+
+      console.log(
+        `🌍 Using Twilio language: ${twilioLanguage} (current turn: ${detectedLanguage}, previous turn: ${previousLanguage || 'none'})`,
+      )
+
+      // Store conversation turn WITH detected language for persistence
       await omniChannelManager.addConversationTurn(
         callSid,
         speechResult,
@@ -106,6 +232,8 @@ export async function POST(request: NextRequest) {
           confidence: parseFloat(confidence) || 0.9,
           channelType: 'phone',
           turnNumber: unifiedContext.conversationHistory.length,
+          detectedLanguage: detectedLanguage, // Store language for future turns
+          twilioLanguage: twilioLanguage,
         },
       )
 
@@ -113,25 +241,32 @@ export async function POST(request: NextRequest) {
         response: unifiedResponse.response,
         success: true,
         source: unifiedResponse.source,
+        detectedLanguage: detectedLanguage,
+        twilioLanguage: twilioLanguage,
       }
     } catch (error: any) {
       console.error('❌ MCP failed:', error.message)
+      console.error('❌ MCP error stack:', error.stack)
+      console.error('❌ User said:', speechResult)
+      console.error('❌ Will return retry TwiML (not OK!)')
+
       const retryTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">
-    Sorry, could you repeat that?
+    I'm having technical difficulties. Let me try again. Please speak after the beep.
   </Say>
-  <Gather 
-    input="speech"
+  <Pause length="1"/>
+  <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="5"
-    speechTimeout="auto"
-    language="en-US"
-  >
-    <Pause length="1"/>
-  </Gather>
-  <Redirect>/api/phone/handle-speech</Redirect>
+    timeout="10"
+    finishOnKey="#"
+    maxLength="30"
+    playBeep="true"
+    transcribe="false"
+    recordingStatusCallback="/api/phone/handle-speech"
+    recordingStatusCallbackMethod="POST"
+  />
 </Response>`
       return new NextResponse(retryTwiml, {
         status: 200,
@@ -143,11 +278,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🎤 Generating YOUR voice response...')
+    const voiceStartTime = Date.now()
 
-    // Generate ElevenLabs audio
+    // Generate ElevenLabs audio with reasonable timeout (Vercel Pro has 60s limit)
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2000) // 2s timeout
+      const timeoutId = setTimeout(() => {
+        console.log('⏱️ ElevenLabs timeout after 10s, aborting...')
+        controller.abort()
+      }, 10000) // 10s timeout - plenty of time for ElevenLabs
 
       const elevenlabsResponse = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
@@ -160,20 +299,22 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             text: aiResponse.response,
-            model_id: 'eleven_turbo_v2_5',
+            model_id: 'eleven_turbo_v2_5', // Fastest model
             voice_settings: {
-              stability: 0.65,
-              similarity_boost: 0.85,
-              style: 0.3,
+              stability: 0.6,
+              similarity_boost: 0.8,
+              style: 0.2,
               use_speaker_boost: true,
             },
-            output_format: 'mp3_44100_128',
+            output_format: 'mp3_22050_32', // Lower quality for faster generation
+            optimize_streaming_latency: 4, // Maximum speed optimization
           }),
           signal: controller.signal,
         },
       )
 
       clearTimeout(timeoutId)
+      console.log(`⚡ ElevenLabs responded in ${Date.now() - voiceStartTime}ms`)
 
       if (!elevenlabsResponse.ok) {
         throw new Error(`ElevenLabs: ${elevenlabsResponse.status}`)
@@ -220,27 +361,29 @@ export async function POST(request: NextRequest) {
       const duration = Date.now() - startTime
       console.log(`✅ Total time: ${duration}ms`)
 
-      // Return TwiML with audio and gather next input
+      console.log('🏗️ BUILDING TwiML response...')
+
+      // Return TwiML with audio and record next input
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
-  <Gather 
-    input="speech"
+  <Pause length="1"/>
+  <Record
     action="/api/phone/handle-speech"
     method="POST"
     timeout="10"
-    speechTimeout="auto"
-    language="en-US"
-    speechModel="phone_call"
-    profanityFilter="false"
-    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
-  >
-    <Pause length="1"/>
-  </Gather>
-  <Say voice="Polly.Matthew-Neural" language="en-US">
-    Thank you for calling. Goodbye!
-  </Say>
+    finishOnKey="#"
+    maxLength="30"
+    playBeep="true"
+    transcribe="false"
+    recordingStatusCallback="/api/phone/handle-speech"
+    recordingStatusCallbackMethod="POST"
+  />
 </Response>`
+
+      console.log('📤 Returning TwiML with Play directive')
+      console.log('🎵 Audio URL:', audioUrl)
+      console.log('📋 TwiML length:', twiml.length, 'characters')
 
       return new NextResponse(twiml, {
         status: 200,
@@ -250,38 +393,10 @@ export async function POST(request: NextRequest) {
         },
       })
     } catch (voiceError: any) {
-      console.warn('⚠️ ElevenLabs failed, using Twilio voice:', voiceError.message)
-
-      // Fallback to Twilio voice
-      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="Polly.Matthew-Neural" language="en-US">${aiResponse.response}</Say>
-  <Gather 
-    input="speech"
-    action="/api/phone/handle-speech"
-    method="POST"
-    timeout="10"
-    speechTimeout="auto"
-    language="en-US"
-    speechModel="phone_call"
-    profanityFilter="false"
-    hints="namaste, kya, kaam, aap, tum, batao, kaise, timro, malai, hola, como, que, bonjour, kumusta, halo, apa, sawasdee, xin chao, konnichiwa, annyeong, ola, privet, hallo, ciao, university, swinburne, sydney, work, study, where, what, tell"
-  >
-    <Pause length="1"/>
-  </Gather>
-  <Say voice="Polly.Matthew-Neural" language="en-US">
-    Thank you for calling. Goodbye!
-  </Say>
-  <Hangup/>
-</Response>`
-
-      return new NextResponse(twiml, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/xml; charset=utf-8',
-          'Cache-Control': 'no-cache',
-        },
-      })
+      console.error('❌ ElevenLabs failed:', voiceError.message)
+      console.error('❌ ElevenLabs error stack:', voiceError.stack)
+      // No fallback - throw error to trigger retry TwiML
+      throw voiceError
     }
   } catch (error) {
     console.error('🚨 Error in speech handler:', error)

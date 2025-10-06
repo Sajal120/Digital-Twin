@@ -560,7 +560,7 @@ export async function detectLanguageContext(
       }
     }
 
-    // Require at least 2 matches for short messages, 1 match for longer messages
+    // Require at least 2 matches for short messages (< 10 words), 1 match for longer messages
     const wordCount = message.split(/\s+/).length
     const requiredMatches = wordCount >= 10 ? 1 : 2
 
