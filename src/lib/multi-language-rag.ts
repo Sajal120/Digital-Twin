@@ -90,17 +90,107 @@ export async function detectLanguageContext(
         name: 'Nepali',
         flag: '🇳🇵',
         keywords: [
-          'timro',
+          // Common greetings
+          'namaste',
+          'namaskar',
+          'dhanyabad',
+          'dhanyabād',
+          // Question words
           'kun',
-          'malai',
-          'tapai',
-          'huncha',
-          'cha',
-          'gareko',
-          'garne',
+          'ke',
+          'kasto',
+          'kahā',
           'kaha',
           'kahile',
+          'kati',
           'kina',
+          'kasari',
+          'kasle',
+          'kasko',
+          // Pronouns
+          'ma',
+          'malai',
+          'mero',
+          'timro',
+          'tapai',
+          'tapāī',
+          'timi',
+          'u',
+          'usko',
+          'hamilai',
+          'hami',
+          // Verbs (common)
+          'cha',
+          'chha',
+          'छ',
+          'huncha',
+          'हुन्छ',
+          'thiyo',
+          'थियो',
+          'garnu',
+          'garne',
+          'gareko',
+          'garchan',
+          'garchha',
+          'गर्छ',
+          'bhayo',
+          'भयो',
+          'bhanne',
+          'भन्ने',
+          'āunu',
+          'aunu',
+          'jānu',
+          'janu',
+          'khānu',
+          'khanu',
+          'piunu',
+          // Common words
+          'ramro',
+          'राम्रो',
+          'sanchai',
+          'सञ्चै',
+          'thik',
+          'ठिक',
+          'hajur',
+          'होइन',
+          'hoina',
+          'haina',
+          'ho',
+          'हो',
+          'chaina',
+          'छैन',
+          'pardaina',
+          'पर्दैन',
+          'sāth',
+          'sath',
+          'साथ',
+          // Conversational
+          'kasto chha',
+          'kasto cha',
+          'k cha',
+          'k chha',
+          'ramro chha',
+          'thik chha',
+          'thikka cha',
+          'sanchai chu',
+          'tapai lai',
+          'malai lai',
+          // Common phrases
+          'bujhe',
+          'bujhnu bhayo',
+          'dekhna',
+          'sunna',
+          'bolna',
+          'bolnu',
+          'garna',
+          'पनि',
+          'pani',
+          'मात्र',
+          'matra',
+          'अलि',
+          'ali',
+          'ekdam',
+          'एकदम',
         ],
       },
       zh: {
@@ -409,6 +499,40 @@ export async function detectLanguageContext(
       }
 
       const mappedLang = deepgramLangMap[deepgramHint] || deepgramHint
+
+      // SPECIAL CASE: If Deepgram says Hindi, check if it's actually Nepali
+      // (Deepgram doesn't support Nepali, so it transcribes as Hindi)
+      if (mappedLang === 'hi' || deepgramHint === 'hi-IN') {
+        console.log("🔍 Deepgram detected Hindi, checking if it's actually Nepali...")
+
+        // Check for Nepali-specific keywords
+        const nepaliKeywords = languagePatterns.ne.keywords
+        const nepaliMatches = nepaliKeywords.filter((keyword) =>
+          messageLower.includes(keyword.toLowerCase()),
+        ).length
+
+        // Check for Hindi-specific keywords
+        const hindiKeywords = languagePatterns.hi.keywords
+        const hindiMatches = hindiKeywords.filter((keyword) =>
+          messageLower.includes(keyword.toLowerCase()),
+        ).length
+
+        console.log(`  📊 Nepali keywords: ${nepaliMatches}, Hindi keywords: ${hindiMatches}`)
+
+        // If more Nepali keywords than Hindi, it's Nepali!
+        if (nepaliMatches > hindiMatches && nepaliMatches >= 1) {
+          console.log('🇳🇵 Actually Nepali! (Deepgram transcribed as Hindi)')
+          return {
+            detectedLanguage: 'ne',
+            confidence: 0.95,
+            translatedQuery: message,
+            culturalContext: ['friendly'],
+            preferredResponseLanguage: 'ne',
+            needsTranslation: false,
+          }
+        }
+      }
+
       const langData = languagePatterns[mappedLang as keyof typeof languagePatterns]
 
       if (langData) {
