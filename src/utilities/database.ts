@@ -1,12 +1,31 @@
 import { Pool } from 'pg'
 
 // Create a connection pool to Neon Postgres
+// Optimized for serverless: low max connections, short timeouts
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  max: 2, // Low max for serverless (Vercel has connection limits)
+  min: 0, // Allow 0 idle connections
+  idleTimeoutMillis: 10000, // Close idle connections after 10s
+  connectionTimeoutMillis: 5000, // 5s timeout for new connections
+  // Handle connection errors gracefully
+  allowExitOnIdle: true, // Allow pool to close when idle (serverless optimization)
+})
+
+// Handle pool errors to prevent crashes
+pool.on('error', (err) => {
+  console.error('❌ Unexpected database pool error:', err)
+  // Don't crash - let the pool handle reconnection
+})
+
+// Log connection events for debugging
+pool.on('connect', () => {
+  console.log('✅ Database connection established')
+})
+
+pool.on('remove', () => {
+  console.log('🔌 Database connection removed from pool')
 })
 
 export interface Message {
@@ -53,10 +72,11 @@ export class ChatDatabase {
     user_id?: string
     role: 'system' | 'user' | 'assistant'
     content: string
-  }): Promise<Message> {
-    const client = await pool.connect()
-
+  }): Promise<Message | null> {
+    let client
     try {
+      client = await pool.connect()
+      
       const query = `
         INSERT INTO messages (user_id, role, content)
         VALUES ($1, $2, $3)
@@ -68,10 +88,13 @@ export class ChatDatabase {
 
       return result.rows[0] as Message
     } catch (error) {
-      console.error('Error inserting message:', error)
-      throw error
+      console.error('❌ Error inserting message:', error)
+      console.error('   This is non-critical - continuing execution')
+      return null // Return null instead of throwing
     } finally {
-      client.release()
+      if (client) {
+        client.release()
+      }
     }
   }
 

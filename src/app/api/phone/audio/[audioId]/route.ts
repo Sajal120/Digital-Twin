@@ -20,7 +20,17 @@ export async function GET(request: NextRequest, { params }: { params: { audioId:
 
     if (!audioEntry) {
       console.warn(`❌ Audio not found in cache: ${audioId}`)
-      return new NextResponse('Audio not found', { status: 404 })
+      console.warn(`   This is expected in serverless - cache doesn't persist across instances`)
+      console.warn(`   Twilio will fall back to <Say> verb in TwiML`)
+      
+      // Return 404 - Twilio will handle gracefully and skip to next verb
+      return new NextResponse('Audio not found in serverless cache', { 
+        status: 404,
+        headers: {
+          'X-Cache-Miss': 'true',
+          'X-Serverless-Note': 'Audio cache cleared between requests',
+        }
+      })
     }
 
     // Check if expired
