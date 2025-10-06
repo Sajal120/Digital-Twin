@@ -48,12 +48,18 @@ export interface MultiLanguageRAGResult {
 /**
  * Language Detection and Context Analysis
  */
-export async function detectLanguageContext(message: string): Promise<LanguageContext> {
+export async function detectLanguageContext(
+  message: string,
+  deepgramHint?: string,
+): Promise<LanguageContext> {
   try {
     // Quick rule-based detection for common patterns
     const messageLower = message.toLowerCase()
 
     console.log(`🔍 Detecting language for: "${message}"`)
+    if (deepgramHint) {
+      console.log(`🎙️ Deepgram detected: ${deepgramHint}`)
+    }
 
     // MULTI-LANGUAGE DETECTION - Support for 20+ languages
     // Keywords that are distinctive to each language
@@ -360,6 +366,65 @@ export async function detectLanguageContext(message: string): Promise<LanguageCo
 
     // Check each language for keyword matches
     let bestMatch = { lang: 'en', count: 0, name: 'English', flag: '🇬🇧' }
+
+    // If Deepgram detected a non-English language, use it as a strong hint
+    if (deepgramHint && deepgramHint !== 'en' && deepgramHint !== 'unknown') {
+      // Map Deepgram language codes to our codes
+      const deepgramLangMap: Record<string, string> = {
+        es: 'es',
+        'es-419': 'es',
+        'es-ES': 'es',
+        zh: 'zh',
+        'zh-CN': 'zh',
+        'zh-TW': 'zh',
+        hi: 'hi',
+        'hi-IN': 'hi',
+        ne: 'ne',
+        'ne-NP': 'ne',
+        fr: 'fr',
+        'fr-FR': 'fr',
+        fil: 'fil',
+        'fil-PH': 'fil',
+        id: 'id',
+        'id-ID': 'id',
+        th: 'th',
+        'th-TH': 'th',
+        vi: 'vi',
+        'vi-VN': 'vi',
+        ar: 'ar',
+        'ar-SA': 'ar',
+        ja: 'ja',
+        'ja-JP': 'ja',
+        ko: 'ko',
+        'ko-KR': 'ko',
+        pt: 'pt',
+        'pt-BR': 'pt',
+        'pt-PT': 'pt',
+        ru: 'ru',
+        'ru-RU': 'ru',
+        de: 'de',
+        'de-DE': 'de',
+        it: 'it',
+        'it-IT': 'it',
+      }
+
+      const mappedLang = deepgramLangMap[deepgramHint] || deepgramHint
+      const langData = languagePatterns[mappedLang as keyof typeof languagePatterns]
+
+      if (langData) {
+        console.log(
+          `🎙️ Using Deepgram's language detection: ${langData.flag} ${langData.name} (${deepgramHint})`,
+        )
+        return {
+          detectedLanguage: mappedLang,
+          confidence: 0.98, // High confidence from Deepgram
+          translatedQuery: message,
+          culturalContext: ['friendly'],
+          preferredResponseLanguage: mappedLang,
+          needsTranslation: false,
+        }
+      }
+    }
 
     for (const [langCode, langData] of Object.entries(languagePatterns)) {
       const matches = langData.keywords.filter((keyword) =>

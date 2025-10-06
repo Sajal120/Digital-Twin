@@ -270,12 +270,41 @@ export class OmniChannelManager {
       ...additionalContext,
     }
 
+    // DETECT LANGUAGE for multi-language support (same as chat route)
+    let detectedLanguage = 'en'
+    let languageContext: any = null
+
+    if (additionalContext.enableMultiLanguage) {
+      console.log('🌍 Detecting language for multi-language support...')
+      if (additionalContext.deepgramLanguage) {
+        console.log(`🎙️ Deepgram hint available: ${additionalContext.deepgramLanguage}`)
+      }
+      try {
+        const { detectLanguageContext } = await import('@/lib/multi-language-rag')
+        languageContext = await detectLanguageContext(userInput, additionalContext.deepgramLanguage)
+        detectedLanguage = languageContext.detectedLanguage
+        console.log(
+          `🌍 Detected language: ${detectedLanguage} (${languageContext.preferredResponseLanguage})`,
+        )
+
+        // Add language context to enhanced context
+        enhancedContext.detectedLanguage = detectedLanguage
+        enhancedContext.languageContext = languageContext
+      } catch (error) {
+        console.error('❌ Language detection failed:', error)
+        // Continue with English as default
+      }
+    }
+
     // ALWAYS USE MCP - Full AI intelligence for ALL channels including phone
     // NO FALLBACKS - MCP must work at any cost
     try {
       console.log('🤖 Using MCP server for intelligent response with RAG + database')
       console.log('📝 Question:', userInput)
       console.log('📊 Context channels:', enhancedContext.currentChannel)
+      if (detectedLanguage !== 'en') {
+        console.log(`🌍 Response will be in: ${detectedLanguage}`)
+      }
 
       const mcpTimeout = additionalContext.phoneCall ? 15000 : 20000 // 15s for phone, 20s for web
       const mcpResponse = (await Promise.race([
@@ -288,10 +317,32 @@ export class OmniChannelManager {
       if (mcpResponse.success && mcpResponse.response) {
         console.log('✅ MCP SUCCESS - Response length:', mcpResponse.response.length)
         console.log('📝 MCP Response preview:', mcpResponse.response.substring(0, 100))
+
+        // Apply multi-language response generation if needed
+        let finalResponse = mcpResponse.response
+        if (additionalContext.enableMultiLanguage && detectedLanguage !== 'en' && languageContext) {
+          console.log(`🌍 Generating ${detectedLanguage} response...`)
+          try {
+            const { generateMultiLanguageResponse } = await import('@/lib/multi-language-rag')
+            const multiLangResult = await generateMultiLanguageResponse(
+              { response: mcpResponse.response, metadata: {} },
+              languageContext,
+              userInput,
+              userId,
+              context.conversationHistory || [],
+            )
+            finalResponse = multiLangResult.response
+            console.log(`✅ Multi-language response generated (${finalResponse.length} chars)`)
+          } catch (error) {
+            console.error('❌ Multi-language generation failed:', error)
+            // Fall back to English response
+          }
+        }
+
         return {
-          response: mcpResponse.response,
+          response: finalResponse,
           source: 'mcp_unified',
-          context: enhancedContext,
+          context: { ...enhancedContext, detectedLanguage },
           suggestions: mcpResponse.suggestions || [],
         }
       } else {
