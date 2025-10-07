@@ -10,11 +10,7 @@ export async function POST() {
   try {
     console.log('🎵 Starting thinking sounds upload to Vercel Blob...')
 
-    const files = [
-      { filename: 'thinking_short.mp3', text: 'Hmm' },
-      { filename: 'thinking_medium.mp3', text: 'Hmmmm' },
-      { filename: 'thinking_long.mp3', text: 'Hmmmmmmm' },
-    ]
+    const files = [{ filename: 'thinking_natural.mp3', text: 'Hmmmmm... hmm, hmm' }]
 
     const results = []
 
