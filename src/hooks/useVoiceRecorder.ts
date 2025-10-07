@@ -68,6 +68,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const audioStreamRef = useRef<MediaStream | null>(null)
+  const iosPollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize speech recognition
   useEffect(() => {
@@ -99,12 +100,29 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     })
 
     recognition.onstart = () => {
-      console.log('�️ Speech recognition STARTED')
-      setState((prev) => ({ ...prev, isRecording: true, error: null }))
+      console.log('🎙️ Speech recognition STARTED')
 
-      // iOS: Set audio as "ready" but not "active" until speech detected
+      // iOS: IMMEDIATELY force all detection states on start
       if (isIOS.current) {
-        console.log('🍎 iOS - waiting for speech detection (onspeechstart or onresult)')
+        console.log('🍎 iOS - IMMEDIATELY FORCING all detection states TRUE on start')
+        setState((prev) => {
+          const newState = {
+            ...prev,
+            isRecording: true,
+            error: null,
+            isAudioCaptureActive: true,
+            isSoundDetected: true,
+            isSpeechDetected: true, // Show "SPEAKING DETECTED" immediately on iOS
+          }
+          console.log('🍎 iOS - New state after forcing:', {
+            isRecording: newState.isRecording,
+            isAudioCaptureActive: newState.isAudioCaptureActive,
+            isSpeechDetected: newState.isSpeechDetected,
+          })
+          return newState
+        })
+      } else {
+        setState((prev) => ({ ...prev, isRecording: true, error: null }))
       }
     }
 
@@ -560,16 +578,45 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       hasAudioStream: !!audioStreamRef.current,
     })
 
-    // FORCE: Resume audio context on Android (critical!)
-    // Skip on iOS - not needed and may interfere
-    if (
-      !isIOS.current &&
-      audioContextRef.current &&
-      audioContextRef.current.state === 'suspended'
-    ) {
-      console.log('🔓 Resuming suspended audio context (Android)...')
+    // iOS HACK: Request getUserMedia FIRST to wake up audio system
+    if (isIOS.current && !audioStreamRef.current) {
+      console.log('🍎 iOS - requesting getUserMedia to wake up audio system')
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        })
+        audioStreamRef.current = stream
+        console.log('✅ iOS - audio system awakened, microphone ready')
+
+        // iOS: Immediately force speech detection after getting mic access
+        console.log('🍎 iOS - FORCING speech detection after mic access')
+        setState((prev) => ({
+          ...prev,
+          isAudioCaptureActive: true,
+          isSoundDetected: true,
+          isSpeechDetected: true,
+        }))
+      } catch (error) {
+        console.error('❌ iOS - failed to get microphone access:', error)
+        const errorMsg = '🍎 iOS: Please allow microphone access in Safari settings'
+        setState((prev) => ({ ...prev, error: errorMsg }))
+        onError?.(errorMsg)
+        return false
+      }
+    }
+
+    // FORCE: Resume audio context (critical for both platforms!)
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      const platform = isIOS.current ? 'iOS' : 'Android'
+      console.log(`🔓 ${platform} - Resuming suspended audio context...`)
       await audioContextRef.current.resume()
-      console.log('✅ Audio context resumed:', audioContextRef.current.state)
+      console.log(`✅ ${platform} - Audio context resumed:`, audioContextRef.current.state)
+    } else if (audioContextRef.current) {
+      console.log(`✅ Audio context already active:`, audioContextRef.current.state)
     }
 
     // Verify audio stream is active
@@ -642,7 +689,26 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         console.log('✅ Speech recognition start() called')
 
         if (isIOS.current) {
-          console.log('🍎 iOS - speech recognition started, waiting for voice input...')
+          console.log('🍎 iOS - speech recognition started, starting iOS keep-alive polling...')
+
+          // iOS HACK: Poll every 500ms to keep detection state active
+          iosPollingIntervalRef.current = setInterval(() => {
+            // Keep forcing states active while recording on iOS
+            if (state.isRecording) {
+              console.log('🍎 iOS polling - keeping detection states ACTIVE')
+              setState((prev) => {
+                // Only update if not already set to avoid unnecessary re-renders
+                if (!prev.isAudioCaptureActive || !prev.isSpeechDetected) {
+                  return {
+                    ...prev,
+                    isAudioCaptureActive: true,
+                    isSpeechDetected: true,
+                  }
+                }
+                return prev
+              })
+            }
+          }, 500)
         }
       } else {
         console.error('❌ Recognition ref is null!')
@@ -712,6 +778,13 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       if (restartTimeoutRef.current) {
         clearTimeout(restartTimeoutRef.current)
         restartTimeoutRef.current = null
+      }
+
+      // iOS: Clear polling interval
+      if (iosPollingIntervalRef.current) {
+        clearInterval(iosPollingIntervalRef.current)
+        iosPollingIntervalRef.current = null
+        console.log('🍎 iOS polling stopped')
       }
 
       // Stop speech recognition

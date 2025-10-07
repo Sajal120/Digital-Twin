@@ -502,8 +502,10 @@ export function AIChat() {
 
                 {/* Audio detection indicators - LARGE & CLEAR */}
                 <div className="flex flex-wrap items-center justify-center gap-3 text-base font-semibold">
-                  {/* Show when we get actual transcripts - works on iPhone */}
-                  {voiceChat.interimTranscript || voiceChat.transcript ? (
+                  {/* iOS: Use isSpeechDetected state (forced), Others: Use transcripts */}
+                  {voiceChat.isSpeechDetected ||
+                  voiceChat.interimTranscript ||
+                  voiceChat.transcript ? (
                     <div className="px-4 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 flex items-center space-x-2 animate-pulse">
                       <Volume2 className="w-5 h-5" />
                       <span>SPEAKING DETECTED ✅</span>
@@ -514,6 +516,14 @@ export function AIChat() {
                       <span>READY - SPEAK NOW</span>
                     </div>
                   )}
+                </div>
+
+                {/* DEBUG: Show all detection states */}
+                <div className="text-xs text-gray-500 mt-1 font-mono">
+                  Speech:{voiceChat.isSpeechDetected ? '✅' : '❌'} | Audio:
+                  {voiceChat.isAudioCaptureActive ? '✅' : '❌'} | Interim:
+                  {voiceChat.interimTranscript?.length || 0} | Final:
+                  {voiceChat.transcript?.length || 0}
                 </div>
               </div>
             </div>
