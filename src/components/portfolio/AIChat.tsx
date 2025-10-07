@@ -545,7 +545,7 @@ export function AIChat() {
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask about my experience, skills, projects... or use voice"
+                  placeholder="Ask me anything about my experience, skills, or projects..."
                   className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-background"
                   disabled={isLoading || voiceChat.isListening}
                 />
