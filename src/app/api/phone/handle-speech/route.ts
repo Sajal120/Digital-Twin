@@ -4,6 +4,17 @@ import { voiceService } from '../../../../services/voiceService'
 import { put } from '@vercel/blob'
 import { createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
+// Temporary storage for speech results (before processing)
+// Maps callSid -> speechResult
+// Use global to share across serverless invocations
+declare global {
+  var pendingSpeechMap: Map<string, string>
+}
+
+if (!global.pendingSpeechMap) {
+  global.pendingSpeechMap = new Map()
+}
+
 // DEEPGRAM VERSION 2.9 - THINKING ACKNOWLEDGMENT
 const VERSION = 'v2.9-thinking-ack-oct7'
 
@@ -303,18 +314,23 @@ export async function POST(request: NextRequest) {
     // While AI processes in background (takes 5-7 seconds)
     console.log('🎵 Returning instant acknowledgment (thinking sound)...')
 
+    // Store speech result temporarily (will be retrieved by process-response endpoint)
+    global.pendingSpeechMap.set(callSid, speechResult)
+    console.log('💾 Stored speech in global memory for callSid:', callSid)
+    console.log('🗺️ Map size:', global.pendingSpeechMap.size)
+
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
-    const processingUrl = `${baseUrl}/api/phone/process-response`
+    const processingUrl = `${baseUrl}/api/phone/process-response/${callSid}`
 
     const acknowledgmentTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${THINKING_SOUND_URL}</Play>
-  <Redirect method="POST">${processingUrl}?CallSid=${encodeURIComponent(callSid)}&SpeechResult=${encodeURIComponent(speechResult)}</Redirect>
+  <Redirect method="POST">${processingUrl}</Redirect>
 </Response>`
 
     console.log('✅ Returning instant acknowledgment TwiML')
     console.log('🔗 Will redirect to:', processingUrl)
-    console.log('📝 Speech:', speechResult.substring(0, 50))
+    console.log('📝 Speech stored in session:', speechResult.substring(0, 50))
 
     return new NextResponse(acknowledgmentTwiml, {
       status: 200,
