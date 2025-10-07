@@ -566,15 +566,127 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
   }, [onAudioDataReceived, onError])
 
-  const startRecording = useCallback(async () => {
-    if (!state.isSupported) {
-      const message = isMobile.current
-        ? '🎤 Voice input not supported on this mobile browser. Please use Chrome or Safari.'
-        : 'Speech recognition not supported'
-      onError?.(message)
+  // iOS: Use Deepgram cloud transcription instead of broken Web Speech API
+  const startDeepgramRecording = useCallback(async () => {
+    console.log('🍎 iOS - Starting Deepgram cloud transcription')
+
+    try {
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+        },
+      })
+      audioStreamRef.current = stream
+
+      // Force UI states to show "listening"
+      setState((prev) => ({
+        ...prev,
+        isRecording: true,
+        isAudioCaptureActive: true,
+        isSpeechDetected: true,
+        isSoundDetected: true,
+        error: null,
+      }))
+
+      // Setup MediaRecorder for Deepgram
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+      })
+
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        console.log('🍎 iOS - MediaRecorder stopped, sending to Deepgram...')
+
+        if (audioChunksRef.current.length === 0) {
+          console.warn('⚠️ No audio chunks recorded')
+          return
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        console.log('🍎 iOS - Audio blob created:', audioBlob.size, 'bytes')
+
+        // Clear for next recording
+        audioChunksRef.current = []
+
+        // Send to Deepgram API
+        try {
+          const formData = new FormData()
+          formData.append('audio', audioBlob)
+
+          console.log('📤 Sending to Deepgram...')
+          const response = await fetch('/api/chat/transcribe', {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            throw new Error(`Deepgram API error: ${response.status}`)
+          }
+
+          const result = await response.json()
+          console.log('✅ Deepgram transcription result:', result)
+
+          if (result.transcript) {
+            // Update state with transcript
+            setState((prev) => ({
+              ...prev,
+              transcript: prev.transcript + result.transcript,
+              interimTranscript: '',
+            }))
+
+            // Call callback
+            onTranscriptionReceived?.(result.transcript)
+          } else {
+            console.warn('⚠️ Empty transcript from Deepgram')
+          }
+        } catch (error) {
+          console.error('❌ Deepgram transcription error:', error)
+          setState((prev) => ({
+            ...prev,
+            error: 'Transcription failed. Please try again.',
+          }))
+          onError?.('Transcription failed. Please try again.')
+        } finally {
+          // Clear states after transcription
+          setState((prev) => ({
+            ...prev,
+            isSpeechDetected: false,
+            isSoundDetected: false,
+          }))
+        }
+      }
+
+      mediaRecorderRef.current = mediaRecorder
+
+      // Start recording in chunks (5 seconds each for near real-time)
+      mediaRecorder.start(5000)
+      console.log('🍎 iOS - MediaRecorder started with 5s chunks')
+
+      return true
+    } catch (error) {
+      console.error('❌ iOS Deepgram recording error:', error)
+      setState((prev) => ({
+        ...prev,
+        error: 'Microphone access denied',
+        isRecording: false,
+      }))
+      onError?.('Microphone access denied. Please allow microphone access in Safari settings.')
       return false
     }
+  }, [onTranscriptionReceived, onError])
 
+  const startRecording = useCallback(async () => {
     console.log('🎙️ Starting recording...', {
       isMobile: isMobile.current,
       isIOS: isIOS.current,
@@ -583,8 +695,23 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       hasAudioStream: !!audioStreamRef.current,
     })
 
-    // iOS HACK: Request getUserMedia FIRST to wake up audio system
-    if (isIOS.current && !audioStreamRef.current) {
+    // iOS: Use Deepgram cloud transcription (Web Speech API is broken on iOS)
+    if (isIOS.current) {
+      console.log('🍎 iOS detected - using Deepgram cloud transcription')
+      return startDeepgramRecording()
+    }
+
+    // Android/Desktop: Use Web Speech API (works fine)
+    if (!state.isSupported) {
+      const message = isMobile.current
+        ? '🎤 Voice input not supported on this mobile browser. Please use Chrome or Safari.'
+        : 'Speech recognition not supported'
+      onError?.(message)
+      return false
+    }
+
+    // Skip iOS hack - not needed anymore since we use Deepgram on iOS
+    if (false) {
       console.log('🍎 iOS - requesting getUserMedia to wake up audio system')
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -783,6 +910,8 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
   const stopRecording = useCallback(() => {
     try {
+      console.log('🛑 Stopping recording...', { isIOS: isIOS.current })
+
       // Mark as user-initiated stop
       isUserStoppedRef.current = true
 
@@ -799,11 +928,12 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         console.log('🍎 iOS polling stopped')
       }
 
-      // Stop speech recognition
+      // Stop speech recognition (not used on iOS anymore, but safe to call)
       recognitionRef.current?.stop()
 
-      // Stop audio recording
+      // Stop MediaRecorder (iOS: triggers Deepgram transcription, Android: just stops)
       if (mediaRecorderRef.current?.state === 'recording') {
+        console.log('🛑 Stopping MediaRecorder...')
         mediaRecorderRef.current.stop()
       }
 
