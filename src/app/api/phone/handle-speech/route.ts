@@ -63,6 +63,21 @@ export async function POST(request: NextRequest) {
     let speechResult = webhookData.SpeechResult as string // Fallback to Twilio if available
     const confidence = webhookData.Confidence as string
 
+    // IGNORE recording-status-callback webhooks (redundant - we process action-callback already)
+    // Twilio sends BOTH action-callback AND recording-status-callback for the same recording
+    // We only need to process one of them
+    if (recordingStatus === 'completed' || recordingStatus === 'processing') {
+      console.log(`🚫 IGNORING recording-status-callback (${recordingStatus}) - redundant`)
+      console.log(`📝 Recording: ${recordingUrl}`)
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        },
+      })
+    }
+
     // CRITICAL: EARLY DEDUPLICATION before any processing
     // Use recordingUrl if available, otherwise use callSid + "pending" for in-progress recordings
     // This catches duplicates even while transcription is happening
