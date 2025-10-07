@@ -273,9 +273,9 @@ If no tools are needed, return empty tools array.
 
 Decision:`
 
-  const response = await openai.chat.completions.create({
+  const response = await groq.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'gpt-3.5-turbo',
+    model: 'llama-3.1-8b-instant',
     temperature: 0.3,
     max_tokens: 500,
   })
@@ -441,9 +441,9 @@ Guidelines:
 
 Response:`
 
-  const response = await openai.chat.completions.create({
+  const response = await groq.chat.completions.create({
     messages: [{ role: 'user', content: prompt }],
-    model: 'gpt-3.5-turbo',
+    model: 'llama-3.1-8b-instant',
     temperature: 0.4,
     max_tokens: 800,
   })
