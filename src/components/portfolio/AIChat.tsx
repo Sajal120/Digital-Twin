@@ -324,15 +324,7 @@ export function AIChat() {
                 </button>
               </div>
 
-              {/* Auth Section */}
-              <div className="flex items-center space-x-2">
-                {status === 'unauthenticated' && (
-                  <div className="flex items-center space-x-2">
-                    <Shield className="w-4 h-4 text-blue-200" />
-                    <span className="text-xs text-blue-200">Sign in for personalized chat</span>
-                  </div>
-                )}
-              </div>
+              {/* Auth Section - Hidden for cleaner UI */}
             </div>
           </div>
 
