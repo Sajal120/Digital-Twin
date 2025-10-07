@@ -3,9 +3,27 @@
 import { motion } from 'framer-motion'
 import { Brain, BookOpen, Sparkles } from 'lucide-react'
 import { useAIControl } from '@/contexts/AIControlContext'
+import { useEffect, useState } from 'react'
 
 export function LandingScreen() {
   const { setMode } = useAIControl()
+  const [isMounted, setIsMounted] = useState(false)
+  const [particles, setParticles] = useState<
+    Array<{ x: number; y: number; yEnd: number; duration: number; delay: number }>
+  >([])
+
+  useEffect(() => {
+    setIsMounted(true)
+    // Generate particles only on client side
+    const newParticles = Array.from({ length: 20 }, () => ({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      yEnd: Math.random() * 100,
+      duration: Math.random() * 10 + 10,
+      delay: Math.random() * 5,
+    }))
+    setParticles(newParticles)
+  }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -36,27 +54,28 @@ export function LandingScreen() {
           className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl"
         />
 
-        {/* Floating particles */}
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white rounded-full"
-            initial={{
-              x: Math.random() * window.innerWidth,
-              y: Math.random() * window.innerHeight,
-              opacity: 0,
-            }}
-            animate={{
-              y: [null, Math.random() * window.innerHeight],
-              opacity: [0, 1, 0],
-            }}
-            transition={{
-              duration: Math.random() * 10 + 10,
-              repeat: Infinity,
-              delay: Math.random() * 5,
-            }}
-          />
-        ))}
+        {/* Floating particles - only render on client */}
+        {isMounted &&
+          particles.map((particle, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-white rounded-full"
+              style={{
+                left: `${particle.x}%`,
+                top: `${particle.y}%`,
+              }}
+              initial={{ opacity: 0 }}
+              animate={{
+                y: [`${particle.y}%`, `${particle.yEnd}%`],
+                opacity: [0, 1, 0],
+              }}
+              transition={{
+                duration: particle.duration,
+                repeat: Infinity,
+                delay: particle.delay,
+              }}
+            />
+          ))}
       </div>
 
       {/* Main content */}

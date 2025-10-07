@@ -8,6 +8,7 @@ export { AnimatedProjects } from '@/components/digital-twin/AnimatedProjects'
 export { AnimatedSkills } from '@/components/digital-twin/AnimatedSkills'
 export { ResumePanel } from '@/components/digital-twin/ResumePanel'
 export { ContactTransform } from '@/components/digital-twin/ContactTransform'
+export { default as DigitalTwinWrapper } from '@/components/digital-twin/DigitalTwinWrapper'
 
 // Types
 export type {
