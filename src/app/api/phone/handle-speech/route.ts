@@ -497,9 +497,9 @@ export async function POST(request: NextRequest) {
           throw err
         })
 
-      // Don't await - continue immediately with temporary URL
-      // Vercel Blob PUT returns URL synchronously based on filename
-      const audioUrl = `https://${process.env.BLOB_READ_WRITE_TOKEN?.split('vercel_blob_rw_')[1]?.split('_')[0]}.public.blob.vercel-storage.com/phone-audio/${audioId}.mp3`
+      // Wait for upload to complete and get real URL
+      const blob = await uploadPromise
+      const audioUrl = blob.url
 
       console.log('⚡ Responding immediately (blob upload in background)')
       console.log('🔗 Audio URL:', audioUrl)
