@@ -172,14 +172,24 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
       console.log('📝 Transcripts:', { finalTranscript, interimTranscript })
 
+      const hasSpeech = !!(finalTranscript || interimTranscript)
+      console.log('🗣️ Setting speech detected state:', {
+        hasSpeech,
+        finalLength: finalTranscript.length,
+        interimLength: interimTranscript.length,
+        isIOS: isIOS.current,
+      })
+
       setState((prev) => ({
         ...prev,
         transcript: prev.transcript + finalTranscript,
         interimTranscript,
-        // Set BOTH audio active AND speech detected when receiving results (iOS fallback)
+        // FORCE BOTH to true when ANY transcript received
         isAudioCaptureActive: true,
-        isSpeechDetected: !!(finalTranscript || interimTranscript), // True if any text
+        isSpeechDetected: true, // ALWAYS true when onresult fires
       }))
+
+      console.log('✅ State updated - should show SPEAKING DETECTED now!')
 
       if (finalTranscript && onTranscriptionReceived) {
         console.log('✅ Sending final transcript to callback:', finalTranscript)
@@ -188,13 +198,23 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
       // iOS: Clear speech detected after a delay when we have final transcript
       if (isIOS.current && finalTranscript) {
+        console.log('🍎 iOS - will clear speech indicator in 1.5 seconds')
         setTimeout(() => {
+          console.log('🍎 iOS - clearing speech indicator now')
           setState((prev) => ({
             ...prev,
             isSpeechDetected: false,
             isAudioCaptureActive: false,
           }))
-        }, 1000) // Clear 1 second after final result
+        }, 1500) // Clear 1.5 seconds after final result
+      } else if (!isIOS.current && finalTranscript) {
+        // Android: Clear after shorter delay
+        setTimeout(() => {
+          setState((prev) => ({
+            ...prev,
+            isSpeechDetected: false,
+          }))
+        }, 500)
       }
     }
 

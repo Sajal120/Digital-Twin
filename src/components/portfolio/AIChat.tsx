@@ -502,22 +502,16 @@ export function AIChat() {
 
                 {/* Audio detection indicators - LARGE & CLEAR */}
                 <div className="flex flex-wrap items-center justify-center gap-3 text-base font-semibold">
-                  {/* Show speech status */}
-                  {voiceChat.isSpeechDetected || voiceChat.isAudioCaptureActive ? (
+                  {/* Show when we get actual transcripts - works on iPhone */}
+                  {voiceChat.interimTranscript || voiceChat.transcript ? (
                     <div className="px-4 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 flex items-center space-x-2 animate-pulse">
                       <Volume2 className="w-5 h-5" />
-                      <span>�️ SPEAKING DETECTED ✅</span>
+                      <span>SPEAKING DETECTED ✅</span>
                     </div>
                   ) : (
                     <div className="px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 flex items-center space-x-2">
                       <Mic className="w-5 h-5" />
-                      <span>👂 READY - SPEAK NOW</span>
-                    </div>
-                  )}
-
-                  {voiceChat.isSoundDetected && !voiceChat.isSpeechDetected && (
-                    <div className="px-3 py-1 rounded-lg border border-orange-500 bg-orange-50 text-orange-700">
-                      � Sound (background noise)
+                      <span>READY - SPEAK NOW</span>
                     </div>
                   )}
                 </div>
