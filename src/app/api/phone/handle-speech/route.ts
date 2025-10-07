@@ -24,10 +24,14 @@ if (!global.pendingAIPromises) {
 // DEEPGRAM VERSION 2.9 - THINKING ACKNOWLEDGMENT
 const VERSION = 'v2.9-thinking-ack-oct7'
 
-// Pre-generated "thinking" sound (just "Hmm" - works in all languages)
+// Pre-generated "thinking" sounds (varied lengths for natural feel)
 // Plays immediately while AI processes, making wait feel natural
-const THINKING_SOUND_URL =
-  'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_hmm.mp3'
+const THINKING_SHORT_URL =
+  'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_short.mp3'
+const THINKING_MEDIUM_URL =
+  'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_medium.mp3'
+const THINKING_LONG_URL =
+  'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_long.mp3'
 
 // In-memory deduplication store (prevents duplicate webhook processing)
 // Key: callSid + recordingUrl hash, Value: timestamp
@@ -323,16 +327,17 @@ export async function POST(request: NextRequest) {
     await storeSpeech(callSid, speechResult)
 
     // Return thinking sounds IMMEDIATELY (AI will process after redirect)
+    // Natural pattern: Hmmmmmmm... (pause) Hmmmm Hmm... (pause) Hmmmmmmm
+    // Optimized timing: 5-6s of sounds (AI finishes in parallel!)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
     const thinkingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${THINKING_SOUND_URL}</Play>
+  <Play>${THINKING_LONG_URL}</Play>
   <Pause length="1"/>
-  <Play>${THINKING_SOUND_URL}</Play>
-  <Play>${THINKING_SOUND_URL}</Play>
-  <Pause length="2"/>
-  <Play>${THINKING_SOUND_URL}</Play>
+  <Play>${THINKING_MEDIUM_URL}</Play>
+  <Play>${THINKING_SHORT_URL}</Play>
   <Pause length="1"/>
+  <Play>${THINKING_LONG_URL}</Play>
   <Redirect method="POST">${baseUrl}/api/phone/process-response/${callSid}</Redirect>
 </Response>`
 
