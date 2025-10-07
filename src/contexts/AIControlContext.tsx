@@ -40,6 +40,9 @@ export interface ActiveComponents {
   contact: boolean
 }
 
+// Chat mode for controlling intent detection
+export type ChatMode = 'ai_control' | 'plain_chat'
+
 // Context state
 interface AIControlState {
   currentMode: UIMode
@@ -50,6 +53,7 @@ interface AIControlState {
   isTransitioning: boolean
   backgroundIntensity: number
   emotionalTone: 'neutral' | 'excited' | 'calm' | 'focused'
+  chatMode: ChatMode
 }
 
 // Context actions
@@ -64,6 +68,7 @@ interface AIControlActions {
   setEmotionalTone: (tone: AIControlState['emotionalTone']) => void
   setBackgroundIntensity: (intensity: number) => void
   setIsTransitioning: (isTransitioning: boolean) => void
+  setChatMode: (mode: ChatMode) => void
 }
 
 // Context type
@@ -86,6 +91,7 @@ const initialState: AIControlState = {
   isTransitioning: false,
   backgroundIntensity: 50,
   emotionalTone: 'neutral',
+  chatMode: 'ai_control', // Default to AI Control mode
 }
 
 // Create context
@@ -129,6 +135,10 @@ export function AIControlProvider({ children }: { children: ReactNode }) {
 
   const setIsTransitioning = useCallback((isTransitioning: boolean) => {
     setState((prev) => ({ ...prev, isTransitioning }))
+  }, [])
+
+  const setChatMode = useCallback((chatMode: ChatMode) => {
+    setState((prev) => ({ ...prev, chatMode }))
   }, [])
 
   const processAIIntent = useCallback(
@@ -213,6 +223,7 @@ export function AIControlProvider({ children }: { children: ReactNode }) {
     setEmotionalTone,
     setBackgroundIntensity,
     setIsTransitioning,
+    setChatMode,
   }
 
   return <AIControlContext.Provider value={contextValue}>{children}</AIControlContext.Provider>

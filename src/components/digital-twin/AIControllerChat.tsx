@@ -28,20 +28,11 @@ interface Message {
   isVoice?: boolean
 }
 
-const interactionTypes = [
-  { value: 'general' as InteractionType, label: 'General Chat', icon: '💬' },
-  { value: 'hr_screening' as InteractionType, label: 'HR Screening', icon: '📞' },
-  { value: 'technical_interview' as InteractionType, label: 'Technical Interview', icon: '💻' },
-  { value: 'networking' as InteractionType, label: 'Networking', icon: '🤝' },
-  { value: 'career_coaching' as InteractionType, label: 'Career Coaching', icon: '🎯' },
-]
-
 export function AIControllerChat() {
   const { data: session } = useSession()
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const [currentInteractionType, setCurrentInteractionType] = useState<InteractionType>('general')
   const [isMinimized, setIsMinimized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -53,6 +44,8 @@ export function AIControllerChat() {
     processAIIntent,
     setEmotionalTone,
     voiceState,
+    chatMode,
+    setChatMode,
   } = useAIControl()
 
   // Voice chat integration
@@ -139,28 +132,35 @@ export function AIControllerChat() {
   const handleAIResponse = (content: string) => {
     setLastAIMessage(content)
 
-    // Detect intent from AI response
-    const intent = detectIntent(content)
-    if (intent) {
-      console.log('🎯 Detected intent from AI:', intent)
-      setTimeout(() => processAIIntent(intent), 500)
-    }
+    // Only process intents in AI Control mode
+    if (chatMode === 'ai_control') {
+      // Detect intent from AI response
+      const intent = detectIntent(content)
+      if (intent) {
+        console.log('🎯 Detected intent from AI:', intent)
+        setTimeout(() => processAIIntent(intent), 500)
+      }
 
-    // Set emotional tone based on content
-    if (content.includes('exciting') || content.includes('amazing') || content.includes('great')) {
-      setEmotionalTone('excited')
-    } else if (
-      content.includes('skill') ||
-      content.includes('technical') ||
-      content.includes('expertise')
-    ) {
-      setEmotionalTone('focused')
-    } else if (
-      content.includes('pleasure') ||
-      content.includes('nice') ||
-      content.includes('hello')
-    ) {
-      setEmotionalTone('calm')
+      // Set emotional tone based on content
+      if (
+        content.includes('exciting') ||
+        content.includes('amazing') ||
+        content.includes('great')
+      ) {
+        setEmotionalTone('excited')
+      } else if (
+        content.includes('skill') ||
+        content.includes('technical') ||
+        content.includes('expertise')
+      ) {
+        setEmotionalTone('focused')
+      } else if (
+        content.includes('pleasure') ||
+        content.includes('nice') ||
+        content.includes('hello')
+      ) {
+        setEmotionalTone('calm')
+      }
     }
   }
 
@@ -179,11 +179,13 @@ export function AIControllerChat() {
     setInputValue('')
     setIsLoading(true)
 
-    // Detect intent from user message
-    const intent = detectIntent(inputValue)
-    if (intent) {
-      console.log('🎯 Detected intent from user:', intent)
-      processAIIntent(intent)
+    // Only detect intent in AI Control mode
+    if (chatMode === 'ai_control') {
+      const intent = detectIntent(inputValue)
+      if (intent) {
+        console.log('🎯 Detected intent from user:', intent)
+        processAIIntent(intent)
+      }
     }
 
     try {
@@ -327,19 +329,6 @@ export function AIControllerChat() {
           </div>
 
           <div className="flex items-center space-x-2">
-            {/* Stop Voice Button */}
-            {(voiceState === 'speaking' || voiceState === 'listening') && (
-              <motion.button
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                onClick={stopVoice}
-                className="p-2 bg-red-500/80 hover:bg-red-600 rounded-lg transition-colors"
-                title="Stop Voice"
-              >
-                <VolumeX className="w-5 h-5 text-white" />
-              </motion.button>
-            )}
             {/* Phone Call Button */}
             <button
               onClick={handlePhoneCall}
@@ -348,12 +337,33 @@ export function AIControllerChat() {
             >
               <Phone className="w-5 h-5 text-white" />
             </button>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <Settings className="w-5 h-5 text-white" />
-            </button>
+
+            {/* Chat Mode Toggle */}
+            <div className="flex items-center space-x-1 bg-white/10 rounded-lg p-1">
+              <button
+                onClick={() => setChatMode('ai_control')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  chatMode === 'ai_control'
+                    ? 'bg-purple-600 text-white shadow-lg'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="AI Control Mode - Triggers UI changes based on conversation"
+              >
+                🤖 AI Control
+              </button>
+              <button
+                onClick={() => setChatMode('plain_chat')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  chatMode === 'plain_chat'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Plain Chat - Standard conversation only"
+              >
+                💬 Plain Chat
+              </button>
+            </div>
+
             <button
               onClick={() => setIsMinimized(true)}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
@@ -368,39 +378,6 @@ export function AIControllerChat() {
             </button>
           </div>
         </div>
-
-        {/* Settings panel */}
-        <AnimatePresence>
-          {showSettings && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="bg-slate-800/50 border-b border-white/10 px-6 py-4 overflow-hidden"
-            >
-              <h4 className="font-medium text-white mb-3">Interaction Mode</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {interactionTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    onClick={() => {
-                      setCurrentInteractionType(type.value)
-                      voiceChat.setInteractionType(type.value)
-                    }}
-                    className={`flex items-center space-x-2 p-2 rounded-lg text-left transition-colors text-sm ${
-                      currentInteractionType === type.value
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white/5 hover:bg-white/10 text-gray-300'
-                    }`}
-                  >
-                    <span>{type.icon}</span>
-                    <span>{type.label}</span>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Messages */}
         <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
@@ -481,6 +458,7 @@ export function AIControllerChat() {
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
           <form onSubmit={handleSubmit} className="flex items-center space-x-3">
+            {/* Mic Button */}
             <motion.button
               type="button"
               onClick={async () => {
@@ -506,6 +484,23 @@ export function AIControllerChat() {
                 <Mic className="w-6 h-6 text-white" />
               )}
             </motion.button>
+
+            {/* Stop Voice Button - Next to Mic */}
+            {(voiceState === 'speaking' || voiceChat.audioPlayerState.isPlaying) && (
+              <motion.button
+                type="button"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                onClick={stopVoice}
+                className="p-4 rounded-full bg-red-500 hover:bg-red-600 transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Stop Voice"
+              >
+                <VolumeX className="w-6 h-6 text-white" />
+              </motion.button>
+            )}
 
             <input
               type="text"
