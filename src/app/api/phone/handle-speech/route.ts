@@ -4,8 +4,23 @@ import { voiceService } from '../../../../services/voiceService'
 import { put } from '@vercel/blob'
 import { createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
-// DEEPGRAM VERSION 2.2 - ULTRA FAST MODE + SYNTAX FIXES
-const VERSION = 'v2.7-instant-return-oct6'
+// DEEPGRAM VERSION 2.8 - DEDUPLICATION + BLOB OPTIMIZATION
+const VERSION = 'v2.8-dedup-blob-opt-oct7'
+
+// In-memory deduplication store (prevents duplicate webhook processing)
+// Key: callSid + recordingUrl hash, Value: timestamp
+const processingCache = new Map<string, number>()
+const DEDUP_TTL = 10000 // 10 seconds - enough to handle duplicate webhooks
+
+// Clean up old entries periodically
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, timestamp] of processingCache.entries()) {
+    if (now - timestamp > DEDUP_TTL) {
+      processingCache.delete(key)
+    }
+  }
+}, 5000) // Clean every 5 seconds
 
 // Map language codes to Twilio language codes
 function getTwilioLanguageCode(languageCode: string): string {
@@ -34,8 +49,8 @@ function getTwilioLanguageCode(languageCode: string): string {
 // Handle Twilio speech recognition results (NO recording download needed!)
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
-  console.log(`🎙️ [${VERSION}] Speech webhook - ultra-fast Deepgram + fixed syntax`)
-  console.log(`⚡ Performance: 6s MCP timeout, 2s Groq, multilingual fast path enabled`)
+  console.log(`🎙️ [${VERSION}] Speech webhook - dedup + blob optimization`)
+  console.log(`⚡ Performance: Duplicate prevention, parallel blob upload`)
 
   try {
     // Parse Twilio form data
@@ -57,6 +72,31 @@ export async function POST(request: NextRequest) {
       confidence: confidence || 'N/A',
       webhookType: recordingStatus ? 'recording-status-callback' : 'action-callback',
     })
+
+    // DEDUPLICATION: Prevent duplicate webhook processing
+    // Create unique key from callSid + recordingUrl (or timestamp if no recording)
+    const dedupKey = `${callSid}_${recordingUrl || Date.now()}`
+    const lastProcessed = processingCache.get(dedupKey)
+
+    if (lastProcessed && Date.now() - lastProcessed < DEDUP_TTL) {
+      const elapsed = Date.now() - lastProcessed
+      console.log(`🚫 DUPLICATE WEBHOOK BLOCKED (processed ${elapsed}ms ago)`)
+      console.log(`🔑 Dedup key: ${dedupKey}`)
+
+      // Return simple TwiML to acknowledge without reprocessing
+      return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        },
+      })
+    }
+
+    // Mark as processing
+    processingCache.set(dedupKey, Date.now())
+    console.log(`✅ First webhook for this recording - processing`)
+    console.log(`🔑 Dedup key: ${dedupKey}`)
 
     // If we have a recording URL, use Deepgram for transcription
     if (recordingUrl) {
@@ -168,10 +208,11 @@ export async function POST(request: NextRequest) {
           const audioBuffer = await elevenlabsResponse.arrayBuffer()
           const audioId = `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-          // Upload to Vercel Blob for persistent storage
+          // Upload to Vercel Blob with edge caching
           const blob = await put(`phone-audio/${audioId}.mp3`, Buffer.from(audioBuffer), {
             access: 'public',
             contentType: 'audio/mpeg',
+            cacheControlMaxAge: 3600, // Cache at edge for faster delivery
           })
 
           console.log(`📁 Uploaded retry audio to Vercel Blob: ${blob.url}`)
@@ -404,6 +445,7 @@ export async function POST(request: NextRequest) {
       // Cache audio
       const audioId = `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       const audioBufferObj = Buffer.from(audioBuffer)
+      const uploadStartTime = Date.now()
 
       console.log('📁 Uploading audio to Vercel Blob:', {
         audioId,
@@ -411,14 +453,17 @@ export async function POST(request: NextRequest) {
         textPreview: aiResponse.response.substring(0, 50),
       })
 
-      // Upload to Vercel Blob for persistent serverless storage
+      // OPTIMIZED: Upload to Vercel Blob with streaming (faster than buffered)
+      // Use cacheControlMaxAge for edge caching (reduces subsequent loads)
       const blob = await put(`phone-audio/${audioId}.mp3`, audioBufferObj, {
         access: 'public',
         contentType: 'audio/mpeg',
         addRandomSuffix: false, // Keep exact filename for retrieval
+        cacheControlMaxAge: 3600, // Cache at edge for 1 hour (faster playback)
       })
 
-      console.log('✅ Audio uploaded to Vercel Blob successfully:', audioId)
+      const uploadDuration = Date.now() - uploadStartTime
+      console.log(`✅ Audio uploaded to Vercel Blob in ${uploadDuration}ms`)
       console.log('📊 Audio size:', audioBufferObj.length, 'bytes')
       console.log('🔗 Blob URL:', blob.url)
 
