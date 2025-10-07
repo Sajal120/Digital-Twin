@@ -79,21 +79,36 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     recognition.lang = 'en-US'
 
     recognition.onstart = () => {
+      console.log('🎤 Speech recognition STARTED')
       setState((prev) => ({ ...prev, isRecording: true, error: null }))
     }
 
     recognition.onresult = (event: any) => {
+      console.log('🎤 Speech recognition RESULT received:', {
+        resultIndex: event.resultIndex,
+        resultsLength: event.results.length,
+        isFinal: event.results[event.resultIndex]?.isFinal,
+      })
+
       let finalTranscript = ''
       let interimTranscript = ''
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript
+        console.log(`   Result ${i}:`, {
+          transcript,
+          isFinal: event.results[i].isFinal,
+          confidence: event.results[i][0].confidence,
+        })
+
         if (event.results[i].isFinal) {
           finalTranscript += transcript
         } else {
           interimTranscript += transcript
         }
       }
+
+      console.log('📝 Transcripts:', { finalTranscript, interimTranscript })
 
       setState((prev) => ({
         ...prev,
@@ -102,11 +117,18 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       }))
 
       if (finalTranscript && onTranscriptionReceived) {
+        console.log('✅ Sending final transcript to callback:', finalTranscript)
         onTranscriptionReceived(finalTranscript)
       }
     }
 
     recognition.onerror = (event: any) => {
+      console.error('❌ Speech recognition ERROR:', {
+        error: event.error,
+        message: event.message,
+        timeStamp: event.timeStamp,
+      })
+
       // Handle different types of speech recognition errors
       let errorMessage = ''
       let shouldNotify = true
@@ -118,21 +140,27 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
           break
         case 'no-speech':
           errorMessage = 'No speech detected. Please try speaking again.'
+          console.log('⚠️ No speech detected - user may not be speaking loud enough')
           break
         case 'audio-capture':
           errorMessage = 'Microphone access is required for voice input'
+          console.error('⚠️ Audio capture failed - microphone may be in use by another app')
           break
         case 'not-allowed':
           errorMessage = 'Microphone permission denied. Please allow access and try again.'
+          console.error('⚠️ Permission denied for microphone')
           break
         case 'network':
           errorMessage = 'Network error occurred. Please check your connection.'
+          console.error('⚠️ Network error - speech recognition requires internet')
           break
         case 'service-not-allowed':
           errorMessage = 'Speech recognition service not available'
+          console.error('⚠️ Speech recognition service blocked or unavailable')
           break
         default:
           errorMessage = `Speech recognition error: ${event.error}`
+          console.error('⚠️ Unknown speech recognition error:', event.error)
       }
 
       setState((prev) => ({
@@ -147,17 +175,28 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
 
     recognition.onend = () => {
+      console.log('🛑 Speech recognition ENDED', {
+        userStopped: isUserStoppedRef.current,
+        continuous,
+        retryCount: state.retryCount,
+      })
+
       setState((prev) => ({ ...prev, isRecording: false }))
 
       // If this wasn't a user-initiated stop and we're in continuous mode,
       // try to restart automatically
       if (!isUserStoppedRef.current && continuous && state.retryCount < state.maxRetries) {
+        console.log(
+          `🔄 Auto-restarting speech recognition (attempt ${state.retryCount + 1}/${state.maxRetries})`,
+        )
         restartTimeoutRef.current = setTimeout(() => {
           setState((prev) => ({ ...prev, retryCount: prev.retryCount + 1 }))
           try {
             recognitionRef.current?.start()
             setState((prev) => ({ ...prev, isRecording: true }))
+            console.log('✅ Speech recognition restarted successfully')
           } catch (error) {
+            console.error('❌ Failed to restart recognition:', error)
             onError?.(`Failed to restart recognition: ${error}`)
           }
         }, 100) // Brief delay before restart
@@ -285,14 +324,26 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         retryCount: 0,
       }))
 
-      console.log('🎤 Starting speech recognition...')
+      console.log('🎤 Starting speech recognition...', {
+        recognitionExists: !!recognitionRef.current,
+        recognitionLang: recognitionRef.current?.lang,
+        continuous: recognitionRef.current?.continuous,
+        interimResults: recognitionRef.current?.interimResults,
+      })
+
       // Start speech recognition
-      recognitionRef.current?.start()
+      if (recognitionRef.current) {
+        recognitionRef.current.start()
+        console.log('✅ Speech recognition start() called')
+      } else {
+        console.error('❌ Recognition ref is null!')
+        throw new Error('Speech recognition not initialized')
+      }
 
       // Start audio recording
       if (mediaRecorderRef.current?.state === 'inactive') {
         mediaRecorderRef.current.start(1000) // Collect data every second
-        console.log('🔴 Recording started')
+        console.log('🔴 MediaRecorder started (for audio capture)')
       }
 
       return true

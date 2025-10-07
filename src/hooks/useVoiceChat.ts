@@ -118,7 +118,15 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
 
   // Handle transcription from voice recorder
   async function handleTranscriptionReceived(transcript: string) {
-    if (!transcript.trim()) return
+    console.log('📝 Transcription received in useVoiceChat:', {
+      transcript,
+      length: transcript.length,
+    })
+
+    if (!transcript.trim()) {
+      console.log('⚠️ Empty transcript, skipping...')
+      return
+    }
 
     // Add user message
     const userMessage: VoiceChatMessage = {
@@ -128,6 +136,8 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
       timestamp: Date.now(),
       interactionType: state.currentInteractionType,
     }
+
+    console.log('💬 Creating user message:', userMessage)
 
     // Update state and conversation history
     setState((prev) => ({
@@ -141,6 +151,7 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
     conversationHistoryRef.current.push(userMessage)
     onMessageReceived?.(userMessage)
 
+    console.log('🚀 Processing user message...')
     // Process the message and get AI response
     await processUserMessage(transcript.trim())
   }
@@ -149,6 +160,7 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
   const processUserMessage = useCallback(
     async (message: string) => {
       try {
+        console.log('🔄 Processing user message:', message)
         setState((prev) => ({ ...prev, isProcessing: true, error: null }))
 
         // Prepare conversation context
@@ -158,6 +170,12 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
             role: msg.role,
             content: msg.content,
           }))
+
+        console.log('📤 Calling /api/voice/conversation with:', {
+          messageLength: message.length,
+          interactionType: state.currentInteractionType,
+          historyLength: conversationHistory.length,
+        })
 
         // Call the professional voice conversation API
         const response = await fetch('/api/voice/conversation', {
@@ -176,11 +194,17 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
           }),
         })
 
+        console.log('📥 API Response status:', response.status)
+
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`)
         }
 
         const data = await response.json()
+        console.log('✅ API Response data:', {
+          success: data.success,
+          hasAudioUrl: !!data.audioUrl,
+        })
 
         if (!data.success) {
           throw new Error(data.error || 'Failed to get AI response')
