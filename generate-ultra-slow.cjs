@@ -6,9 +6,9 @@ async function generateUltraSlowThinking() {
   console.log('🎵 Generating ULTRA SLOW single thinking sound with YOUR voice...')
 
   // ONE complete thinking sequence - plays ONCE only (no loop)
-  // Long slow hmmmmmmmm... BIG PAUSE... shorter slow hmmmm
-  // Total 8-10 seconds single play to cover entire AI processing
-  const text = 'Hmmmmmmmmmmmmmmmmmmmm... hmmmmmm.'
+  // First LONG slow hmmmm... PAUSE... second long slow hmmmm (not fading, clear)
+  // Total 12-14 seconds to cover ENTIRE AI processing
+  const text = 'Hmmmmmmmmmmmmmmmmmmmmmmm.......... hmmmmmmmmmmmmmm.'
 
   const voiceId = process.env.ELEVENLABS_VOICE_ID_ENGLISH || 'WcXkU7PbsO0uKKBdWJrG' // YOUR cloned voice (Sajal Basnet English)
 
@@ -26,12 +26,12 @@ async function generateUltraSlowThinking() {
     text: text,
     model_id: 'eleven_turbo_v2_5',
     voice_settings: {
-      stability: 0.7, // Stable for thinking
+      stability: 0.75, // Very stable - no fading
       similarity_boost: 0.95, // MAXIMUM similarity to YOUR voice
       style: 0.0, // No style variation - pure YOUR voice
       use_speaker_boost: true,
     },
-    output_format: 'mp3_44100_128', // Higher quality = louder, clearer
+    output_format: 'mp3_44100_192', // Even higher quality = no fading, louder
   })
 
   return new Promise((resolve, reject) => {
