@@ -65,6 +65,9 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
   const audioChunksRef = useRef<Blob[]>([])
   const isUserStoppedRef = useRef<boolean>(false)
   const restartTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const audioStreamRef = useRef<MediaStream | null>(null)
 
   // Initialize speech recognition
   useEffect(() => {
@@ -263,25 +266,111 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
   }, [continuous, interimResults, onTranscriptionReceived, onError])
 
+  // Monitor audio levels to verify microphone is actually capturing sound
+  const startAudioLevelMonitoring = useCallback(
+    (stream: MediaStream) => {
+      try {
+        // Create audio context and analyser
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const analyser = audioContext.createAnalyser()
+        const microphone = audioContext.createMediaStreamSource(stream)
+
+        analyser.fftSize = 256
+        microphone.connect(analyser)
+
+        audioContextRef.current = audioContext
+        analyserRef.current = analyser
+
+        // Monitor audio levels
+        const dataArray = new Uint8Array(analyser.frequencyBinCount)
+        let lastAudioDetectedTime = Date.now()
+
+        const checkAudioLevel = () => {
+          if (!analyserRef.current) return
+
+          analyser.getByteFrequencyData(dataArray)
+          const average = dataArray.reduce((a, b) => a + b) / dataArray.length
+
+          // If we detect audio above threshold
+          if (average > 5) {
+            lastAudioDetectedTime = Date.now()
+            if (!state.isAudioCaptureActive) {
+              console.log('🔊 Audio level detected via analyser:', average)
+              setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
+            }
+          }
+
+          // If no audio for 2 seconds, mark as inactive
+          if (Date.now() - lastAudioDetectedTime > 2000 && state.isAudioCaptureActive) {
+            console.log('🔇 No audio levels detected')
+            setState((prev) => ({ ...prev, isAudioCaptureActive: false }))
+          }
+
+          // Continue monitoring while recording
+          if (state.isRecording) {
+            requestAnimationFrame(checkAudioLevel)
+          }
+        }
+
+        checkAudioLevel()
+        console.log('✅ Audio level monitoring started')
+      } catch (error) {
+        console.error('❌ Failed to start audio monitoring:', error)
+      }
+    },
+    [state.isRecording, state.isAudioCaptureActive],
+  )
+
   // Initialize media recorder for audio capture
   const setupMediaRecorder = useCallback(async () => {
     try {
       console.log('📱 Requesting microphone access...')
+      console.log('🔧 Device info:', {
+        isMobile: isMobile.current,
+        isIOS: isIOS.current,
+        userAgent: navigator.userAgent,
+      })
 
-      // Mobile-optimized audio constraints
+      // AGGRESSIVE audio constraints for Android
       const audioConstraints: MediaStreamConstraints = {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          // Mobile-specific optimizations
-          sampleRate: isMobile.current ? 16000 : 44100, // Lower sample rate for mobile
-          channelCount: 1, // Mono for better mobile performance
-        },
+        audio: isMobile.current
+          ? ({
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              sampleRate: { ideal: 16000 },
+              channelCount: { ideal: 1 },
+            } as any)
+          : {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              sampleRate: 44100,
+              channelCount: 1,
+            },
       }
 
+      console.log('🎤 Requesting getUserMedia with constraints:', audioConstraints)
       const stream = await navigator.mediaDevices.getUserMedia(audioConstraints)
+
+      // Store stream reference
+      audioStreamRef.current = stream
+
+      const audioTracks = stream.getAudioTracks()
       console.log('✅ Microphone access granted')
+      console.log(
+        '🎵 Audio tracks:',
+        audioTracks.map((track) => ({
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          settings: track.getSettings(),
+        })),
+      )
+
+      // Start audio level monitoring
+      startAudioLevelMonitoring(stream)
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -344,7 +433,32 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       isIOS: isIOS.current,
       hasRecognitionRef: !!recognitionRef.current,
       hasMediaRecorder: !!mediaRecorderRef.current,
+      hasAudioStream: !!audioStreamRef.current,
     })
+
+    // FORCE: Resume audio context on Android (critical!)
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      console.log('🔓 Resuming suspended audio context...')
+      await audioContextRef.current.resume()
+      console.log('✅ Audio context resumed:', audioContextRef.current.state)
+    }
+
+    // Verify audio stream is active
+    if (audioStreamRef.current) {
+      const tracks = audioStreamRef.current.getAudioTracks()
+      tracks.forEach((track) => {
+        console.log('🎵 Audio track status:', {
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+        })
+        // Force enable track
+        if (!track.enabled) {
+          console.log('⚡ Enabling audio track')
+          track.enabled = true
+        }
+      })
+    }
 
     // Verify speech recognition is ready
     if (!recognitionRef.current) {
@@ -353,9 +467,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       setState((prev) => ({ ...prev, error: errorMsg }))
       onError?.(errorMsg)
       return false
-    }
-
-    // iOS-specific: Check if we're in a secure context (HTTPS)
+    } // iOS-specific: Check if we're in a secure context (HTTPS)
     if (isIOS.current && location.protocol !== 'https:' && location.hostname !== 'localhost') {
       const errorMessage = '🔒 HTTPS required for microphone on iOS. Please use https://'
       setState((prev) => ({ ...prev, error: errorMessage }))
@@ -468,6 +580,21 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       // Stop audio recording
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop()
+      }
+
+      // Stop audio monitoring and close audio context
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close()
+        audioContextRef.current = null
+        analyserRef.current = null
+        console.log('🔇 Audio monitoring stopped')
+      }
+
+      // Stop audio tracks
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop())
+        audioStreamRef.current = null
+        console.log('🛑 Audio stream stopped')
       }
 
       return true
