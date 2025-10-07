@@ -1,43 +1,25 @@
-import { Hero } from '@/components/portfolio/Hero'
-import { About } from '@/components/portfolio/About'
-import { Experience } from '@/components/portfolio/Experience'
-import { Skills } from '@/components/portfolio/Skills'
-import { Projects } from '@/components/portfolio/Projects'
-import { PhoneCall } from '@/components/portfolio/PhoneCall'
-import { AIChat } from '@/components/portfolio/AIChat'
-import { Contact } from '@/components/portfolio/Contact'
-import { Navigation } from '@/components/portfolio/Navigation'
-import { Footer } from '@/components/portfolio/Footer'
+import { AIControlProvider } from '@/contexts/AIControlContext'
+import { DigitalTwinExperience } from '@/components/digital-twin/DigitalTwinExperience'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Sajal Basnet - Full Stack Developer & AI Engineer',
+  title: 'Sajal Basnet - Digital Twin AI Experience',
   description:
-    'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies. Building innovative solutions with cutting-edge technology.',
-  keywords: 'Full Stack Developer, React, Node.js, AI Engineer, Web Development, Portfolio',
+    "Experience an AI-powered conversation with Sajal Basnet's Digital Twin. Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies.",
+  keywords:
+    'Digital Twin, AI Portfolio, Full Stack Developer, React, Node.js, AI Engineer, Web Development',
   openGraph: {
-    title: 'Sajal Basnet - Full Stack Developer & AI Engineer',
+    title: 'Sajal Basnet - Digital Twin AI Experience',
     description:
-      'Full Stack Developer specializing in React, Node.js, AI integration, and modern web technologies.',
+      "Experience an AI-powered conversation with Sajal Basnet's Digital Twin. Ask about projects, skills, and experience in real-time.",
     type: 'website',
   },
 }
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navigation />
-      <main>
-        <Hero />
-        <About />
-        <Experience />
-        <Skills />
-        <Projects />
-        <PhoneCall />
-        <AIChat />
-        <Contact />
-      </main>
-      <Footer />
-    </div>
+    <AIControlProvider>
+      <DigitalTwinExperience />
+    </AIControlProvider>
   )
 }

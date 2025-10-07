@@ -1,0 +1,500 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Send,
+  Bot,
+  User,
+  Loader2,
+  Mic,
+  MicOff,
+  Volume2,
+  X,
+  Minimize2,
+  Settings,
+} from 'lucide-react'
+import { useSession } from 'next-auth/react'
+import { useVoiceChat, InteractionType } from '@/hooks/useVoiceChat'
+import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
+
+interface Message {
+  id: string
+  content: string
+  role: 'user' | 'assistant'
+  timestamp: Date
+  isVoice?: boolean
+}
+
+const interactionTypes = [
+  { value: 'general' as InteractionType, label: 'General Chat', icon: '💬' },
+  { value: 'hr_screening' as InteractionType, label: 'HR Screening', icon: '📞' },
+  { value: 'technical_interview' as InteractionType, label: 'Technical Interview', icon: '💻' },
+  { value: 'networking' as InteractionType, label: 'Networking', icon: '🤝' },
+  { value: 'career_coaching' as InteractionType, label: 'Career Coaching', icon: '🎯' },
+]
+
+export function AIControllerChat() {
+  const { data: session } = useSession()
+  const [inputValue, setInputValue] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [currentInteractionType, setCurrentInteractionType] = useState<InteractionType>('general')
+  const [isMinimized, setIsMinimized] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const {
+    setMode,
+    setVoiceState,
+    setLastAIMessage,
+    processAIIntent,
+    setEmotionalTone,
+    voiceState,
+  } = useAIControl()
+
+  // Voice chat integration
+  const voiceChat = useVoiceChat({
+    interactionType: currentInteractionType,
+    autoPlayResponses: true,
+    onError: (error) => {
+      const browserAudioErrors = [
+        'blocked by browser',
+        'NotAllowedError',
+        'no supported source was found',
+        'Audio source not available',
+      ]
+      const isBrowserAudioIssue = browserAudioErrors.some((err) =>
+        error.toLowerCase().includes(err.toLowerCase()),
+      )
+      if (!isBrowserAudioIssue) {
+        console.error('Voice chat error:', error)
+      }
+    },
+  })
+
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: session?.user
+        ? `Hi ${session.user.name}! I'm Sajal's Digital Twin. I can show you projects, discuss skills, share my resume, or talk about my background. What would you like to explore?`
+        : "Hi! I'm Sajal's Digital Twin. I can show you projects, discuss skills, share my resume, or talk about my background. What would you like to explore?",
+      role: 'assistant',
+      timestamp: new Date(),
+    },
+  ])
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Sync voice state with context
+  useEffect(() => {
+    if (voiceChat.isListening) {
+      setVoiceState('listening')
+    } else if (voiceChat.isSpeaking || voiceChat.audioPlayerState.isPlaying) {
+      setVoiceState('speaking')
+    } else if (voiceChat.isProcessing) {
+      setVoiceState('processing')
+    } else {
+      setVoiceState('idle')
+    }
+  }, [
+    voiceChat.isListening,
+    voiceChat.isSpeaking,
+    voiceChat.isProcessing,
+    voiceChat.audioPlayerState.isPlaying,
+    setVoiceState,
+  ])
+
+  // Sync voice messages
+  useEffect(() => {
+    if (voiceChat.messages.length > 0) {
+      const latestVoiceMessage = voiceChat.messages[voiceChat.messages.length - 1]
+      const existingMessage = messages.find((m) => m.id === `voice_${latestVoiceMessage.id}`)
+
+      if (!existingMessage) {
+        const newMessage: Message = {
+          id: `voice_${latestVoiceMessage.id}`,
+          content: latestVoiceMessage.content,
+          role: latestVoiceMessage.role,
+          timestamp: new Date(latestVoiceMessage.timestamp),
+          isVoice: true,
+        }
+        setMessages((prev) => [...prev, newMessage])
+
+        if (newMessage.role === 'assistant') {
+          handleAIResponse(newMessage.content)
+        }
+      }
+    }
+  }, [voiceChat.messages])
+
+  const handleAIResponse = (content: string) => {
+    setLastAIMessage(content)
+
+    // Detect intent from AI response
+    const intent = detectIntent(content)
+    if (intent) {
+      console.log('🎯 Detected intent from AI:', intent)
+      setTimeout(() => processAIIntent(intent), 500)
+    }
+
+    // Set emotional tone based on content
+    if (content.includes('exciting') || content.includes('amazing') || content.includes('great')) {
+      setEmotionalTone('excited')
+    } else if (
+      content.includes('skill') ||
+      content.includes('technical') ||
+      content.includes('expertise')
+    ) {
+      setEmotionalTone('focused')
+    } else if (
+      content.includes('pleasure') ||
+      content.includes('nice') ||
+      content.includes('hello')
+    ) {
+      setEmotionalTone('calm')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inputValue.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: inputValue,
+      role: 'user',
+      timestamp: new Date(),
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInputValue('')
+    setIsLoading(true)
+
+    // Detect intent from user message
+    const intent = detectIntent(inputValue)
+    if (intent) {
+      console.log('🎯 Detected intent from user:', intent)
+      processAIIntent(intent)
+    }
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: inputValue,
+          conversationHistory: messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          enhancedMode: true,
+          interviewType: 'general',
+          user: session?.user
+            ? {
+                name: session.user.name,
+                email: session.user.email,
+                image: session.user.image,
+              }
+            : undefined,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to get response')
+
+      const data = await response.json()
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: data.response,
+        role: 'assistant',
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      handleAIResponse(data.response)
+    } catch (error) {
+      console.error('Error:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, I'm having trouble connecting right now. Please try again.",
+        role: 'assistant',
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const unlockAudio = async () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
+      const oscillator = audioContext.createOscillator()
+      const gainNode = audioContext.createGain()
+      oscillator.connect(gainNode)
+      gainNode.connect(audioContext.destination)
+      gainNode.gain.value = 0
+      oscillator.frequency.value = 440
+      oscillator.start()
+      oscillator.stop(audioContext.currentTime + 0.01)
+      return true
+    } catch (error) {
+      console.log('⚠️ Audio unlock failed:', error)
+      return false
+    }
+  }
+
+  if (isMinimized) {
+    return (
+      <motion.button
+        onClick={() => setIsMinimized(false)}
+        className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+      >
+        <Bot className="w-8 h-8 text-white" />
+      </motion.button>
+    )
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="fixed inset-0 z-40 flex items-center justify-center p-4"
+    >
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+      />
+
+      {/* Chat window */}
+      <motion.div
+        className="relative w-full max-w-4xl h-[80vh] bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+        initial={{ y: 50 }}
+        animate={{ y: 0 }}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <motion.div
+              className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
+              animate={{
+                boxShadow:
+                  voiceState === 'speaking'
+                    ? ['0 0 0 0 rgba(255,255,255,0.4)', '0 0 0 20px rgba(255,255,255,0)']
+                    : '0 0 0 0 rgba(255,255,255,0)',
+              }}
+              transition={{ duration: 1.5, repeat: voiceState === 'speaking' ? Infinity : 0 }}
+            >
+              <Bot className="w-8 h-8 text-white" />
+            </motion.div>
+            <div>
+              <h3 className="font-bold text-white text-xl">Sajal's Digital Twin</h3>
+              <p className="text-blue-100 text-sm">
+                {voiceState === 'listening' && '🎙️ Listening...'}
+                {voiceState === 'speaking' && '🔊 Speaking...'}
+                {voiceState === 'processing' && '⚡ Processing...'}
+                {voiceState === 'idle' && '💬 Ready to chat'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <Settings className="w-5 h-5 text-white" />
+            </button>
+            <button
+              onClick={() => setIsMinimized(true)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <Minimize2 className="w-5 h-5 text-white" />
+            </button>
+            <button
+              onClick={() => setMode('landing')}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Settings panel */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="bg-slate-800/50 border-b border-white/10 px-6 py-4 overflow-hidden"
+            >
+              <h4 className="font-medium text-white mb-3">Interaction Mode</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {interactionTypes.map((type) => (
+                  <button
+                    key={type.value}
+                    onClick={() => {
+                      setCurrentInteractionType(type.value)
+                      voiceChat.setInteractionType(type.value)
+                    }}
+                    className={`flex items-center space-x-2 p-2 rounded-lg text-left transition-colors text-sm ${
+                      currentInteractionType === type.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white/5 hover:bg-white/10 text-gray-300'
+                    }`}
+                  >
+                    <span>{type.icon}</span>
+                    <span>{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Messages */}
+        <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
+          <AnimatePresence>
+            {messages.map((message, index) => (
+              <motion.div
+                key={message.id}
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                        : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                    }`}
+                  >
+                    {message.role === 'user' ? (
+                      <User className="w-5 h-5 text-white" />
+                    ) : (
+                      <Bot className="w-5 h-5 text-white" />
+                    )}
+                  </div>
+                  <motion.div
+                    className={`rounded-2xl px-4 py-3 ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
+                        : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
+                    }`}
+                    animate={{
+                      boxShadow:
+                        message.role === 'assistant'
+                          ? [
+                              '0 0 0 rgba(147, 51, 234, 0)',
+                              '0 0 20px rgba(147, 51, 234, 0.3)',
+                              '0 0 0 rgba(147, 51, 234, 0)',
+                            ]
+                          : undefined,
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <p className="text-sm whitespace-pre-line">{message.content}</p>
+                    {message.isVoice && (
+                      <span className="text-xs opacity-70 mt-1 block">🎙️ Voice</span>
+                    )}
+                  </motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex justify-start"
+            >
+              <div className="flex space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+                <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-3 border border-white/10">
+                  <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
+          <form onSubmit={handleSubmit} className="flex items-center space-x-3">
+            <motion.button
+              type="button"
+              onClick={async () => {
+                await unlockAudio()
+                if (voiceChat.isListening) {
+                  voiceChat.stopListening()
+                } else {
+                  voiceChat.startListening()
+                }
+              }}
+              disabled={!isMounted || !voiceChat.isSupported}
+              className={`p-4 rounded-full transition-all ${
+                voiceChat.isListening
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+              } disabled:opacity-50`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {voiceChat.isListening ? (
+                <MicOff className="w-6 h-6 text-white" />
+              ) : (
+                <Mic className="w-6 h-6 text-white" />
+              )}
+            </motion.button>
+
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Ask me anything... or use voice"
+              className="flex-1 px-6 py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all"
+              disabled={isLoading || voiceChat.isListening}
+            />
+
+            <motion.button
+              type="submit"
+              disabled={!inputValue.trim() || isLoading || voiceChat.isListening}
+              className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Send className="w-6 h-6 text-white" />
+            </motion.button>
+          </form>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
