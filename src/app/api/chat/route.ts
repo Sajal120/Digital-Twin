@@ -691,12 +691,16 @@ async function generateEnhancedPortfolioResponse(
       const parallelStart = Date.now()
 
       const [contextResult, multiLangResult] = await Promise.all([
-        // Context enhancement
+        // Context enhancement (with optimization)
         (async () => {
           console.log('📝 Processing with enhanced conversation context...')
-          const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
-            interviewType: interviewType || 'general',
-          })
+          // Add to memory without awaiting (fire and forget for speed)
+          conversationMemory
+            .addMessage(sessionId, 'user', message, {
+              interviewType: interviewType || 'general',
+            })
+            .catch((err) => console.warn('Memory add failed:', err))
+
           const enhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
           console.log(`💡 Context enhancement: ${enhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
           console.log(`🔍 Enhanced query: "${enhanced.enhancedQuery}"`)
@@ -729,27 +733,27 @@ async function generateEnhancedPortfolioResponse(
       console.log(`⚡ Parallel processing completed in ${parallelDuration}ms (saved ~50% time)`)
     }
 
+    // Initialize Upstash Vector client once (reuse for all searches)
+    const vectorIndex = new Index({
+      url: process.env.UPSTASH_VECTOR_REST_URL!,
+      token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
+    })
+
     // Create vector search function with smart filtering
     const vectorSearchFunction = async (query: string): Promise<VectorResult[]> => {
       try {
         console.log(`🔎 Vector search: "${query}"`)
 
-        // Initialize Upstash Vector client
-        const index = new Index({
-          url: process.env.UPSTASH_VECTOR_REST_URL!,
-          token: process.env.UPSTASH_VECTOR_REST_TOKEN!,
-        })
-
-        // Query vector database
-        const vectorResults = await index.query({
+        // Query vector database with pre-initialized client
+        const vectorResults = await vectorIndex.query({
           data: query,
-          topK: phoneOptimized ? 3 : 15, // Lightning-fast phone: only top 3 results
+          topK: phoneOptimized ? 3 : 5, // Optimized: 5 for web, 3 for phone
           includeMetadata: true,
           includeData: true,
         })
 
         // Convert to our VectorResult format
-        const results = vectorResults.map((result) => ({
+        const results = vectorResults.map((result: any) => ({
           score: result.score,
           data: result.data as string,
           metadata: result.metadata,

@@ -85,6 +85,22 @@ export async function enhanceQuery(originalQuery: string): Promise<string> {
     return originalQuery
   }
 
+  // CHECK CACHE for enhanced queries (save 300-500ms per request)
+  try {
+    const { redis } = await import('./redis-cache')
+    const cacheKey = `query_enhance:${originalQuery
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '')}`
+    const cached = await redis.get<string>(cacheKey)
+    if (cached) {
+      console.log('⚡ Query enhancement CACHE HIT (instant)')
+      return cached
+    }
+  } catch (cacheError) {
+    console.warn('Query enhancement cache check failed:', cacheError)
+  }
+
   const enhancementPrompt = `
 You are an interview preparation assistant that improves search queries to find relevant professional information.
 
@@ -122,6 +138,20 @@ Return only the enhanced search query (no explanation):
     }
 
     console.log(`Query enhanced: "${originalQuery}" → "${enhancedQuery}"`)
+
+    // CACHE the enhanced query (1 hour TTL)
+    try {
+      const { redis } = await import('./redis-cache')
+      const cacheKey = `query_enhance:${originalQuery
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, '')}`
+      await redis.setex(cacheKey, 3600, enhancedQuery)
+      console.log('💾 Cached query enhancement')
+    } catch (cacheError) {
+      console.warn('Query enhancement caching failed:', cacheError)
+    }
+
     return enhancedQuery
   } catch (error) {
     console.error('Query enhancement failed:', error)
@@ -480,10 +510,8 @@ export async function agenticRAG(
       INTERVIEW_CONTEXTS[interviewType].name,
     )
 
-    // Add current user message to context
-    conversationMemory.addMessage(sessionId, 'user', userQuestion, {
-      interviewType: INTERVIEW_CONTEXTS[interviewType].name,
-    })
+    // Skip adding to memory here - already done in parallel processing to save time
+    // conversationMemory.addMessage is now called earlier in the flow
 
     // Step 2: Enhance query with conversation context
     // PHONE OPTIMIZATION: Skip Groq context enhancement for speed
