@@ -805,15 +805,25 @@ export async function detectLanguageContext(
 
         // Check for Nepali-specific keywords
         const nepaliKeywords = languagePatterns.ne.keywords
-        const nepaliMatches = nepaliKeywords.filter((keyword) =>
-          messageLower.includes(keyword.toLowerCase()),
-        ).length
+        const nepaliMatches = nepaliKeywords.filter((keyword) => {
+          const keywordLower = keyword.toLowerCase()
+          if (keywordLower.includes(' ')) {
+            return messageLower.includes(keywordLower)
+          }
+          const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
+          return wordBoundaryRegex.test(message)
+        }).length
 
         // Check for Hindi-specific keywords
         const hindiKeywords = languagePatterns.hi.keywords
-        const hindiMatches = hindiKeywords.filter((keyword) =>
-          messageLower.includes(keyword.toLowerCase()),
-        ).length
+        const hindiMatches = hindiKeywords.filter((keyword) => {
+          const keywordLower = keyword.toLowerCase()
+          if (keywordLower.includes(' ')) {
+            return messageLower.includes(keywordLower)
+          }
+          const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
+          return wordBoundaryRegex.test(message)
+        }).length
 
         console.log(`  📊 Nepali keywords: ${nepaliMatches}, Hindi keywords: ${hindiMatches}`)
 
@@ -839,18 +849,32 @@ export async function detectLanguageContext(
         console.log(`🔍 Verifying Deepgram's ${deepgramHint} detection against text patterns...`)
 
         // Count keyword matches for Deepgram's detected language
-        const deepgramMatches = langData.keywords.filter((keyword) =>
-          messageLower.includes(keyword.toLowerCase()),
-        ).length
+        const deepgramMatches = langData.keywords.filter((keyword) => {
+          const keywordLower = keyword.toLowerCase()
+          // For multi-word keywords, use simple substring match
+          if (keywordLower.includes(' ')) {
+            return messageLower.includes(keywordLower)
+          }
+          // For single words, use word boundary regex
+          const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
+          return wordBoundaryRegex.test(message)
+        }).length
 
         // Check if ANY other language has MORE matches
         let strongerMatch = null
         for (const [langCode, otherLangData] of Object.entries(languagePatterns)) {
           if (langCode === mappedLang) continue // Skip Deepgram's language
 
-          const otherMatches = otherLangData.keywords.filter((keyword) =>
-            messageLower.includes(keyword.toLowerCase()),
-          ).length
+          const otherMatches = otherLangData.keywords.filter((keyword) => {
+            const keywordLower = keyword.toLowerCase()
+            // For multi-word keywords, use simple substring match
+            if (keywordLower.includes(' ')) {
+              return messageLower.includes(keywordLower)
+            }
+            // For single words, use word boundary regex
+            const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
+            return wordBoundaryRegex.test(message)
+          }).length
 
           // If another language has significantly more matches, it's likely the correct one
           if (otherMatches > deepgramMatches && otherMatches >= 2) {
@@ -889,9 +913,17 @@ export async function detectLanguageContext(
     }
 
     for (const [langCode, langData] of Object.entries(languagePatterns)) {
-      const matches = langData.keywords.filter((keyword) =>
-        messageLower.includes(keyword.toLowerCase()),
-      ).length
+      const matches = langData.keywords.filter((keyword) => {
+        // Use whole-word matching to avoid false positives (e.g., "me" in "tell me", "el" in "tell")
+        const keywordLower = keyword.toLowerCase()
+        // For multi-word keywords (like "por favor"), use simple substring match
+        if (keywordLower.includes(' ')) {
+          return messageLower.includes(keywordLower)
+        }
+        // For single words, use word boundary regex to match whole words only
+        const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
+        return wordBoundaryRegex.test(message)
+      }).length
 
       if (matches > bestMatch.count) {
         bestMatch = { lang: langCode, count: matches, name: langData.name, flag: langData.flag }
