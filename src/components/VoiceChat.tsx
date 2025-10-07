@@ -260,6 +260,43 @@ export const VoiceChatComponent: React.FC<VoiceChatComponentProps> = ({
         </div>
       )}
 
+      {/* Audio Detection Status - PROMINENT DISPLAY */}
+      {voiceChat.isListening && (
+        <div className="p-4 border-t border-b border-gray-200">
+          <div className="flex flex-col items-center justify-center space-y-3">
+            {/* Main status */}
+            <div className="text-lg font-bold text-red-600 animate-pulse">
+              🎤 LISTENING - SPEAK NOW
+            </div>
+
+            {/* Audio detection indicators - LARGE & CLEAR */}
+            <div className="flex items-center justify-center space-x-4 text-base font-semibold">
+              {voiceChat.isAudioCaptureActive ? (
+                <div className="px-4 py-2 rounded-lg border-2 border-green-500 text-green-600">
+                  🔊 AUDIO ACTIVE ✅
+                </div>
+              ) : (
+                <div className="px-4 py-2 rounded-lg border-2 border-orange-500 text-orange-600 animate-pulse">
+                  ⚠️ NO AUDIO DETECTED ❌
+                </div>
+              )}
+
+              {voiceChat.isSoundDetected && (
+                <div className="px-3 py-1 rounded-lg border border-blue-500 text-blue-600 animate-pulse">
+                  👂 SOUND DETECTED
+                </div>
+              )}
+
+              {voiceChat.isSpeechDetected && (
+                <div className="px-3 py-1 rounded-lg border border-purple-500 text-purple-600 animate-pulse">
+                  🗣️ SPEECH RECOGNIZED
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="p-4 border-t bg-gray-50 rounded-b-lg">
         {/* Text Input */}
@@ -326,26 +363,6 @@ export const VoiceChatComponent: React.FC<VoiceChatComponentProps> = ({
           {/* Status and controls */}
           <div className="flex items-center space-x-3 text-sm text-gray-600">
             {!voiceChat.isSupported && <span className="text-red-600">Voice not supported</span>}
-
-            {voiceChat.isListening && (
-              <div className="flex flex-col items-end space-y-1">
-                <span className="text-red-600 font-medium animate-pulse">🎤 Listening...</span>
-                {/* Audio detection indicators */}
-                <div className="flex items-center space-x-2 text-xs">
-                  {voiceChat.isAudioCaptureActive ? (
-                    <span className="text-green-600 font-semibold">🔊 Audio Active</span>
-                  ) : (
-                    <span className="text-orange-500 font-semibold">⚠️ No Audio Detected</span>
-                  )}
-                  {voiceChat.isSoundDetected && (
-                    <span className="text-blue-600 animate-pulse">👂 Sound!</span>
-                  )}
-                  {voiceChat.isSpeechDetected && (
-                    <span className="text-purple-600 animate-pulse">🗣️ Speech!</span>
-                  )}
-                </div>
-              </div>
-            )}
 
             {voiceChat.messages.length > 0 && (
               <button
