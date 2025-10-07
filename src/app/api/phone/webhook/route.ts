@@ -225,14 +225,14 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Play>${audioUrl}</Play>
-    <Pause length="1"/>
+    <Pause length="0.3"/>
     <Record 
       action="/api/phone/handle-speech"
       method="POST"
-      timeout="3"
+      timeout="1.5"
       finishOnKey="#"
       maxLength="30"
-      playBeep="true"
+      playBeep="false"
       transcribe="false"
       recordingStatusCallback="/api/phone/handle-speech"
       recordingStatusCallbackMethod="POST"
@@ -243,14 +243,14 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>
-  <Pause length="1"/>
+  <Pause length="0.3"/>
   <Record 
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="3"
+    timeout="1.5"
     finishOnKey="#"
     maxLength="30"
-    playBeep="true"
+    playBeep="false"
     transcribe="false"
     recordingStatusCallback="/api/phone/handle-speech"
     recordingStatusCallbackMethod="POST"

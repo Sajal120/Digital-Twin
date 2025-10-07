@@ -242,14 +242,14 @@ export async function POST(request: NextRequest) {
           const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
-  <Pause length="1"/>
+  <Pause length="0.3"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="3"
+    timeout="1.5"
     finishOnKey="#"
     maxLength="30"
-    playBeep="true"
+    playBeep="false"
     transcribe="false"
     recordingStatusCallback="/api/phone/handle-speech"
     recordingStatusCallbackMethod="POST"
@@ -273,14 +273,14 @@ export async function POST(request: NextRequest) {
   <Say voice="Polly.Matthew-Neural" language="en-US">
     I didn't catch that. Please speak after the beep.
   </Say>
-  <Pause length="1"/>
+  <Pause length="0.3"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="3"
+    timeout="1.5"
     finishOnKey="#"
     maxLength="30"
-    playBeep="true"
+    playBeep="false"
     transcribe="false"
     recordingStatusCallback="/api/phone/handle-speech"
     recordingStatusCallbackMethod="POST"
@@ -391,14 +391,14 @@ export async function POST(request: NextRequest) {
   <Say voice="Polly.Matthew-Neural" language="en-US">
     I'm having technical difficulties. Let me try again. Please speak after the beep.
   </Say>
-  <Pause length="1"/>
+  <Pause length="0.3"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="3"
+    timeout="1.5"
     finishOnKey="#"
     maxLength="30"
-    playBeep="true"
+    playBeep="false"
     transcribe="false"
     recordingStatusCallback="/api/phone/handle-speech"
     recordingStatusCallbackMethod="POST"
@@ -501,14 +501,14 @@ export async function POST(request: NextRequest) {
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
-  <Pause length="1"/>
+  <Pause length="0.3"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="3"
+    timeout="1.5"
     finishOnKey="#"
     maxLength="30"
-    playBeep="true"
+    playBeep="false"
     transcribe="false"
     recordingStatusCallback="/api/phone/handle-speech"
     recordingStatusCallbackMethod="POST"
