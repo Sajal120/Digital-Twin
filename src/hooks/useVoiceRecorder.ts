@@ -39,6 +39,20 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     maxRetries: 3,
   })
 
+  // Detect mobile devices and iOS
+  const isMobile = useRef<boolean>(false)
+  const isIOS = useRef<boolean>(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      isMobile.current = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      )
+      isIOS.current = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      console.log('Mobile detection:', { isMobile: isMobile.current, isIOS: isIOS.current })
+    }
+  }, [])
+
   const recognitionRef = useRef<any>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -168,14 +182,22 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
   // Initialize media recorder for audio capture
   const setupMediaRecorder = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      console.log('📱 Requesting microphone access...')
+
+      // Mobile-optimized audio constraints
+      const audioConstraints: MediaStreamConstraints = {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: 44100,
+          // Mobile-specific optimizations
+          sampleRate: isMobile.current ? 16000 : 44100, // Lower sample rate for mobile
+          channelCount: 1, // Mono for better mobile performance
         },
-      })
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia(audioConstraints)
+      console.log('✅ Microphone access granted')
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -197,8 +219,27 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
       mediaRecorderRef.current = mediaRecorder
       return true
-    } catch (error) {
-      const errorMessage = `Microphone access denied: ${error}`
+    } catch (error: any) {
+      let errorMessage = 'Microphone access denied'
+
+      // Mobile-specific error messages
+      if (isMobile.current) {
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+          errorMessage =
+            '🎤 Microphone permission denied. Please:\n1. Go to your phone Settings\n2. Find this website\n3. Enable Microphone access'
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = '🎤 No microphone found on your device'
+        } else if (error.name === 'NotReadableError') {
+          errorMessage =
+            '🎤 Microphone is being used by another app. Please close other apps and try again.'
+        } else if (isIOS.current) {
+          errorMessage = '🎤 iOS: Please allow microphone access in Settings > Safari > Microphone'
+        }
+      } else {
+        errorMessage = `Microphone access error: ${error.message || error}`
+      }
+
+      console.error('❌ Microphone error:', error)
       setState((prev) => ({ ...prev, error: errorMessage }))
       onError?.(errorMessage)
       return false
@@ -207,14 +248,31 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
   const startRecording = useCallback(async () => {
     if (!state.isSupported) {
-      onError?.('Speech recognition not supported')
+      const message = isMobile.current
+        ? '🎤 Voice input not supported on this mobile browser. Please use Chrome or Safari.'
+        : 'Speech recognition not supported'
+      onError?.(message)
       return false
     }
 
-    // Setup media recorder if needed
+    console.log('🎙️ Starting recording...', { isMobile: isMobile.current, isIOS: isIOS.current })
+
+    // iOS-specific: Check if we're in a secure context (HTTPS)
+    if (isIOS.current && location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      const errorMessage = '🔒 HTTPS required for microphone on iOS. Please use https://'
+      setState((prev) => ({ ...prev, error: errorMessage }))
+      onError?.(errorMessage)
+      return false
+    }
+
+    // Setup media recorder if needed (requests microphone permission)
     if (!mediaRecorderRef.current) {
+      console.log('📱 Setting up media recorder...')
       const success = await setupMediaRecorder()
-      if (!success) return false
+      if (!success) {
+        console.error('❌ Failed to setup media recorder')
+        return false
+      }
     }
 
     try {
@@ -227,18 +285,32 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         retryCount: 0,
       }))
 
+      console.log('🎤 Starting speech recognition...')
       // Start speech recognition
       recognitionRef.current?.start()
 
       // Start audio recording
       if (mediaRecorderRef.current?.state === 'inactive') {
         mediaRecorderRef.current.start(1000) // Collect data every second
+        console.log('🔴 Recording started')
       }
 
       return true
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Start recording error:', error)
+
+      // Handle iOS-specific errors
+      if (isIOS.current && error.message?.includes('not-allowed')) {
+        const iosError =
+          '🎤 Microphone blocked on iOS. Go to Settings > Safari > Microphone and allow access.'
+        setState((prev) => ({ ...prev, error: iosError }))
+        onError?.(iosError)
+        return false
+      }
+
       // Handle automatic retry for certain errors
       if (state.retryCount < state.maxRetries) {
+        console.log(`🔄 Retrying... (${state.retryCount + 1}/${state.maxRetries})`)
         setState((prev) => ({ ...prev, retryCount: prev.retryCount + 1 }))
 
         // Retry after a short delay
@@ -249,7 +321,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         return true
       }
 
-      const errorMessage = `Failed to start recording after ${state.maxRetries} attempts: ${error}`
+      const errorMessage = `Failed to start recording after ${state.maxRetries} attempts: ${error.message || error}`
       setState((prev) => ({ ...prev, error: errorMessage, retryCount: 0 }))
       onError?.(errorMessage)
       return false
