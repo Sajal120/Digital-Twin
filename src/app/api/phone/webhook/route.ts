@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         "I'm sorry, there was a technical issue. Please try calling again in a moment."
 
       const elevenlabsResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID}`,
         {
           method: 'POST',
           headers: {

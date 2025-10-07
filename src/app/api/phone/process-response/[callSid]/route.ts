@@ -110,7 +110,7 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     const elevenLabsStartTime = Date.now()
 
     const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID}`,
       {
         method: 'POST',
         headers: {

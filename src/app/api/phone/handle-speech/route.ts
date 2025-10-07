@@ -323,14 +323,12 @@ export async function POST(request: NextRequest) {
     await storeSpeech(callSid, speechResult)
 
     // Return thinking sounds IMMEDIATELY (AI will process after redirect)
-    // Natural slow "Hmmmmmmmmmmm... hmmmmmm... hmmm" with YOUR voice
-    // Plays 3x to cover AI processing time (~6-9s total)
+    // Natural varied thinking: "Hmmmmmmmmmmmm... hmm... hmmmmmmm" with YOUR male voice
+    // Plays 2x in parallel to cover entire AI processing time (~8-10s)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
     const thinkingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${THINKING_SOUND_URL}</Play>
-  <Play>${THINKING_SOUND_URL}</Play>
-  <Play>${THINKING_SOUND_URL}</Play>
+  <Play loop="2">${THINKING_SOUND_URL}</Play>
   <Redirect method="POST">${baseUrl}/api/phone/process-response/${callSid}</Redirect>
 </Response>`
 
