@@ -712,7 +712,7 @@ async function generateEnhancedPortfolioResponse(
         // Query vector database
         const vectorResults = await index.query({
           data: query,
-          topK: phoneOptimized ? 5 : 15, // Ultra-fast phone: only top 5 results
+          topK: phoneOptimized ? 3 : 15, // Lightning-fast phone: only top 3 results
           includeMetadata: true,
           includeData: true,
         })
@@ -864,7 +864,7 @@ async function generateEnhancedPortfolioResponse(
     })
 
     // Generate multi-language response if needed (with timeout for phone calls)
-    const multiLangTimeout = phoneOptimized ? 3000 : 10000 // 3s for phone, 10s for web
+    const multiLangTimeout = phoneOptimized ? 1500 : 10000 // 1.5s for phone (ultra-fast!), 10s for web
     console.log(`⏱️ Multi-lang timeout: ${multiLangTimeout}ms (phoneOptimized=${phoneOptimized})`)
     let multiLanguageResponse
     try {

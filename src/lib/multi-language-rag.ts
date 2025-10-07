@@ -1048,18 +1048,18 @@ Reply in natural ${langName}:
 Response:`
 
       try {
-        // AGGRESSIVE TIMEOUT for translation (2s max!)
+        // ULTRA-AGGRESSIVE TIMEOUT for translation (1s max!)
         const translationPromise = groq.chat.completions.create({
           model: 'llama-3.1-8b-instant', // Fast model
           messages: [{ role: 'user', content: responsePrompt }],
-          max_tokens: 100, // Reduced from 150 for speed
-          temperature: 0.5, // Lower for faster generation
+          max_tokens: 50, // Ultra-brief for phone speed
+          temperature: 0.3, // Lower for faster generation
         })
 
         const response = await Promise.race([
           translationPromise,
           new Promise<any>((_, reject) =>
-            setTimeout(() => reject(new Error('Groq translation timeout 2s')), 2000),
+            setTimeout(() => reject(new Error('Groq translation timeout 1s')), 1000),
           ),
         ])
 
