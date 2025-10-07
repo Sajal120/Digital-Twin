@@ -447,6 +447,7 @@ export async function agenticRAG(
   interviewType: InterviewContextType = 'general',
   sessionId: string = 'default-session',
   detectedLanguage?: string,
+  phoneOptimized: boolean = false,
 ): Promise<EnhancedRAGResult> {
   const startTime = Date.now()
   const queryId = `${sessionId}-${Date.now()}`
@@ -483,6 +484,14 @@ export async function agenticRAG(
 
     console.log(`🎯 Decision: ${searchDecision.action} (Confidence: ${searchDecision.confidence}%)`)
     console.log(`💭 Reasoning: ${searchDecision.reasoning}`)
+
+    // PHONE OPTIMIZATION: Skip expensive DIRECT (Groq LLM) responses
+    // Force all phone queries to use SEARCH (vector lookup) which is 2x faster
+    if (phoneOptimized && searchDecision.action === 'DIRECT') {
+      console.log('📞 PHONE OPTIMIZATION: Forcing SEARCH instead of DIRECT (skip Groq)')
+      searchDecision.action = 'SEARCH'
+      searchDecision.searchQuery = userQuestion
+    }
 
     // CRITICAL: Log if professional background question is being answered DIRECT instead of SEARCH
     // Support multi-language (English, Hindi, Nepali)

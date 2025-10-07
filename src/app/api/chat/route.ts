@@ -851,6 +851,7 @@ async function generateEnhancedPortfolioResponse(
           interviewType || 'general',
           sessionId,
           multiLanguageResult.languageContext.detectedLanguage,
+          phoneOptimized, // Pass phone optimization flag
         )
         result = agenticResult
         ragPatternUsed = 'standard_agentic'
