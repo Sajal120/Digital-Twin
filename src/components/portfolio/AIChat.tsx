@@ -144,7 +144,7 @@ export function AIChat() {
       id: '1',
       content: session?.user
         ? `Hi ${session.user.name}! I'm Sajal, and I'm excited to chat with you about my background and experience. Feel free to ask me anything about my work, skills, projects, or how we might collaborate together. You can type your questions or use the voice feature to have a natural conversation. What would you like to know?`
-        : "Hi! I'm Sajal, and I'm excited to chat with you about my background and experience. Sign in with Google for a personalized experience, or feel free to ask me anything about my work, skills, projects, or how we might collaborate together. You can type your questions or use the voice feature to have a natural conversation. What would you like to know?",
+        : "Hi! I'm Sajal, and I'm excited to chat with you about my background and experience. Feel free to ask me anything about my work, skills, projects, or how we might collaborate together. You can type your questions or use the voice feature to have a natural conversation. What would you like to know?",
       role: 'assistant',
       timestamp: new Date('2024-01-01T12:00:00'), // Fixed timestamp to prevent hydration mismatch
     },
@@ -361,18 +361,6 @@ export function AIChat() {
                 <strong>
                   {interactionTypes.find((t) => t.value === currentInteractionType)?.label}
                 </strong>
-              </div>
-            </div>
-          )}
-
-          {/* Auth Bar - Show when not authenticated */}
-          {status === 'unauthenticated' && (
-            <div className="bg-blue-50 border-b px-4 py-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-blue-700">
-                  Sign in with Google for a personalized chat experience
-                </p>
-                <GoogleAuthButton callbackUrl="/#ai-chat" className="text-xs" />
               </div>
             </div>
           )}

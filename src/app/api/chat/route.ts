@@ -413,25 +413,25 @@ I'm here to help once we get this sorted out! 😊`,
         action: 'book_meeting_calcom',
         response: `📅 I'd be happy to schedule a meeting with you!
 
-I use **Cal.com** for easy, hassle-free booking - no authentication needed!
+I use Cal.com for easy, hassle-free booking - no authentication needed!
 
-**📆 Book directly here:**
-🔗 https://cal.com/sajal-basnet-9820tk
+📆 Book directly here:
+[Click to book on Cal.com](https://cal.com/sajal-basnet-9820tk)
 
-**Available meeting types:**
-• **30 Min Meeting** - Quick consultation or discussion
-• **15 Min Meeting** - Brief Q&A or introduction
-• **Secret Meeting** - Special project discussions
+Available meeting types:
+• 30 Min Meeting - Quick consultation or discussion
+• 15 Min Meeting - Brief Q&A or introduction
+• Secret Meeting - Special project discussions
 
-**What we can discuss:**
-💼 **Projects** - Your ideas and technical requirements
-🤝 **Collaboration** - Partnership opportunities
-💡 **Consultation** - Technical advice and guidance
-🚀 **Career** - My experience and background
+What we can discuss:
+💼 Projects - Your ideas and technical requirements
+🤝 Collaboration - Partnership opportunities
+💡 Consultation - Technical advice and guidance
+🚀 Career - My experience and background
 
-**Google Meet link** will be automatically generated when you book!
+Google Meet link will be automatically generated when you book!
 
-Click the link above to choose a time that works for you. Looking forward to connecting! 🎯`,
+Looking forward to connecting! 🎯`,
         calcomUrl: 'https://cal.com/sajal-basnet-9820tk',
       }
     }
