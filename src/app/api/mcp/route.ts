@@ -66,7 +66,7 @@ const digitalTwinTools = [
 ] as const
 
 // Handle digital twin tool calls with enhanced RAG support
-async function handleDigitalTwinTool(toolName: string, parameters: any) {
+async function handleDigitalTwinTool(toolName: string, parameters: any, request: NextRequest) {
   console.log(`🔧 Handling MCP tool: ${toolName} with parameters:`, parameters)
 
   if (toolName === 'ask_digital_twin') {
@@ -92,13 +92,19 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
       console.log(`📞 Phone optimization: ${isPhoneCall ? 'ENABLED ⚡' : 'disabled'}`)
 
       // Determine the base URL for the Chat API
-      // On Vercel, use relative URL for internal server-to-server calls (avoids routing/auth issues)
+      // On Vercel, use the same host as the incoming request
       // In development, use localhost
-      const baseUrl = process.env.VERCEL_URL
-        ? '' // Empty string for relative URL on Vercel
-        : process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      let baseUrl: string
+      if (process.env.VERCEL_URL) {
+        // Get the host from the incoming request to use the same deployment URL
+        const host = request.headers.get('host') || process.env.VERCEL_URL
+        const protocol = host.includes('localhost') ? 'http' : 'https'
+        baseUrl = `${protocol}://${host}`
+      } else {
+        baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      }
 
-      console.log(`🔗 Calling Chat API at: ${baseUrl || '(relative)'}/api/chat`)
+      console.log(`🔗 Calling Chat API at: ${baseUrl}/api/chat`)
 
       // Call enhanced chat API
       const chatResponse = await fetch(`${baseUrl}/api/chat`, {
@@ -166,10 +172,15 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
       console.log(`📊 Comparing RAG approaches for: "${question}"`)
 
       // Determine the base URL (same as above)
-      // On Vercel, use relative URL for internal server-to-server calls
-      const baseUrl = process.env.VERCEL_URL
-        ? '' // Empty string for relative URL on Vercel
-        : process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      // On Vercel, use the same host as the incoming request
+      let baseUrl: string
+      if (process.env.VERCEL_URL) {
+        const host = request.headers.get('host') || process.env.VERCEL_URL
+        const protocol = host.includes('localhost') ? 'http' : 'https'
+        baseUrl = `${protocol}://${host}`
+      } else {
+        baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+      }
 
       // Call comparison API
       const comparisonResponse = await fetch(`${baseUrl}/api/rag-compare`, {
@@ -279,7 +290,7 @@ export async function POST(request: NextRequest) {
         console.log(`🔧 MCP Tool called: ${toolName}`)
 
         try {
-          const result = await handleDigitalTwinTool(toolName, parameters)
+          const result = await handleDigitalTwinTool(toolName, parameters, request)
           return NextResponse.json({
             jsonrpc: '2.0',
             id: body.id,
