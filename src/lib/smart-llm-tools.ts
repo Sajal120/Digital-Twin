@@ -39,8 +39,8 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
       username: 'GitHub username (default: Sajal120)',
       limit: 'Number of repositories to fetch (default: 6)',
     },
-    execute: async (params) => {
-      const limit = params.limit || 6
+    execute: async (params = {}) => {
+      const limit = params?.limit || 6
       return await githubService.generateRepositoriesResponse(limit)
     },
   },
@@ -51,7 +51,7 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     parameters: {
       username: 'GitHub username (default: Sajal120)',
     },
-    execute: async (params) => {
+    execute: async (params = {}) => {
       return await githubService.generateProfileResponse()
     },
   },
@@ -62,8 +62,8 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     parameters: {
       query: 'Technology or keyword to search for (e.g., "python", "typescript")',
     },
-    execute: async (params) => {
-      const query = params.query || ''
+    execute: async (params = {}) => {
+      const query = params?.query || ''
       return await githubService.generateProjectResponse(query)
     },
   },
@@ -73,7 +73,7 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     description:
       'Fetch LinkedIn profile information including professional summary, stats, and endorsements',
     parameters: {},
-    execute: async (params) => {
+    execute: async (params = {}) => {
       return await linkedinService.generateProfileResponse()
     },
   },
@@ -82,7 +82,7 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     name: 'linkedin_experience',
     description: 'Fetch detailed work experience and career history from LinkedIn',
     parameters: {},
-    execute: async (params) => {
+    execute: async (params = {}) => {
       return await linkedinService.generateExperienceResponse()
     },
   },
@@ -91,7 +91,7 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     name: 'linkedin_skills',
     description: 'Fetch professional skills, endorsements, and recommendations from LinkedIn',
     parameters: {},
-    execute: async (params) => {
+    execute: async (params = {}) => {
       return await linkedinService.generateSkillsResponse()
     },
   },
@@ -100,7 +100,7 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     name: 'linkedin_certificates',
     description: 'Fetch certificates, certifications, and credentials from LinkedIn profile',
     parameters: {},
-    execute: async (params) => {
+    execute: async (params = {}) => {
       return await linkedinService.generateCertificatesResponse()
     },
   },
@@ -111,8 +111,8 @@ export const EXTERNAL_TOOLS: Record<string, ExternalTool> = {
     parameters: {
       query: 'Company name, skill, or experience to search for (e.g., "Aubot", "Python")',
     },
-    execute: async (params) => {
-      const query = params.query || ''
+    execute: async (params = {}) => {
+      const query = params?.query || ''
       return await linkedinService.searchExperience(query)
     },
   },
@@ -172,10 +172,12 @@ export async function smartLLMWithTools(
         const tool = tools[toolCall.tool as keyof typeof tools]
         if (tool) {
           try {
-            const result = await tool.execute(toolCall.params)
+            // Ensure params is always an object, never undefined
+            const safeParams = toolCall.params || {}
+            const result = await tool.execute(safeParams)
             toolsCalled.push({
               tool: toolCall.tool,
-              params: toolCall.params,
+              params: safeParams,
               result: result,
               success: true,
             })
@@ -185,7 +187,7 @@ export async function smartLLMWithTools(
             console.error(`❌ ${toolCall.tool} failed:`, error)
             toolsCalled.push({
               tool: toolCall.tool,
-              params: toolCall.params,
+              params: toolCall.params || {},
               result: `Error: ${error}`,
               success: false,
             })
