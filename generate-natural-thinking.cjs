@@ -3,10 +3,10 @@ const fs = require('fs').promises
 const { put } = require('@vercel/blob')
 
 async function generateNaturalThinking() {
-  console.log('🎵 Generating natural thinking sound with ElevenLabs...')
+  console.log('🎵 Generating natural thinking sound with YOUR ElevenLabs voice...')
 
   const text = 'Hmmmmm... hmm, hmm' // Natural varied pattern
-  const voiceId = 'pFZP5JQG7iQjIQuC4Bku' // YOUR cloned voice
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || 'WcXkU7PbsO0uKKBdWJrG' // YOUR actual cloned voice from .env
 
   const options = {
     hostname: 'api.elevenlabs.io',
@@ -58,6 +58,7 @@ async function generateNaturalThinking() {
               contentType: 'audio/mpeg',
               cacheControlMaxAge: 31536000,
               token: process.env.BLOB_READ_WRITE_TOKEN,
+              addRandomSuffix: false,
             })
             console.log('✅ Uploaded:', blob.url)
             resolve(blob.url)

@@ -85,36 +85,33 @@ export function DigitalTwinExperience() {
       <ResumePanel />
       <ContactTransform />
 
-      {/* Floating Chat Icon - appears when chat is hidden and we're viewing content */}
-      {!activeComponents.chat &&
-        (currentMode === 'projects' ||
-          currentMode === 'skills' ||
-          currentMode === 'resume' ||
-          currentMode === 'about' ||
-          currentMode === 'contact') && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => {
-              // Restore chat with same history
-              setMode('chat')
-              toggleComponent('chat', true)
-              // Hide the current content overlay
-              toggleComponent('projects', false)
-              toggleComponent('skills', false)
-              toggleComponent('resume', false)
-              toggleComponent('about', false)
-              toggleComponent('contact', false)
-            }}
-            className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"
-            title="Back to Chat"
-          >
-            <Bot className="w-8 h-8 text-white" />
-          </motion.button>
-        )}
+      {/* Floating Chat Icon - appears when viewing content overlays */}
+      {(activeComponents.projects ||
+        activeComponents.skills ||
+        activeComponents.resume ||
+        activeComponents.about ||
+        activeComponents.contact) && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0, opacity: 0 }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => {
+            // Go back to pure chat mode and hide all overlays
+            setMode('chat')
+            toggleComponent('projects', false)
+            toggleComponent('skills', false)
+            toggleComponent('resume', false)
+            toggleComponent('about', false)
+            toggleComponent('contact', false)
+          }}
+          className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"
+          title="Back to Chat"
+        >
+          <Bot className="w-8 h-8 text-white" />
+        </motion.button>
+      )}
     </div>
   )
 }

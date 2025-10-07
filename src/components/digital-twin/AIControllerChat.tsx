@@ -34,9 +34,9 @@ export function AIControllerChat() {
   const [isLoading, setIsLoading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [currentInteractionType, setCurrentInteractionType] = useState<InteractionType>('general')
-  const [isMinimized, setIsMinimized] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Get context first
   const {
     setMode,
     setVoiceState,
@@ -46,7 +46,35 @@ export function AIControllerChat() {
     voiceState,
     chatMode,
     setChatMode,
+    toggleComponent,
   } = useAIControl()
+
+  // Separate message histories for each chat mode
+  const [aiControlMessages, setAiControlMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: session?.user
+        ? `Hi ${session.user.name}! I'm Sajal's Digital Twin in AI Control mode. Ask me to show you projects, skills, resume, or anything else - I'll transform the interface for you!`
+        : "Hi! I'm Sajal's Digital Twin in AI Control mode. Ask me to show you projects, skills, resume, or anything else - I'll transform the interface for you!",
+      role: 'assistant',
+      timestamp: new Date(),
+    },
+  ])
+
+  const [plainChatMessages, setPlainChatMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: session?.user
+        ? `Hi ${session.user.name}! I'm Sajal's Digital Twin. Let's have a conversation about my experience, skills, or anything else you'd like to know!`
+        : "Hi! I'm Sajal's Digital Twin. Let's have a conversation about my experience, skills, or anything else you'd like to know!",
+      role: 'assistant',
+      timestamp: new Date(),
+    },
+  ])
+
+  // Use the appropriate messages based on current chat mode
+  const messages = chatMode === 'ai_control' ? aiControlMessages : plainChatMessages
+  const setMessages = chatMode === 'ai_control' ? setAiControlMessages : setPlainChatMessages
 
   // Voice chat integration
   const voiceChat = useVoiceChat({
@@ -67,17 +95,6 @@ export function AIControllerChat() {
       }
     },
   })
-
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: session?.user
-        ? `Hi ${session.user.name}! I'm Sajal's Digital Twin. I can show you projects, discuss skills, share my resume, or talk about my background. What would you like to explore?`
-        : "Hi! I'm Sajal's Digital Twin. I can show you projects, discuss skills, share my resume, or talk about my background. What would you like to explore?",
-      role: 'assistant',
-      timestamp: new Date(),
-    },
-  ])
 
   useEffect(() => {
     setIsMounted(true)
@@ -138,7 +155,10 @@ export function AIControllerChat() {
       const intent = detectIntent(content)
       if (intent) {
         console.log('🎯 Detected intent from AI:', intent)
-        setTimeout(() => processAIIntent(intent), 500)
+        // Auto-hide chat and show content in AI Control mode
+        setTimeout(() => {
+          processAIIntent(intent)
+        }, 500)
       }
 
       // Set emotional tone based on content
@@ -267,21 +287,6 @@ export function AIControllerChat() {
     window.location.href = 'tel:+61278044137'
   }
 
-  if (isMinimized) {
-    return (
-      <motion.button
-        onClick={() => setIsMinimized(false)}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-      >
-        <Bot className="w-8 h-8 text-white" />
-      </motion.button>
-    )
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -364,12 +369,6 @@ export function AIControllerChat() {
               </button>
             </div>
 
-            <button
-              onClick={() => setIsMinimized(true)}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <Minimize2 className="w-5 h-5 text-white" />
-            </button>
             <button
               onClick={() => setMode('landing')}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
