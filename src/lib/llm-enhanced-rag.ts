@@ -146,6 +146,7 @@ export async function formatForInterview(
   originalQuestion: string,
   interviewContext?: string,
   detectedLanguage?: string,
+  phoneOptimized: boolean = false,
 ): Promise<string> {
   console.log(`🎯 formatForInterview called with language: ${detectedLanguage || 'not provided'}`)
   console.log(`📝 Original question: "${originalQuestion}"`)
@@ -254,8 +255,8 @@ ${langName ? `Answer in ${langName} now:` : 'Response:'}
         { role: 'user', content: formattingPrompt },
       ],
       model: 'llama-3.1-8b-instant',
-      temperature: 0.7, // Slightly higher for better multi-language generation
-      max_tokens: 80, // Increased for non-English responses
+      temperature: phoneOptimized ? 0.5 : 0.7, // Lower temp for phone = faster
+      max_tokens: phoneOptimized ? 60 : 80, // Fewer tokens for phone = faster
     })
 
     const formattedResponse = completion.choices[0]?.message?.content?.trim()
@@ -314,47 +315,17 @@ export async function enhancedRAGQuery(
     metrics.vectorSearchTime = Date.now() - searchStart
 
     // Step 3: Format results for interview context
-    // PHONE OPTIMIZATION: Skip Groq formatting but give complete answers
-    let interviewResponse: string
-    if (phoneOptimized) {
-      console.log('📞 PHONE FAST: Using direct RAG results (no Groq formatting)')
-      const formatStart = Date.now()
-      // Use top 3 results and extract complete information
-      const relevantResults = vectorResults
-        .slice(0, 3) // Top 3 most relevant
-        .map((r) => r.data || r.metadata?.content || r.metadata?.text || r.metadata?.fullText || '')
-        .filter(Boolean)
-
-      if (relevantResults.length > 0) {
-        // Combine results intelligently - full answer but concise
-        interviewResponse = relevantResults.join(' ').trim()
-        // Limit to reasonable length for phone (500 chars = ~75 words)
-        if (interviewResponse.length > 500) {
-          interviewResponse = interviewResponse.substring(0, 500).trim()
-          // Try to end at a sentence
-          const lastPeriod = interviewResponse.lastIndexOf('.')
-          const lastQuestion = interviewResponse.lastIndexOf('?')
-          const lastExclaim = interviewResponse.lastIndexOf('!')
-          const lastSentence = Math.max(lastPeriod, lastQuestion, lastExclaim)
-          if (lastSentence > 300) {
-            interviewResponse = interviewResponse.substring(0, lastSentence + 1)
-          }
-        }
-      } else {
-        interviewResponse = "I don't have specific information about that in my knowledge base."
-      }
-      metrics.responseFormattingTime = Date.now() - formatStart
-    } else {
-      console.log('✨ Formatting response for interview...')
-      const formatStart = Date.now()
-      interviewResponse = await formatForInterview(
-        vectorResults,
-        userQuestion,
-        interviewContext,
-        detectedLanguage,
-      )
-      metrics.responseFormattingTime = Date.now() - formatStart
-    }
+    // PHONE OPTIMIZATION: Use Groq but optimized for speed
+    console.log('✨ Formatting response for interview...')
+    const formatStart = Date.now()
+    const interviewResponse = await formatForInterview(
+      vectorResults,
+      userQuestion,
+      interviewContext,
+      detectedLanguage,
+      phoneOptimized, // Pass phone flag for brief formatting
+    )
+    metrics.responseFormattingTime = Date.now() - formatStart
 
     metrics.totalTime = Date.now() - startTime
 
