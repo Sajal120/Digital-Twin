@@ -4,8 +4,13 @@ import { voiceService } from '../../../../services/voiceService'
 import { put } from '@vercel/blob'
 import { createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
 
-// DEEPGRAM VERSION 2.8 - DEDUPLICATION + BLOB OPTIMIZATION
-const VERSION = 'v2.8-dedup-blob-opt-oct7'
+// DEEPGRAM VERSION 2.9 - THINKING ACKNOWLEDGMENT
+const VERSION = 'v2.9-thinking-ack-oct7'
+
+// Pre-generated "thinking" sound (just "Hmm" - works in all languages)
+// Plays immediately while AI processes, making wait feel natural
+const THINKING_SOUND_URL =
+  'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_hmm.mp3'
 
 // In-memory deduplication store (prevents duplicate webhook processing)
 // Key: callSid + recordingUrl hash, Value: timestamp
@@ -242,11 +247,11 @@ export async function POST(request: NextRequest) {
           const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${audioUrl}</Play>
-  <Pause length="0.3"/>
+  <Pause length="1"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="1.5"
+    timeout="2"
     finishOnKey="#"
     maxLength="30"
     playBeep="false"
@@ -273,11 +278,11 @@ export async function POST(request: NextRequest) {
   <Say voice="Polly.Matthew-Neural" language="en-US">
     I didn't catch that. Please speak after the beep.
   </Say>
-  <Pause length="0.3"/>
+  <Pause length="1"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="1.5"
+    timeout="2"
     finishOnKey="#"
     maxLength="30"
     playBeep="false"
@@ -504,15 +509,17 @@ export async function POST(request: NextRequest) {
 
       console.log('🏗️ BUILDING TwiML response...')
 
-      // Return TwiML with audio and record next input
+      // Return TwiML with thinking sound + AI response + record next input
+      // The thinking sound played during processing, now play the answer
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Play>${THINKING_SOUND_URL}</Play>
   <Play>${audioUrl}</Play>
-  <Pause length="0.3"/>
+  <Pause length="1"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="1.5"
+    timeout="2"
     finishOnKey="#"
     maxLength="30"
     playBeep="false"
@@ -545,9 +552,7 @@ export async function POST(request: NextRequest) {
     // Return error TwiML
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew-Neural" language="en-US">
-    Sorry, something went wrong. Please try again later.
-  </Say>
+  <Say voice="Polly.Matthew-Neural" language="en-US">Sorry, something went wrong. Please try again later.</Say>
   <Hangup/>
 </Response>`
 
