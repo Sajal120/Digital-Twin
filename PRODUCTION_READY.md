@@ -25,19 +25,21 @@ Based on your Vercel setup, you have the following environment variables configu
 ### Issues Fixed:
 1. ✅ **SSR Window Error** - Fixed by:
    - Removing `window` object references during SSR
-   - Using dynamic imports with `ssr: false`
-   - Adding client-side checks with `useEffect`
-   - Created `DigitalTwinWrapper` component
+   - Moving window-dependent code to `useEffect` hooks
+   - Using percentage-based positioning instead of pixel values
+   - All window references are now in event handlers only (safe for SSR)
 
-2. ✅ **Client-Only Rendering** - Fixed by:
-   - Using `dynamic` import from Next.js
-   - Disabling SSR for Digital Twin components
-   - Proper `'use client'` directives
+2. ✅ **Next.js 15 Compatibility** - Fixed by:
+   - Removing `ssr: false` from dynamic imports (not allowed in Server Components)
+   - Using direct imports with proper `'use client'` directives
+   - All client components properly marked with `'use client'`
+   - Server/Client component separation properly implemented
 
 3. ✅ **Particle Generation** - Fixed by:
    - Moving window-dependent code to `useEffect`
    - Using percentage-based positioning instead of pixels
-   - Client-side only particle generation
+   - Client-side only particle generation with `isMounted` check
+   - Proper hydration prevention
 
 ## 📦 Additional Environment Variables (Optional)
 

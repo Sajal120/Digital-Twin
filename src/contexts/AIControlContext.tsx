@@ -139,35 +139,35 @@ export function AIControlProvider({ children }: { children: ReactNode }) {
         case 'show_projects':
           setMode('projects')
           toggleComponent('projects', true)
-          toggleComponent('chat', true)
+          toggleComponent('chat', false) // Hide chat to show content
           setEmotionalTone('excited')
           break
 
         case 'show_skills':
           setMode('skills')
           toggleComponent('skills', true)
-          toggleComponent('chat', true)
+          toggleComponent('chat', false) // Hide chat to show content
           setEmotionalTone('focused')
           break
 
         case 'show_resume':
           setMode('resume')
           toggleComponent('resume', true)
-          toggleComponent('chat', true)
+          toggleComponent('chat', false) // Hide chat to show content
           setEmotionalTone('focused')
           break
 
         case 'show_about':
           setMode('about')
           toggleComponent('about', true)
-          toggleComponent('chat', true)
+          toggleComponent('chat', false) // Hide chat to show content
           setEmotionalTone('calm')
           break
 
         case 'show_contact':
           setMode('contact')
           toggleComponent('contact', true)
-          toggleComponent('chat', true)
+          toggleComponent('chat', false) // Hide chat to show content
           setEmotionalTone('neutral')
           break
 

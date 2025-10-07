@@ -9,6 +9,7 @@ import { AnimatedSkills } from './AnimatedSkills'
 import { ResumePanel } from './ResumePanel'
 import { ContactTransform } from './ContactTransform'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Bot } from 'lucide-react'
 
 function PortfolioModeView() {
   const { setMode } = useAIControl()
@@ -38,7 +39,7 @@ function PortfolioModeView() {
 }
 
 export function DigitalTwinExperience() {
-  const { currentMode } = useAIControl()
+  const { currentMode, activeComponents, setMode, toggleComponent } = useAIControl()
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 overflow-hidden">
@@ -83,6 +84,30 @@ export function DigitalTwinExperience() {
       <AnimatedSkills />
       <ResumePanel />
       <ContactTransform />
+
+      {/* Floating Chat Icon - appears when chat is hidden and we're viewing content */}
+      {!activeComponents.chat &&
+        (currentMode === 'projects' ||
+          currentMode === 'skills' ||
+          currentMode === 'resume' ||
+          currentMode === 'about' ||
+          currentMode === 'contact') && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              setMode('chat')
+              toggleComponent('chat', true)
+            }}
+            className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"
+            title="Open Chat"
+          >
+            <Bot className="w-8 h-8 text-white" />
+          </motion.button>
+        )}
     </div>
   )
 }

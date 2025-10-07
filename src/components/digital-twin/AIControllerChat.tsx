@@ -10,9 +10,11 @@ import {
   Mic,
   MicOff,
   Volume2,
+  VolumeX,
   X,
   Minimize2,
   Settings,
+  Phone,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useVoiceChat, InteractionType } from '@/hooks/useVoiceChat'
@@ -253,6 +255,16 @@ export function AIControllerChat() {
     }
   }
 
+  const stopVoice = () => {
+    voiceChat.stopListening()
+    voiceChat.stopAudio()
+    setVoiceState('idle')
+  }
+
+  const handlePhoneCall = () => {
+    window.location.href = 'tel:+61278044137'
+  }
+
   if (isMinimized) {
     return (
       <motion.button
@@ -315,6 +327,27 @@ export function AIControllerChat() {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Stop Voice Button */}
+            {(voiceState === 'speaking' || voiceState === 'listening') && (
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                onClick={stopVoice}
+                className="p-2 bg-red-500/80 hover:bg-red-600 rounded-lg transition-colors"
+                title="Stop Voice"
+              >
+                <VolumeX className="w-5 h-5 text-white" />
+              </motion.button>
+            )}
+            {/* Phone Call Button */}
+            <button
+              onClick={handlePhoneCall}
+              className="p-2 bg-green-500/80 hover:bg-green-600 rounded-lg transition-colors"
+              title="Call +61 2 7804 4137"
+            >
+              <Phone className="w-5 h-5 text-white" />
+            </button>
             <button
               onClick={() => setShowSettings(!showSettings)}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
