@@ -424,7 +424,7 @@ export class OmniChannelManager {
     console.log('🎯 Phone optimized: Brief responses, natural conversation')
 
     try {
-      const timeoutMs = additionalContext.phoneCall ? 6000 : 10000 // 6s for phone (fast mode!), 10s for others
+      const timeoutMs = additionalContext.phoneCall ? 4000 : 10000 // 4s for phone (ultra fast!), 10s for others
       const chatResponse = await Promise.race([
         this.callChatAPI(userInput, enhancedContext),
         new Promise<any>((_, reject) =>
@@ -568,7 +568,7 @@ export class OmniChannelManager {
 
     // Create AbortController for timeout
     const controller = new AbortController()
-    const fetchTimeout = context.phoneCall ? 15000 : 20000 // Match outer timeout - 15s for phone, 20s for web
+    const fetchTimeout = context.phoneCall ? 8000 : 20000 // Ultra fast - 8s for phone, 20s for web
     const timeoutId = setTimeout(() => controller.abort(), fetchTimeout)
 
     try {
@@ -622,7 +622,7 @@ export class OmniChannelManager {
     } catch (error) {
       clearTimeout(timeoutId)
       if (error instanceof Error && error.name === 'AbortError') {
-        const timeoutSeconds = context.phoneCall ? 15 : 20
+        const timeoutSeconds = context.phoneCall ? 8 : 20
         console.error(`⏱️ MCP fetch aborted after ${timeoutSeconds}s`)
         throw new Error('MCP fetch timeout')
       }
