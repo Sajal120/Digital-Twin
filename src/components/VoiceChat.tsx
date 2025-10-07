@@ -328,7 +328,23 @@ export const VoiceChatComponent: React.FC<VoiceChatComponentProps> = ({
             {!voiceChat.isSupported && <span className="text-red-600">Voice not supported</span>}
 
             {voiceChat.isListening && (
-              <span className="text-red-600 font-medium">Listening...</span>
+              <div className="flex flex-col items-end space-y-1">
+                <span className="text-red-600 font-medium animate-pulse">🎤 Listening...</span>
+                {/* Audio detection indicators */}
+                <div className="flex items-center space-x-2 text-xs">
+                  {voiceChat.isAudioCaptureActive ? (
+                    <span className="text-green-600 font-semibold">🔊 Audio Active</span>
+                  ) : (
+                    <span className="text-orange-500 font-semibold">⚠️ No Audio Detected</span>
+                  )}
+                  {voiceChat.isSoundDetected && (
+                    <span className="text-blue-600 animate-pulse">👂 Sound!</span>
+                  )}
+                  {voiceChat.isSpeechDetected && (
+                    <span className="text-purple-600 animate-pulse">🗣️ Speech!</span>
+                  )}
+                </div>
+              </div>
             )}
 
             {voiceChat.messages.length > 0 && (

@@ -383,6 +383,10 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
     transcript: voiceRecorder.transcript,
     interimTranscript: voiceRecorder.interimTranscript,
     isSupported: voiceRecorder.isSupported,
+    // Audio detection state (for visual feedback)
+    isAudioCaptureActive: voiceRecorder.isAudioCaptureActive,
+    isSoundDetected: voiceRecorder.isSoundDetected,
+    isSpeechDetected: voiceRecorder.isSpeechDetected,
     audioPlayerState: {
       isPlaying: audioPlayer.isPlaying,
       isLoading: audioPlayer.isLoading,

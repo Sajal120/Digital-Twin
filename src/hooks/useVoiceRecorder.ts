@@ -18,6 +18,10 @@ interface AudioRecorderState {
   interimTranscript: string
   retryCount: number
   maxRetries: number
+  // Audio detection state
+  isAudioCaptureActive: boolean
+  isSoundDetected: boolean
+  isSpeechDetected: boolean
 }
 
 export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
@@ -37,6 +41,9 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     interimTranscript: '',
     retryCount: 0,
     maxRetries: 3,
+    isAudioCaptureActive: false,
+    isSoundDetected: false,
+    isSpeechDetected: false,
   })
 
   // Detect mobile devices and iOS
@@ -93,26 +100,32 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
     recognition.onaudiostart = () => {
       console.log('🔊 Audio capture STARTED - browser is receiving sound from microphone')
+      setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
     }
 
     recognition.onaudioend = () => {
       console.log('🔇 Audio capture ENDED - browser stopped receiving sound')
+      setState((prev) => ({ ...prev, isAudioCaptureActive: false }))
     }
 
     recognition.onsoundstart = () => {
       console.log('👂 Sound detected by microphone')
+      setState((prev) => ({ ...prev, isSoundDetected: true }))
     }
 
     recognition.onsoundend = () => {
       console.log('🤫 Sound ended (silence detected)')
+      setState((prev) => ({ ...prev, isSoundDetected: false }))
     }
 
     recognition.onspeechstart = () => {
       console.log('🗣️ Speech detected - processing...')
+      setState((prev) => ({ ...prev, isSpeechDetected: true }))
     }
 
     recognition.onspeechend = () => {
       console.log('💬 Speech ended')
+      setState((prev) => ({ ...prev, isSpeechDetected: false }))
     }
 
     recognition.onresult = (event: any) => {
