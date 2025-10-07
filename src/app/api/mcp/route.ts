@@ -92,13 +92,13 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
       console.log(`📞 Phone optimization: ${isPhoneCall ? 'ENABLED ⚡' : 'disabled'}`)
 
       // Determine the base URL for the Chat API
-      // In production (Vercel), use the deployment URL
+      // On Vercel, use relative URL for internal server-to-server calls (avoids routing/auth issues)
       // In development, use localhost
       const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
+        ? '' // Empty string for relative URL on Vercel
         : process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
-      console.log(`🔗 Calling Chat API at: ${baseUrl}/api/chat`)
+      console.log(`🔗 Calling Chat API at: ${baseUrl || '(relative)'}/api/chat`)
 
       // Call enhanced chat API
       const chatResponse = await fetch(`${baseUrl}/api/chat`, {
@@ -166,8 +166,9 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
       console.log(`📊 Comparing RAG approaches for: "${question}"`)
 
       // Determine the base URL (same as above)
+      // On Vercel, use relative URL for internal server-to-server calls
       const baseUrl = process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
+        ? '' // Empty string for relative URL on Vercel
         : process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
       // Call comparison API
