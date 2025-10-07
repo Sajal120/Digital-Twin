@@ -143,7 +143,12 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
     recognition.onaudioend = () => {
       console.log('🔇 Audio capture ENDED - browser stopped receiving sound')
-      setState((prev) => ({ ...prev, isAudioCaptureActive: false }))
+      // iOS: Don't clear audio active state - it fires incorrectly
+      if (!isIOS.current) {
+        setState((prev) => ({ ...prev, isAudioCaptureActive: false }))
+      } else {
+        console.log('🍎 iOS - ignoring onaudioend, keeping audio active')
+      }
     }
 
     recognition.onsoundstart = () => {
@@ -683,6 +688,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         interimResults: recognitionRef.current?.interimResults,
       })
 
+      // iOS: Force states one more time RIGHT before starting recognition
+      if (isIOS.current) {
+        console.log('🍎 iOS - PRE-START: Forcing all detection states ACTIVE')
+        setState((prev) => ({
+          ...prev,
+          isAudioCaptureActive: true,
+          isSpeechDetected: true,
+          isSoundDetected: true,
+        }))
+      }
+
       // Start speech recognition
       if (recognitionRef.current) {
         recognitionRef.current.start()
@@ -691,24 +707,20 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         if (isIOS.current) {
           console.log('🍎 iOS - speech recognition started, starting iOS keep-alive polling...')
 
-          // iOS HACK: Poll every 500ms to keep detection state active
+          // iOS HACK: Poll every 300ms to aggressively keep detection states active
           iosPollingIntervalRef.current = setInterval(() => {
-            // Keep forcing states active while recording on iOS
-            if (state.isRecording) {
-              console.log('🍎 iOS polling - keeping detection states ACTIVE')
-              setState((prev) => {
-                // Only update if not already set to avoid unnecessary re-renders
-                if (!prev.isAudioCaptureActive || !prev.isSpeechDetected) {
-                  return {
-                    ...prev,
-                    isAudioCaptureActive: true,
-                    isSpeechDetected: true,
-                  }
-                }
-                return prev
-              })
-            }
-          }, 500)
+            // Always force states active on iOS while polling is running
+            console.log('🍎 iOS polling - FORCING detection states ACTIVE')
+            setState((prev) => {
+              // ALWAYS update on iOS - don't check, just force
+              return {
+                ...prev,
+                isAudioCaptureActive: true,
+                isSpeechDetected: true,
+                isSoundDetected: true,
+              }
+            })
+          }, 300) // Faster polling for more responsive state
         }
       } else {
         console.error('❌ Recognition ref is null!')
