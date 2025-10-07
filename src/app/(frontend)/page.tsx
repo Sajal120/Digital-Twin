@@ -1,4 +1,5 @@
-import dynamic from 'next/dynamic'
+import { AIControlProvider } from '@/contexts/AIControlContext'
+import { DigitalTwinExperience } from '@/components/digital-twin/DigitalTwinExperience'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
@@ -15,11 +16,10 @@ export const metadata: Metadata = {
   },
 }
 
-// Dynamic import to avoid SSR issues with window/client-only hooks
-const DigitalTwinWrapper = dynamic(() => import('@/components/digital-twin/DigitalTwinWrapper'), {
-  ssr: false,
-})
-
 export default function HomePage() {
-  return <DigitalTwinWrapper />
+  return (
+    <AIControlProvider>
+      <DigitalTwinExperience />
+    </AIControlProvider>
+  )
 }
