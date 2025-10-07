@@ -63,27 +63,24 @@ export async function POST(request: NextRequest) {
     let speechResult = webhookData.SpeechResult as string // Fallback to Twilio if available
     const confidence = webhookData.Confidence as string
 
-    console.log('🎤 Webhook received:', {
-      callSid,
-      recordingUrl: recordingUrl || 'none',
-      recordingStatus: recordingStatus || 'none',
-      hasRecording: !!recordingUrl,
-      speechResult: speechResult || '(no speech)',
-      confidence: confidence || 'N/A',
-      webhookType: recordingStatus ? 'recording-status-callback' : 'action-callback',
-    })
+    // CRITICAL: EARLY DEDUPLICATION before any processing
+    // Use recordingUrl if available, otherwise use callSid + "pending" for in-progress recordings
+    // This catches duplicates even while transcription is happening
+    const dedupKey = recordingUrl
+      ? `${callSid}_${recordingUrl}`
+      : `${callSid}_pending_${Math.floor(Date.now() / 5000)}` // 5-second window for pending
 
-    // DEDUPLICATION: Prevent duplicate webhook processing
-    // Create unique key from callSid + recordingUrl (or timestamp if no recording)
-    const dedupKey = `${callSid}_${recordingUrl || Date.now()}`
     const lastProcessed = processingCache.get(dedupKey)
+    const now = Date.now()
 
-    if (lastProcessed && Date.now() - lastProcessed < DEDUP_TTL) {
-      const elapsed = Date.now() - lastProcessed
-      console.log(`🚫 DUPLICATE WEBHOOK BLOCKED (processed ${elapsed}ms ago)`)
+    if (lastProcessed && now - lastProcessed < DEDUP_TTL) {
+      const elapsed = now - lastProcessed
+      console.log(
+        `🚫 DUPLICATE WEBHOOK BLOCKED (${elapsed}ms ago) - ${recordingStatus || 'pending'}`,
+      )
       console.log(`🔑 Dedup key: ${dedupKey}`)
 
-      // Return simple TwiML to acknowledge without reprocessing
+      // Return empty TwiML immediately - don't reprocess
       return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`, {
         status: 200,
         headers: {
@@ -93,10 +90,19 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Mark as processing
-    processingCache.set(dedupKey, Date.now())
-    console.log(`✅ First webhook for this recording - processing`)
-    console.log(`🔑 Dedup key: ${dedupKey}`)
+    // ATOMIC: Mark as processing IMMEDIATELY (before any async work)
+    processingCache.set(dedupKey, now)
+
+    console.log('🎤 Webhook received (FIRST):', {
+      callSid,
+      recordingUrl: recordingUrl || 'none',
+      recordingStatus: recordingStatus || 'none',
+      hasRecording: !!recordingUrl,
+      speechResult: speechResult || '(no speech)',
+      confidence: confidence || 'N/A',
+      webhookType: recordingStatus ? 'recording-status-callback' : 'action-callback',
+      dedupKey,
+    })
 
     // If we have a recording URL, use Deepgram for transcription
     if (recordingUrl) {
