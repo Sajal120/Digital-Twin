@@ -857,8 +857,10 @@ async function generateEnhancedPortfolioResponse(
 
     // Generate multi-language response if needed (with timeout for phone calls)
     const multiLangTimeout = phoneOptimized ? 3000 : 10000 // 3s for phone, 10s for web
+    console.log(`⏱️ Multi-lang timeout: ${multiLangTimeout}ms (phoneOptimized=${phoneOptimized})`)
     let multiLanguageResponse
     try {
+      const startTime = Date.now()
       multiLanguageResponse = await Promise.race([
         generateMultiLanguageResponse(
           result,
@@ -874,6 +876,8 @@ async function generateEnhancedPortfolioResponse(
           ),
         ),
       ])
+      const elapsed = Date.now() - startTime
+      console.log(`✅ Multi-lang completed in ${elapsed}ms`)
     } catch (error) {
       console.error('⚠️ Multi-language generation timed out, using English:', error)
       // Fallback to English response
