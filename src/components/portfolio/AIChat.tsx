@@ -307,29 +307,7 @@ export function AIChat() {
 
               {/* Voice Controls */}
               <div className="flex items-center space-x-2">
-                {/* Voice Status Indicators - Only show after mount */}
-                {isMounted && voiceChat.isListening && (
-                  <div className="flex items-center space-x-1 text-sm bg-red-500/20 px-2 py-1 rounded">
-                    <Mic className="w-4 h-4 text-red-200" />
-                    <span className="text-red-200">Listening...</span>
-                  </div>
-                )}
-
-                {isMounted && voiceChat.audioPlayerState.isPlaying && (
-                  <div className="flex items-center space-x-1 text-sm bg-green-500/20 px-2 py-1 rounded">
-                    <Volume2 className="w-4 h-4 text-green-200" />
-                    <span className="text-green-200">Speaking...</span>
-                  </div>
-                )}
-
-                {isMounted && voiceChat.isProcessing && (
-                  <div className="flex items-center space-x-1 text-sm bg-orange-500/20 px-2 py-1 rounded">
-                    <Loader2 className="w-4 h-4 animate-spin text-orange-200" />
-                    <span className="text-orange-200">Processing...</span>
-                  </div>
-                )}
-
-                {/* Settings Button */}
+                {/* Settings Button - Only show settings, no status here */}
                 <button
                   onClick={() => setShowVoiceSettings(!showVoiceSettings)}
                   className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
@@ -511,6 +489,46 @@ export function AIChat() {
               </motion.div>
             )}
           </div>
+
+          {/* Audio Detection Status - PROMINENT DISPLAY ABOVE INPUT */}
+          {isMounted && voiceChat.isListening && (
+            <div className="border-t border-b border-gray-200 p-4 bg-gradient-to-r from-red-50 to-orange-50">
+              <div className="flex flex-col items-center justify-center space-y-3">
+                {/* Main status */}
+                <div className="text-xl font-bold text-red-600 animate-pulse flex items-center space-x-2">
+                  <Mic className="w-6 h-6" />
+                  <span>🎤 LISTENING - SPEAK NOW</span>
+                </div>
+
+                {/* Audio detection indicators - LARGE & CLEAR */}
+                <div className="flex flex-wrap items-center justify-center gap-3 text-base font-semibold">
+                  {voiceChat.isAudioCaptureActive ? (
+                    <div className="px-4 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 flex items-center space-x-2">
+                      <Volume2 className="w-5 h-5" />
+                      <span>🔊 AUDIO ACTIVE ✅</span>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-2 rounded-lg border-2 border-orange-500 bg-orange-50 text-orange-700 animate-pulse flex items-center space-x-2">
+                      <VolumeX className="w-5 h-5" />
+                      <span>⚠️ NO AUDIO DETECTED ❌</span>
+                    </div>
+                  )}
+
+                  {voiceChat.isSoundDetected && (
+                    <div className="px-3 py-1 rounded-lg border border-blue-500 bg-blue-50 text-blue-700 animate-pulse">
+                      👂 SOUND DETECTED
+                    </div>
+                  )}
+
+                  {voiceChat.isSpeechDetected && (
+                    <div className="px-3 py-1 rounded-lg border border-purple-500 bg-purple-50 text-purple-700 animate-pulse">
+                      🗣️ SPEECH RECOGNIZED
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Input Form with Voice Controls */}
           <div className="border-t p-4">
