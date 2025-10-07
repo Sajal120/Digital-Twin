@@ -71,7 +71,7 @@ export async function setCachedResponse(
   response: string,
   channel: 'phone' | 'chat',
   language: string = 'en',
-  ttl: number = 300, // 5 minutes default
+  ttl: number = 900, // 15 minutes default (optimized from 5 min)
 ): Promise<void> {
   try {
     const key = generateCacheKey(input, channel, language)
@@ -219,6 +219,50 @@ export async function getCachedTranscription(
     return null
   } catch (error) {
     console.error('❌ Transcription cache GET error:', error)
+    return null
+  }
+}
+
+/**
+ * Cache audio URL (ElevenLabs responses)
+ */
+export async function cacheAudioUrl(
+  text: string,
+  audioUrl: string,
+  language: string = 'en',
+): Promise<void> {
+  try {
+    const key = `audio:${language}:${text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '')}`
+    await redis.setex(key, 3600, audioUrl) // 1 hour cache
+    console.log(`💾 Cached audio URL for: "${text.substring(0, 30)}..." (${language})`)
+  } catch (error) {
+    console.error('❌ Audio cache error:', error)
+  }
+}
+
+/**
+ * Get cached audio URL
+ */
+export async function getCachedAudioUrl(
+  text: string,
+  language: string = 'en',
+): Promise<string | null> {
+  try {
+    const key = `audio:${language}:${text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s]/g, '')}`
+    const cached = await redis.get<string>(key)
+    if (cached) {
+      console.log(`🎯 Audio cache HIT: "${text.substring(0, 30)}..."`)
+      return cached
+    }
+    return null
+  } catch (error) {
+    console.error('❌ Audio cache GET error:', error)
     return null
   }
 }

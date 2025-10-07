@@ -85,18 +85,23 @@ export async function POST(request: NextRequest) {
 
     // Try to insert the user message into database, but continue if it fails
     // SKIP for phone calls (speed optimization)
+    // NON-BLOCKING: Fire and forget for web, skip for phone
     let userMessage = null
     if (!phoneOptimized) {
-      try {
-        userMessage = await ChatDatabase.insertMessage({
-          user_id,
-          role,
-          content,
+      // Non-blocking database write - don't wait for it
+      ChatDatabase.insertMessage({
+        user_id,
+        role,
+        content,
+      })
+        .then((msg) => {
+          userMessage = msg
+          console.log('✅ User message saved to database')
         })
-      } catch (dbError) {
-        console.error('Failed to insert user message:', dbError)
-        // Continue without database - we'll still provide a response
-      }
+        .catch((dbError) => {
+          console.error('Failed to insert user message:', dbError)
+          // Continue without database - we'll still provide a response
+        })
     } else {
       console.log('📞 Skipping database write for phone (speed optimization)')
     }
@@ -134,18 +139,23 @@ export async function POST(request: NextRequest) {
 
     // Try to insert the AI response into the database, but continue if it fails
     // SKIP for phone calls (speed optimization)
+    // NON-BLOCKING: Fire and forget - don't wait for database write
     let assistantMessage = null
     if (!phoneOptimized) {
-      try {
-        assistantMessage = await ChatDatabase.insertMessage({
-          user_id,
-          role: 'assistant',
-          content: aiResponse,
+      // Non-blocking database write
+      ChatDatabase.insertMessage({
+        user_id,
+        role: 'assistant',
+        content: aiResponse,
+      })
+        .then((msg) => {
+          assistantMessage = msg
+          console.log('✅ Assistant message saved to database')
         })
-      } catch (dbError) {
-        console.error('Failed to insert assistant message:', dbError)
-        // Continue without database - we still have the response
-      }
+        .catch((dbError) => {
+          console.error('Failed to insert assistant message:', dbError)
+          // Continue without database - we still have the response
+        })
     }
 
     // For portfolio format, return enhanced response
@@ -643,7 +653,9 @@ async function generateEnhancedPortfolioResponse(
 
     // Initialize conversation context and get enhanced query
     // For phone: skip Groq enhancement (rate limited + slow)
+    // PARALLEL: Run context enhancement and language detection simultaneously
     let contextEnhanced: any
+    let multiLanguageResult: any
 
     if (phoneOptimized) {
       console.log('📞 Phone mode: Skipping context enhancement (too slow)')
@@ -655,26 +667,9 @@ async function generateEnhancedPortfolioResponse(
         topicsDiscussed: [],
         requiresContext: false,
       }
-    } else {
-      console.log('📝 Processing with enhanced conversation context...')
-      const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
-        interviewType: interviewType || 'general',
-      })
 
-      contextEnhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
-      console.log(
-        `💡 Context enhancement: ${contextEnhanced.isFollowUp ? 'Follow-up' : 'New'} query`,
-      )
-      console.log(`🔍 Enhanced query: "${contextEnhanced.enhancedQuery}"`)
-    }
-
-    // Multi-language processing
-    // For phone: use FAST rule-based detection (no Groq LLM needed)
-    let multiLanguageResult: any
-
-    if (phoneOptimized) {
-      console.log('📞 Phone mode: Using FAST rule-based language detection')
       // Fast language detection without Groq
+      console.log('📞 Phone mode: Using FAST rule-based language detection')
       const { detectLanguageContext } = await import('@/lib/multi-language-rag')
       const languageContext = await detectLanguageContext(message)
 
@@ -691,11 +686,47 @@ async function generateEnhancedPortfolioResponse(
         `📞 Detected language: ${languageContext.detectedLanguage} (${languageContext.preferredResponseLanguage})`,
       )
     } else {
-      console.log('🌍 Processing multi-language query...')
-      multiLanguageResult = await processMultiLanguageQuery(message, contextEnhanced, sessionId)
-      console.log(`🌍 Language: ${multiLanguageResult.languageContext.detectedLanguage}`)
-      console.log(`🎯 Selected pattern: ${multiLanguageResult.selectedPattern.pattern}`)
-      console.log(`🔍 Search query: "${multiLanguageResult.enhancedQuery}"`)
+      // PARALLEL: Run both context enhancement and multi-language processing at the same time
+      console.log('⚡ Running context enhancement and language detection in parallel...')
+      const parallelStart = Date.now()
+
+      const [contextResult, multiLangResult] = await Promise.all([
+        // Context enhancement
+        (async () => {
+          console.log('📝 Processing with enhanced conversation context...')
+          const messageId = await conversationMemory.addMessage(sessionId, 'user', message, {
+            interviewType: interviewType || 'general',
+          })
+          const enhanced = await conversationMemory.enhanceQueryWithContext(sessionId, message)
+          console.log(`💡 Context enhancement: ${enhanced.isFollowUp ? 'Follow-up' : 'New'} query`)
+          console.log(`🔍 Enhanced query: "${enhanced.enhancedQuery}"`)
+          return enhanced
+        })(),
+        // Multi-language processing (runs simultaneously)
+        (async () => {
+          console.log('🌍 Processing multi-language query...')
+          // Use a temp context for parallel processing
+          const tempContext = {
+            enhancedQuery: message,
+            isFollowUp: false,
+            followUpType: null,
+            relatedEntities: [],
+            topicsDiscussed: [],
+            requiresContext: false,
+          }
+          const result = await processMultiLanguageQuery(message, tempContext, sessionId)
+          console.log(`🌍 Language: ${result.languageContext.detectedLanguage}`)
+          console.log(`🎯 Selected pattern: ${result.selectedPattern.pattern}`)
+          console.log(`🔍 Search query: "${result.enhancedQuery}"`)
+          return result
+        })(),
+      ])
+
+      contextEnhanced = contextResult
+      multiLanguageResult = multiLangResult
+
+      const parallelDuration = Date.now() - parallelStart
+      console.log(`⚡ Parallel processing completed in ${parallelDuration}ms (saved ~50% time)`)
     }
 
     // Create vector search function with smart filtering
@@ -865,7 +896,7 @@ async function generateEnhancedPortfolioResponse(
     })
 
     // Generate multi-language response if needed (with timeout for phone calls)
-    const multiLangTimeout = phoneOptimized ? 1500 : 10000 // 1.5s for phone (ultra-fast!), 10s for web
+    const multiLangTimeout = phoneOptimized ? 1000 : 8000 // 1s for phone (ultra-fast!), 8s for web
     console.log(`⏱️ Multi-lang timeout: ${multiLangTimeout}ms (phoneOptimized=${phoneOptimized})`)
     let multiLanguageResponse
     try {

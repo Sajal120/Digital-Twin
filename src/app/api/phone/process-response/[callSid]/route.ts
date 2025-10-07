@@ -105,64 +105,86 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
       `🌍 Using Twilio language: ${twilioLanguage} (current turn: ${currentLanguage}, previous turn: ${previousLanguage || 'none'})`,
     )
 
-    // Generate audio with ElevenLabs
-    console.log('🎤 Generating YOUR voice response...')
-    const elevenLabsStartTime = Date.now()
-
-    const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID}`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-        },
-        body: JSON.stringify({
-          text: unifiedResponse.response,
-          model_id: 'eleven_turbo_v2_5',
-          voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.8,
-          },
-          output_format: 'mp3_22050_32',
-          optimize_streaming_latency: 4,
-        }),
-      },
-    )
-
-    if (!elevenlabsResponse.ok) {
-      throw new Error(`ElevenLabs API error: ${elevenlabsResponse.status}`)
+    // Check for cached audio first
+    let audioUrl: string | null = null
+    try {
+      const { getCachedAudioUrl, cacheAudioUrl } = await import('@/lib/redis-cache')
+      audioUrl = await getCachedAudioUrl(unifiedResponse.response, currentLanguage)
+      if (audioUrl) {
+        console.log('⚡ Using cached audio URL (instant)')
+      }
+    } catch (cacheError) {
+      console.warn('⚠️ Audio cache check failed:', cacheError)
     }
 
-    console.log(`⚡ ElevenLabs responded in ${Date.now() - elevenLabsStartTime}ms`)
+    // Generate audio with ElevenLabs if not cached
+    if (!audioUrl) {
+      console.log('🎤 Generating YOUR voice response...')
+      const elevenLabsStartTime = Date.now()
 
-    const audioBuffer = await elevenlabsResponse.arrayBuffer()
-    const audioBufferObj = Buffer.from(audioBuffer)
+      const elevenlabsResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+          },
+          body: JSON.stringify({
+            text: unifiedResponse.response,
+            model_id: 'eleven_turbo_v2_5',
+            voice_settings: {
+              stability: 0.6,
+              similarity_boost: 0.8,
+            },
+            output_format: 'mp3_22050_32',
+            optimize_streaming_latency: 4,
+          }),
+        },
+      )
 
-    // Generate unique audio ID
-    const audioId = `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      if (!elevenlabsResponse.ok) {
+        throw new Error(`ElevenLabs API error: ${elevenlabsResponse.status}`)
+      }
 
-    // Upload to Vercel Blob
-    const uploadStartTime = Date.now()
-    console.log('⚡ Starting blob upload...')
-    console.log('📁 Audio metadata:', {
-      audioId,
-      bufferSize: audioBufferObj.length,
-      textPreview: unifiedResponse.response.substring(0, 50),
-    })
+      console.log(`⚡ ElevenLabs responded in ${Date.now() - elevenLabsStartTime}ms`)
 
-    const blob = await put(`phone-audio/${audioId}.mp3`, audioBufferObj, {
-      access: 'public',
-      contentType: 'audio/mpeg',
-      addRandomSuffix: false,
-      cacheControlMaxAge: 3600,
-    })
+      const audioBuffer = await elevenlabsResponse.arrayBuffer()
+      const audioBufferObj = Buffer.from(audioBuffer)
 
-    console.log(`✅ Blob upload completed in ${Date.now() - uploadStartTime}ms`)
-    console.log('🔗 Blob URL:', blob.url)
+      // Generate unique audio ID
+      const audioId = `phone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-    const audioUrl = blob.url
+      // Upload to Vercel Blob
+      const uploadStartTime = Date.now()
+      console.log('⚡ Starting blob upload...')
+      console.log('📁 Audio metadata:', {
+        audioId,
+        bufferSize: audioBufferObj.length,
+        textPreview: unifiedResponse.response.substring(0, 50),
+      })
+
+      const blob = await put(`phone-audio/${audioId}.mp3`, audioBufferObj, {
+        access: 'public',
+        contentType: 'audio/mpeg',
+        addRandomSuffix: false,
+        cacheControlMaxAge: 3600,
+      })
+
+      console.log(`✅ Blob upload completed in ${Date.now() - uploadStartTime}ms`)
+      console.log('🔗 Blob URL:', blob.url)
+
+      audioUrl = blob.url
+
+      // Cache the audio URL for future reuse
+      try {
+        const { cacheAudioUrl } = await import('@/lib/redis-cache')
+        await cacheAudioUrl(unifiedResponse.response, audioUrl, currentLanguage)
+      } catch (cacheError) {
+        console.warn('⚠️ Audio caching failed:', cacheError)
+      }
+    }
 
     console.log('🔗 Audio URL:', audioUrl)
     console.log(`⏱️ Total audio generation time: ${Date.now() - responseStartTime}ms`)

@@ -327,11 +327,10 @@ export class OmniChannelManager {
         console.log(`🌍 Response will be in: ${detectedLanguage}`)
       }
 
-      // DISABLE MCP timeout - let it finish to avoid Chat API fallback
-      // Chat API has NO multi-lang timeout and takes 60s!
-      const mcpTimeout = additionalContext.phoneCall ? 60000 : 60000 // Give it time to finish
+      // Optimized MCP timeout - faster responses
+      const mcpTimeout = additionalContext.phoneCall ? 15000 : 30000 // 15s for phone, 30s for web
       console.log(
-        `⏱️ MCP mode: ${additionalContext.phoneCall ? 'PHONE ⚡ (no timeout, fast multi-lang)' : 'WEB'} mode`,
+        `⏱️ MCP mode: ${additionalContext.phoneCall ? `PHONE ⚡ (${mcpTimeout}ms timeout)` : `WEB (${mcpTimeout}ms timeout)`}`,
       )
       const mcpResponse = (await this.callMCPServer(userInput, enhancedContext)) as {
         success: boolean
@@ -390,9 +389,9 @@ export class OmniChannelManager {
             await cacheCommonGreeting(userInput, finalResponse, channel, detectedLanguage)
             console.log('💾 Cached common greeting (1 hour TTL)')
           } else {
-            // Regular responses get 5 minute cache
-            await setCachedResponse(userInput, finalResponse, channel, detectedLanguage, 300)
-            console.log('💾 Cached response (5 min TTL)')
+            // Regular responses get 15 minute cache (optimized from 5 min)
+            await setCachedResponse(userInput, finalResponse, channel, detectedLanguage, 900)
+            console.log('💾 Cached response (15 min TTL)')
           }
         } catch (cacheError) {
           console.warn('⚠️ Failed to cache response:', cacheError)
