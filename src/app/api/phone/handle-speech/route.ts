@@ -309,38 +309,6 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // INSTANT ACKNOWLEDGMENT: Play "hmm" and redirect to process AI response
-    // This gives immediate feedback (user hears "hmm" within 1 second)
-    // While AI processes in background (takes 5-7 seconds)
-    console.log('🎵 Returning instant acknowledgment (thinking sound)...')
-
-    // Store speech result temporarily (will be retrieved by process-response endpoint)
-    global.pendingSpeechMap.set(callSid, speechResult)
-    console.log('💾 Stored speech in global memory for callSid:', callSid)
-    console.log('🗺️ Map size:', global.pendingSpeechMap.size)
-
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
-    const processingUrl = `${baseUrl}/api/phone/process-response/${callSid}`
-
-    const acknowledgmentTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Play>${THINKING_SOUND_URL}</Play>
-  <Redirect method="POST">${processingUrl}</Redirect>
-</Response>`
-
-    console.log('✅ Returning instant acknowledgment TwiML')
-    console.log('🔗 Will redirect to:', processingUrl)
-    console.log('📝 Speech stored in session:', speechResult.substring(0, 50))
-
-    return new NextResponse(acknowledgmentTwiml, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/xml; charset=utf-8',
-        'Cache-Control': 'no-cache',
-      },
-    })
-
-    // OLD CODE BELOW - Keep for reference but unreachable now
     // Get unified context
     console.log('🌐 Getting unified context...')
     const unifiedContext = await omniChannelManager.getUnifiedContext(
@@ -550,9 +518,16 @@ export async function POST(request: NextRequest) {
 
       console.log('🏗️ BUILDING TwiML response...')
 
-      // Return TwiML with AI response + record next input
+      // Return TwiML with multiple thinking sounds + AI response + record next input
+      // Play "hmm" multiple times to cover the processing time naturally
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Play>${THINKING_SOUND_URL}</Play>
+  <Pause length="1"/>
+  <Play>${THINKING_SOUND_URL}</Play>
+  <Pause length="1"/>
+  <Play>${THINKING_SOUND_URL}</Play>
+  <Pause length="1"/>
   <Play>${audioUrl}</Play>
   <Pause length="1"/>
   <Record
@@ -588,10 +563,74 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('🚨 Error in speech handler:', error)
 
-    // Return error TwiML
+    // Generate error message in YOUR voice
+    try {
+      const errorMessage = "Sorry, I'm having trouble processing that. Please try again."
+      const errorAudioResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+          },
+          body: JSON.stringify({
+            text: errorMessage,
+            model_id: 'eleven_turbo_v2_5',
+            voice_settings: {
+              stability: 0.6,
+              similarity_boost: 0.8,
+            },
+            output_format: 'mp3_22050_32',
+          }),
+        },
+      )
+
+      if (errorAudioResponse.ok) {
+        const errorAudioBuffer = await errorAudioResponse.arrayBuffer()
+        const errorAudioId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        const errorBlob = await put(
+          `phone-audio/${errorAudioId}.mp3`,
+          Buffer.from(errorAudioBuffer),
+          {
+            access: 'public',
+            contentType: 'audio/mpeg',
+            cacheControlMaxAge: 3600,
+          },
+        )
+
+        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${errorBlob.url}</Play>
+  <Pause length="1"/>
+  <Record
+    action="/api/phone/handle-speech"
+    method="POST"
+    timeout="5"
+    finishOnKey="#"
+    maxLength="30"
+    playBeep="false"
+    transcribe="false"
+  />
+</Response>`
+
+        return new NextResponse(errorTwiml, {
+          status: 200,
+          headers: {
+            'Content-Type': 'text/xml; charset=utf-8',
+            'Cache-Control': 'no-cache',
+          },
+        })
+      }
+    } catch (elevenLabsError) {
+      console.error('❌ ElevenLabs error fallback failed:', elevenLabsError)
+    }
+
+    // Final fallback if ElevenLabs fails
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew-Neural" language="en-US">Sorry, something went wrong. Please try again later.</Say>
+  <Say voice="Polly.Matthew-Neural" language="en-US">Sorry, something went wrong. Please call back later.</Say>
   <Hangup/>
 </Response>`
 

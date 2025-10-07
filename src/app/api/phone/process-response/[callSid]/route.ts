@@ -194,10 +194,47 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
   } catch (error) {
     console.error('❌ Error processing response:', error)
 
-    // Return error TwiML
-    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // Generate error message in YOUR voice
+    try {
+      const errorMessage = "Sorry, I'm having trouble processing that. Please try again."
+      const errorAudioResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+          },
+          body: JSON.stringify({
+            text: errorMessage,
+            model_id: 'eleven_turbo_v2_5',
+            voice_settings: {
+              stability: 0.6,
+              similarity_boost: 0.8,
+            },
+            output_format: 'mp3_22050_32',
+          }),
+        },
+      )
+
+      if (errorAudioResponse.ok) {
+        const errorAudioBuffer = await errorAudioResponse.arrayBuffer()
+        const errorAudioId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        const errorBlob = await put(
+          `phone-audio/${errorAudioId}.mp3`,
+          Buffer.from(errorAudioBuffer),
+          {
+            access: 'public',
+            contentType: 'audio/mpeg',
+            cacheControlMaxAge: 3600,
+          },
+        )
+
+        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Google.en-US-Standard-D">I'm having trouble processing that. Please try again.</Say>
+  <Play>${errorBlob.url}</Play>
+  <Pause length="1"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
@@ -207,6 +244,21 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     playBeep="false"
     transcribe="false"
   />
+</Response>`
+
+        return new Response(errorTwiml, {
+          headers: { 'Content-Type': 'text/xml' },
+        })
+      }
+    } catch (elevenLabsError) {
+      console.error('❌ ElevenLabs error fallback failed:', elevenLabsError)
+    }
+
+    // Final fallback if ElevenLabs fails
+    const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Google.en-US-Standard-D">Sorry, having trouble. Please call back.</Say>
+  <Hangup/>
 </Response>`
 
     return new Response(errorTwiml, {
