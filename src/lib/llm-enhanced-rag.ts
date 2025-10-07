@@ -467,31 +467,56 @@ export async function agenticRAG(
     })
 
     // Step 2: Enhance query with conversation context
-    const contextEnhancement = await conversationMemory.enhanceQueryWithContext(
-      sessionId,
-      userQuestion,
-    )
+    // PHONE OPTIMIZATION: Skip Groq context enhancement for speed
+    let contextEnhancement
+    if (phoneOptimized) {
+      console.log('📞 PHONE FAST MODE: Skipping Groq context enhancement')
+      contextEnhancement = {
+        enhancedQuery: userQuestion,
+        originalQuery: userQuestion,
+        isFollowUp: false,
+        contextUsed: 'Phone fast mode - no context enhancement',
+        entities: [],
+        intent: 'general_inquiry',
+        confidence: 1.0,
+        relevantHistory: [],
+      }
+    } else {
+      contextEnhancement = await conversationMemory.enhanceQueryWithContext(sessionId, userQuestion)
+    }
     console.log(`💭 Context enhancement: ${contextEnhancement.contextUsed}`)
     console.log(`🔄 Follow-up detected: ${contextEnhancement.isFollowUp}`)
 
     // Step 3: LLM analyzes if search is needed (using context-enhanced query for analysis)
-    const searchDecision = await makeSearchDecision(
-      contextEnhancement.enhancedQuery,
-      conversationHistory,
-      context.topicsDiscussed,
-      contextEnhancement.isFollowUp,
-    )
+    // PHONE OPTIMIZATION: Skip expensive Groq decision entirely for phone calls
+    let searchDecision: {
+      action: 'SEARCH' | 'DIRECT' | 'CLARIFY'
+      reasoning: string
+      confidence: number
+      searchQuery?: string
+    }
+
+    if (phoneOptimized) {
+      // Phone: ALWAYS use SEARCH (no Groq decision-making)
+      console.log('📞 PHONE FAST MODE: Skipping Groq decision, forcing SEARCH')
+      searchDecision = {
+        action: 'SEARCH',
+        reasoning: 'Phone optimization - direct vector search for speed',
+        confidence: 100,
+        searchQuery: userQuestion,
+      }
+    } else {
+      // Web: Use intelligent Groq decision-making
+      searchDecision = await makeSearchDecision(
+        contextEnhancement.enhancedQuery,
+        conversationHistory,
+        context.topicsDiscussed,
+        contextEnhancement.isFollowUp,
+      )
+    }
 
     console.log(`🎯 Decision: ${searchDecision.action} (Confidence: ${searchDecision.confidence}%)`)
     console.log(`💭 Reasoning: ${searchDecision.reasoning}`)
-
-    // PHONE OPTIMIZATION: Skip expensive DIRECT (Groq LLM) responses
-    // Force all phone queries to use SEARCH (vector lookup) which is 2x faster
-    if (phoneOptimized && searchDecision.action === 'DIRECT') {
-      console.log('📞 PHONE OPTIMIZATION: Forcing SEARCH instead of DIRECT (skip Groq)')
-      searchDecision.action = 'SEARCH'
-      searchDecision.searchQuery = userQuestion
-    }
 
     // CRITICAL: Log if professional background question is being answered DIRECT instead of SEARCH
     // Support multi-language (English, Hindi, Nepali)
