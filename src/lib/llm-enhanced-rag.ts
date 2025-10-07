@@ -287,16 +287,25 @@ export async function enhancedRAGQuery(
   vectorSearchFunction: (query: string) => Promise<VectorResult[]>,
   interviewContext?: string,
   detectedLanguage?: string,
+  phoneOptimized: boolean = false,
 ): Promise<EnhancedRAGResult> {
   const startTime = Date.now()
   const metrics: Partial<RAGMetrics> = {}
 
   try {
     // Step 1: Enhance the query
-    console.log('🔍 Enhancing query for better search...')
-    const enhanceStart = Date.now()
-    const enhancedQuery = await enhanceQuery(userQuestion)
-    metrics.queryEnhancementTime = Date.now() - enhanceStart
+    // PHONE OPTIMIZATION: Skip Groq query enhancement
+    let enhancedQuery: string
+    if (phoneOptimized) {
+      console.log('📞 PHONE FAST: Skipping query enhancement (Groq)')
+      enhancedQuery = userQuestion
+      metrics.queryEnhancementTime = 0
+    } else {
+      console.log('🔍 Enhancing query for better search...')
+      const enhanceStart = Date.now()
+      enhancedQuery = await enhanceQuery(userQuestion)
+      metrics.queryEnhancementTime = Date.now() - enhanceStart
+    }
 
     // Step 2: Perform vector search with enhanced query
     console.log('🔎 Searching vector database...')
@@ -305,15 +314,47 @@ export async function enhancedRAGQuery(
     metrics.vectorSearchTime = Date.now() - searchStart
 
     // Step 3: Format results for interview context
-    console.log('✨ Formatting response for interview...')
-    const formatStart = Date.now()
-    const interviewResponse = await formatForInterview(
-      vectorResults,
-      userQuestion,
-      interviewContext,
-      detectedLanguage,
-    )
-    metrics.responseFormattingTime = Date.now() - formatStart
+    // PHONE OPTIMIZATION: Skip Groq formatting but give complete answers
+    let interviewResponse: string
+    if (phoneOptimized) {
+      console.log('📞 PHONE FAST: Using direct RAG results (no Groq formatting)')
+      const formatStart = Date.now()
+      // Use top 3 results and extract complete information
+      const relevantResults = vectorResults
+        .slice(0, 3) // Top 3 most relevant
+        .map((r) => r.data || r.metadata?.content || r.metadata?.text || r.metadata?.fullText || '')
+        .filter(Boolean)
+
+      if (relevantResults.length > 0) {
+        // Combine results intelligently - full answer but concise
+        interviewResponse = relevantResults.join(' ').trim()
+        // Limit to reasonable length for phone (500 chars = ~75 words)
+        if (interviewResponse.length > 500) {
+          interviewResponse = interviewResponse.substring(0, 500).trim()
+          // Try to end at a sentence
+          const lastPeriod = interviewResponse.lastIndexOf('.')
+          const lastQuestion = interviewResponse.lastIndexOf('?')
+          const lastExclaim = interviewResponse.lastIndexOf('!')
+          const lastSentence = Math.max(lastPeriod, lastQuestion, lastExclaim)
+          if (lastSentence > 300) {
+            interviewResponse = interviewResponse.substring(0, lastSentence + 1)
+          }
+        }
+      } else {
+        interviewResponse = "I don't have specific information about that in my knowledge base."
+      }
+      metrics.responseFormattingTime = Date.now() - formatStart
+    } else {
+      console.log('✨ Formatting response for interview...')
+      const formatStart = Date.now()
+      interviewResponse = await formatForInterview(
+        vectorResults,
+        userQuestion,
+        interviewContext,
+        detectedLanguage,
+      )
+      metrics.responseFormattingTime = Date.now() - formatStart
+    }
 
     metrics.totalTime = Date.now() - startTime
 
@@ -413,12 +454,19 @@ export async function contextAwareRAG(
   vectorSearchFunction: (query: string) => Promise<VectorResult[]>,
   interviewType: InterviewContextType = 'general',
   detectedLanguage?: string,
+  phoneOptimized: boolean = false,
 ): Promise<EnhancedRAGResult> {
   const context = INTERVIEW_CONTEXTS[interviewType]
 
   console.log(`🎯 Processing for ${context.name} context`)
 
-  return enhancedRAGQuery(question, vectorSearchFunction, context.name, detectedLanguage)
+  return enhancedRAGQuery(
+    question,
+    vectorSearchFunction,
+    context.name,
+    detectedLanguage,
+    phoneOptimized,
+  )
 }
 
 /**
@@ -545,6 +593,7 @@ export async function agenticRAG(
           vectorSearchFunction,
           interviewType,
           detectedLanguage,
+          phoneOptimized, // Pass phone optimization flag
         )
         break
 
