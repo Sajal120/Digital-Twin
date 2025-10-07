@@ -586,7 +586,7 @@ export class OmniChannelManager {
               question: userInput,
               omniChannelContext: context,
               enhancedMode: true,
-              maxResults: 8, // Increased for better context
+              maxResults: context.phoneCall ? 3 : 8, // Ultra-fast phone: only 3 results
             },
           },
         }),
