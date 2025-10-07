@@ -1016,21 +1016,30 @@ Reply in natural ${langName}:
 Response:`
 
       try {
-        const response = await groq.chat.completions.create({
-          model: 'llama-3.1-8b-instant',
+        // AGGRESSIVE TIMEOUT for translation (2s max!)
+        const translationPromise = groq.chat.completions.create({
+          model: 'llama-3.1-8b-instant', // Fast model
           messages: [{ role: 'user', content: responsePrompt }],
-          max_tokens: 150,
-          temperature: 0.7,
+          max_tokens: 100, // Reduced from 150 for speed
+          temperature: 0.5, // Lower for faster generation
         })
+
+        const response = await Promise.race([
+          translationPromise,
+          new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error('Groq translation timeout 2s')), 2000),
+          ),
+        ])
 
         const generatedText = response.choices[0].message.content
         if (generatedText) {
           finalResponse = cleanQuotes(generatedText.trim())
           translationUsed = true
+          console.log(`✅ ${langName} translation completed`)
         }
       } catch (error) {
-        console.error(`Error generating ${langName} response:`, error)
-        // Fallback to English if translation fails
+        console.error(`⚠️ ${langName} translation timeout/failed, using English:`, error)
+        // Fallback to English if translation fails or times out
       }
     }
 

@@ -358,9 +358,9 @@ export async function POST(request: NextRequest) {
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => {
-        console.log('⏱️ ElevenLabs timeout after 5s, aborting...')
+        console.log('⏱️ ElevenLabs timeout after 3s, aborting...')
         controller.abort()
-      }, 5000) // 5s timeout - aggressive for phone speed
+      }, 3000) // 3s timeout - ultra aggressive for phone speed
 
       const elevenlabsResponse = await fetch(
         `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
@@ -382,6 +382,7 @@ export async function POST(request: NextRequest) {
             },
             output_format: 'mp3_22050_32', // Lower quality for faster generation
             optimize_streaming_latency: 4, // Maximum speed optimization
+            apply_text_normalization: 'off', // Skip normalization for speed
           }),
           signal: controller.signal,
         },
