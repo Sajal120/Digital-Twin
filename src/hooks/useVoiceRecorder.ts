@@ -84,16 +84,18 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
     const recognition = new SpeechRecognition()
 
-    recognition.continuous = continuous
-    recognition.interimResults = interimResults
+    // iOS needs continuous mode to properly detect speech
+    recognition.continuous = isIOS.current ? true : continuous
+    recognition.interimResults = true // Always true for better feedback
     recognition.lang = 'en-US'
-    recognition.maxAlternatives = 1 // Get best match only
+    recognition.maxAlternatives = isIOS.current ? 3 : 1 // More alternatives on iOS
 
     console.log('🔧 Speech recognition configured:', {
       continuous: recognition.continuous,
       interimResults: recognition.interimResults,
       lang: recognition.lang,
       maxAlternatives: recognition.maxAlternatives,
+      platform: isIOS.current ? 'iOS' : 'Other',
     })
 
     recognition.onstart = () => {
@@ -137,12 +139,16 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
     recognition.onspeechend = () => {
       console.log('💬 Speech ended')
-      setState((prev) => ({
-        ...prev,
-        isSpeechDetected: false,
-        // Keep audio active if still recording, clear if done
-        isAudioCaptureActive: prev.isRecording,
-      }))
+      // iOS: Don't immediately clear speech detection, let onresult handle it
+      if (!isIOS.current) {
+        setState((prev) => ({
+          ...prev,
+          isSpeechDetected: false,
+          isAudioCaptureActive: prev.isRecording,
+        }))
+      } else {
+        console.log('🍎 iOS - keeping speech detected state for onresult')
+      }
     }
 
     recognition.onresult = (event: any) => {
@@ -194,19 +200,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       if (finalTranscript && onTranscriptionReceived) {
         console.log('✅ Sending final transcript to callback:', finalTranscript)
         onTranscriptionReceived(finalTranscript)
-      }
 
-      // iOS: Clear speech detected after a delay when we have final transcript
-      if (isIOS.current && finalTranscript) {
-        console.log('🍎 iOS - will clear speech indicator in 1.5 seconds')
-        setTimeout(() => {
-          console.log('🍎 iOS - clearing speech indicator now')
-          setState((prev) => ({
-            ...prev,
-            isSpeechDetected: false,
-            isAudioCaptureActive: false,
-          }))
-        }, 1500) // Clear 1.5 seconds after final result
+        // iOS: In continuous mode, clear detection quickly after sending to be ready for next speech
+        if (isIOS.current) {
+          console.log('🍎 iOS - clearing speech indicator after transcript sent')
+          setTimeout(() => {
+            setState((prev) => ({
+              ...prev,
+              isSpeechDetected: false,
+            }))
+          }, 500)
+        }
       } else if (!isIOS.current && finalTranscript) {
         // Android: Clear after shorter delay
         setTimeout(() => {
