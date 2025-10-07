@@ -7,7 +7,11 @@
  * structured static data for fallback scenarios.
  */
 
-import { linkedinOAuthService, requiresLinkedInAuth, generateAuthPrompt } from '@/lib/linkedin-service'
+import {
+  linkedinOAuthService,
+  requiresLinkedInAuth,
+  generateAuthPrompt,
+} from '@/lib/linkedin-service'
 
 export interface LinkedInExperience {
   company: string
@@ -172,7 +176,7 @@ Always eager to collaborate on innovative projects and contribute to the growing
         issuer: 'Infrastructure Academy',
         issueDate: 'November 2023',
         skills: ['System Administration', 'Security', 'Database Management'],
-      }
+      },
     ],
 
     skills: [
@@ -212,21 +216,28 @@ Always eager to collaborate on innovative projects and contribute to the growing
     },
 
     recommendations: 3,
-    profileUrl: "https://www.linkedin.com/in/sajal-basnet-7926aa188/"
+    profileUrl: 'https://www.linkedin.com/in/sajal-basnet-7926aa188/',
   }
 
   /**
    * Try to fetch real LinkedIn data from authenticated API
+   * Uses LINKEDIN_PERSONAL_ACCESS_TOKEN from environment if no token provided
    */
   async fetchRealLinkedInData(accessToken?: string): Promise<any> {
-    if (!accessToken) {
+    // Use provided token OR the personal access token from environment
+    const token = accessToken || process.env.LINKEDIN_PERSONAL_ACCESS_TOKEN
+
+    if (!token) {
+      console.log('No LinkedIn access token available (need LINKEDIN_PERSONAL_ACCESS_TOKEN)')
       return null
     }
 
     try {
-      const profile = await linkedinOAuthService.getProfile(accessToken)
-      const email = await linkedinOAuthService.getEmailAddress(accessToken)
-      
+      console.log('🔗 Fetching real LinkedIn profile data...')
+      const profile = await linkedinOAuthService.getProfile(token)
+      const email = await linkedinOAuthService.getEmailAddress(token)
+
+      console.log('✅ Successfully fetched LinkedIn profile data')
       return {
         name: `${profile.firstName} ${profile.lastName}`,
         headline: profile.headline || 'Professional at LinkedIn',
@@ -236,10 +247,11 @@ Always eager to collaborate on innovative projects and contribute to the growing
         publicProfileUrl: profile.publicProfileUrl,
         email: email,
         realData: true,
-        authenticatedAt: new Date().toISOString()
+        authenticatedAt: new Date().toISOString(),
       }
     } catch (error) {
-      console.error('Failed to fetch real LinkedIn data:', error)
+      console.error('❌ Failed to fetch real LinkedIn data:', error)
+      console.log('Falling back to static data')
       return null
     }
   }
@@ -250,7 +262,7 @@ Always eager to collaborate on innovative projects and contribute to the growing
   async generateProfileResponse(accessToken?: string): Promise<string> {
     // Try to get real LinkedIn data first
     const realData = await this.fetchRealLinkedInData(accessToken)
-    
+
     if (realData) {
       return `Here's my current LinkedIn profile information (authenticated data):
 
@@ -347,15 +359,18 @@ You can see my practical skills in action through my GitHub projects and profess
 
     return `Here are my LinkedIn certificates and professional certifications:
 
-${profile.certificates.map((cert, index) => {
-      const skillsStr = cert.skills && cert.skills.length > 0 ? `\nSkills Covered: ${cert.skills.join(', ')}` : ''
-      const expiration = cert.expirationDate ? `\nExpires: ${cert.expirationDate}` : ''
-      const credentialInfo = cert.credentialId ? `\nCredential ID: ${cert.credentialId}` : ''
-      
-      return `**${index + 1}. ${cert.name}**
+${profile.certificates
+  .map((cert, index) => {
+    const skillsStr =
+      cert.skills && cert.skills.length > 0 ? `\nSkills Covered: ${cert.skills.join(', ')}` : ''
+    const expiration = cert.expirationDate ? `\nExpires: ${cert.expirationDate}` : ''
+    const credentialInfo = cert.credentialId ? `\nCredential ID: ${cert.credentialId}` : ''
+
+    return `**${index + 1}. ${cert.name}**
 Issued by: ${cert.issuer}
 Issue Date: ${cert.issueDate}${expiration}${credentialInfo}${skillsStr}`
-    }).join('\n\n')}
+  })
+  .join('\n\n')}
 
 **Total Certificates:** ${profile.certificates.length}
 
@@ -442,14 +457,25 @@ export const linkedinService = new LinkedInService()
  */
 export function isLinkedInQuery(query: string): boolean {
   const linkedinKeywords = [
-    'linkedin', 'professional experience', 'work experience', 'career',
-    'employment', 'job history', 'professional background', 'work history',
-    'professional profile', 'endorsements', 'recommendations', 'connections',
-    'certificates', 'certifications', 'credentials'
+    'linkedin',
+    'professional experience',
+    'work experience',
+    'career',
+    'employment',
+    'job history',
+    'professional background',
+    'work history',
+    'professional profile',
+    'endorsements',
+    'recommendations',
+    'connections',
+    'certificates',
+    'certifications',
+    'credentials',
   ]
-  
+
   const queryLower = query.toLowerCase()
-  return linkedinKeywords.some(keyword => queryLower.includes(keyword))
+  return linkedinKeywords.some((keyword) => queryLower.includes(keyword))
 }
 
 /**
@@ -481,7 +507,10 @@ export function extractLinkedInQuery(query: string): string | null {
 /**
  * Generate enhanced response with real LinkedIn data
  */
-export async function generateLinkedInEnhancedResponse(query: string, accessToken?: string): Promise<string> {
+export async function generateLinkedInEnhancedResponse(
+  query: string,
+  accessToken?: string,
+): Promise<string> {
   try {
     const queryLower = query.toLowerCase()
 
