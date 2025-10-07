@@ -765,12 +765,29 @@ async function makeSearchDecision(
     /\b(padhe|padhya|shiksha|university|degree|kun|kaam|kaha|company|project)\b/i,
   ]
 
+  // ALWAYS SEARCH for GitHub/LinkedIn queries - these need real API data
+  const mustSearchGitHubLinkedIn = [
+    /\b(github|repository|repos?|code|projects?|commits?)\b/i,
+    /\b(linkedin|certificates?|certifications?|credentials?|professional profile)\b/i,
+    /\b(certificates? (?:you )?got|what certificates?)\b/i,
+  ]
+
   if (mustSearchPatterns.some((pattern) => pattern.test(userQuestion))) {
     console.log('Professional background question detected (multi-language) - FORCING SEARCH')
     return {
       action: 'SEARCH',
       reasoning: 'Question about professional background requires database search',
       confidence: 95,
+      searchQuery: userQuestion,
+    }
+  }
+
+  if (mustSearchGitHubLinkedIn.some((pattern) => pattern.test(userQuestion))) {
+    console.log('🔧 GitHub/LinkedIn query detected - FORCING SEARCH for API data')
+    return {
+      action: 'SEARCH',
+      reasoning: 'Question requires live GitHub or LinkedIn API data',
+      confidence: 98,
       searchQuery: userQuestion,
     }
   }

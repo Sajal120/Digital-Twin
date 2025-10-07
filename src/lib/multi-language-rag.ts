@@ -1133,11 +1133,39 @@ export async function processMultiLanguageQuery(
     `🌍 Language detected: ${languageContext.detectedLanguage} (confidence: ${languageContext.confidence})`,
   )
 
-  // Step 2: Select appropriate RAG pattern
-  const selectedPattern = {
-    pattern: 'standard_agentic' as const,
-    searchQuery: message,
-    reasoning: `Standard agentic RAG for ${languageContext.detectedLanguage} query`,
+  // Step 2: Select appropriate RAG pattern - CHECK FOR GITHUB/LINKEDIN FIRST!
+  let selectedPattern: {
+    pattern:
+      | 'advanced_agentic'
+      | 'multi_hop'
+      | 'hybrid_search'
+      | 'tool_enhanced'
+      | 'standard_agentic'
+    searchQuery: string
+    reasoning: string
+  }
+
+  // Force tool_enhanced for GitHub/LinkedIn queries
+  const messageLower = message.toLowerCase()
+  const needsGitHub = /\b(github|repository|repos?|code|projects?|commits?)\b/i.test(message)
+  const needsLinkedIn =
+    /\b(linkedin|professional|work experience|career|employment|job history|aubot|kimpton|edgedvr|work at|experience at|certificates?|certifications?|credentials?)\b/i.test(
+      message,
+    )
+
+  if (needsGitHub || needsLinkedIn) {
+    console.log('🔧 FORCING tool_enhanced pattern for external data query (GitHub/LinkedIn)')
+    selectedPattern = {
+      pattern: 'tool_enhanced' as const,
+      searchQuery: message,
+      reasoning: `Tool-enhanced RAG required for ${needsGitHub ? 'GitHub' : 'LinkedIn'} data`,
+    }
+  } else {
+    selectedPattern = {
+      pattern: 'standard_agentic' as const,
+      searchQuery: message,
+      reasoning: `Standard agentic RAG for ${languageContext.detectedLanguage} query`,
+    }
   }
 
   // Step 3: Enhance query for better search

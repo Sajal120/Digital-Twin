@@ -490,37 +490,6 @@ export function AIChat() {
             )}
           </div>
 
-          {/* Audio Detection Status - PROMINENT DISPLAY ABOVE INPUT */}
-          {isMounted && voiceChat.isListening && (
-            <div className="border-t border-b border-gray-200 p-4 bg-gradient-to-r from-red-50 to-orange-50">
-              <div className="flex flex-col items-center justify-center space-y-3">
-                {/* Main status */}
-                <div className="text-xl font-bold text-red-600 animate-pulse flex items-center space-x-2">
-                  <Mic className="w-6 h-6" />
-                  <span>🎤 LISTENING - SPEAK NOW</span>
-                </div>
-
-                {/* Audio detection indicators - LARGE & CLEAR */}
-                <div className="flex flex-wrap items-center justify-center gap-3 text-base font-semibold">
-                  {/* iOS: Use isSpeechDetected state (forced), Others: Use transcripts */}
-                  {voiceChat.isSpeechDetected ||
-                  voiceChat.interimTranscript ||
-                  voiceChat.transcript ? (
-                    <div className="px-4 py-2 rounded-lg border-2 border-green-500 bg-green-50 text-green-700 flex items-center space-x-2 animate-pulse">
-                      <Volume2 className="w-5 h-5" />
-                      <span>SPEAKING DETECTED ✅</span>
-                    </div>
-                  ) : (
-                    <div className="px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 flex items-center space-x-2">
-                      <Mic className="w-5 h-5" />
-                      <span>READY - SPEAK NOW</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Input Form with Voice Controls */}
           <div className="border-t p-4">
             {/* Voice Support Warning - Only show after mount to prevent hydration mismatch */}
