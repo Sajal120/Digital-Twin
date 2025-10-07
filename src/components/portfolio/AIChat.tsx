@@ -1,5 +1,6 @@
 'use client'
 
+// AI Chat Component - Updated Oct 2025
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
