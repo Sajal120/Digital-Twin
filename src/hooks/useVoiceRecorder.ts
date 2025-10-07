@@ -97,18 +97,12 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     })
 
     recognition.onstart = () => {
-      console.log('🎤 Speech recognition STARTED')
-      // iOS: Also set audio active immediately on start
+      console.log('�️ Speech recognition STARTED')
+      setState((prev) => ({ ...prev, isRecording: true, error: null }))
+
+      // iOS: Set audio as "ready" but not "active" until speech detected
       if (isIOS.current) {
-        console.log('🍎 Setting audio active on recognition start (iOS)')
-        setState((prev) => ({
-          ...prev,
-          isRecording: true,
-          error: null,
-          isAudioCaptureActive: true, // Force active on iOS
-        }))
-      } else {
-        setState((prev) => ({ ...prev, isRecording: true, error: null }))
+        console.log('🍎 iOS - waiting for speech detection (onspeechstart or onresult)')
       }
     }
 
@@ -134,12 +128,21 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
     recognition.onspeechstart = () => {
       console.log('🗣️ Speech detected - processing...')
-      setState((prev) => ({ ...prev, isSpeechDetected: true }))
+      setState((prev) => ({
+        ...prev,
+        isSpeechDetected: true,
+        isAudioCaptureActive: true, // Set active when speech starts
+      }))
     }
 
     recognition.onspeechend = () => {
       console.log('💬 Speech ended')
-      setState((prev) => ({ ...prev, isSpeechDetected: false }))
+      setState((prev) => ({
+        ...prev,
+        isSpeechDetected: false,
+        // Keep audio active if still recording, clear if done
+        isAudioCaptureActive: prev.isRecording,
+      }))
     }
 
     recognition.onresult = (event: any) => {
@@ -173,6 +176,8 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         ...prev,
         transcript: prev.transcript + finalTranscript,
         interimTranscript,
+        // Set audio active when receiving results (iOS fallback)
+        isAudioCaptureActive: true,
       }))
 
       if (finalTranscript && onTranscriptionReceived) {
@@ -543,47 +548,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         recognitionRef.current.start()
         console.log('✅ Speech recognition start() called')
 
-        // iOS FIX: Force audio active immediately since iOS events are unreliable
         if (isIOS.current) {
-          console.log('🍎 iOS detected - forcing audio capture state to ACTIVE immediately')
-          setState((prev) => ({
-            ...prev,
-            isAudioCaptureActive: true,
-            isSoundDetected: false,
-            isSpeechDetected: false,
-          }))
+          console.log('🍎 iOS - speech recognition started, waiting for voice input...')
         }
       } else {
         console.error('❌ Recognition ref is null!')
         throw new Error('Speech recognition not initialized')
-      }
-
-      // Start audio recording
+      } // Start audio recording
       if (mediaRecorderRef.current?.state === 'inactive') {
         mediaRecorderRef.current.start(1000) // Collect data every second
         console.log('🔴 MediaRecorder started (for audio capture)')
-      }
-
-      // iOS: Verify and force audio state after delay
-      if (isIOS.current) {
-        setTimeout(() => {
-          console.log('🍎 iOS audio check - forcing active state')
-          setState((prev) => ({
-            ...prev,
-            isAudioCaptureActive: true,
-          }))
-        }, 300)
-
-        // Keep audio active indicator on for iOS throughout recording
-        setTimeout(() => {
-          if (state.isRecording && !state.isAudioCaptureActive) {
-            console.log('🍎 iOS fallback - setting audio capture active')
-            setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
-          }
-        }, 1000)
-      }
-
-      // Verify speech recognition actually started after a brief delay
+      } // Verify speech recognition actually started after a brief delay
       setTimeout(() => {
         if (!state.isRecording) {
           console.error('⚠️ WARNING: Speech recognition did not trigger onstart event!')
