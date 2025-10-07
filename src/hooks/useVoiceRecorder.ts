@@ -269,8 +269,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
   // Monitor audio levels to verify microphone is actually capturing sound
   const startAudioLevelMonitoring = useCallback(
     (stream: MediaStream) => {
+      // SKIP audio monitoring on iOS - it interferes with Web Speech API
+      if (isIOS.current) {
+        console.log('🍎 iOS detected - using Web Speech API events instead of audio monitoring')
+        // For iOS, we'll rely on the onaudiostart event from Web Speech API
+        setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
+        return
+      }
+
       try {
-        // Create audio context and analyser
+        // Create audio context and analyser (Android only)
+        console.log('🤖 Android - starting audio level monitoring')
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
         const analyser = audioContext.createAnalyser()
         const microphone = audioContext.createMediaStreamSource(stream)
@@ -313,9 +322,11 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         }
 
         checkAudioLevel()
-        console.log('✅ Audio level monitoring started')
+        console.log('✅ Audio level monitoring started (Android)')
       } catch (error) {
         console.error('❌ Failed to start audio monitoring:', error)
+        // Fallback: assume audio is active
+        setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
       }
     },
     [state.isRecording, state.isAudioCaptureActive],
@@ -331,23 +342,32 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         userAgent: navigator.userAgent,
       })
 
-      // AGGRESSIVE audio constraints for Android
+      // Platform-specific audio constraints
       const audioConstraints: MediaStreamConstraints = {
-        audio: isMobile.current
-          ? ({
+        audio: isIOS.current
+          ? // iOS Safari: Simple constraints work best
+            {
               echoCancellation: true,
               noiseSuppression: true,
               autoGainControl: true,
-              sampleRate: { ideal: 16000 },
-              channelCount: { ideal: 1 },
-            } as any)
-          : {
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-              sampleRate: 44100,
-              channelCount: 1,
-            },
+            }
+          : isMobile.current
+            ? // Android: More aggressive constraints
+              ({
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: { ideal: 16000 },
+                channelCount: { ideal: 1 },
+              } as any)
+            : // Desktop: High quality
+              {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 44100,
+                channelCount: 1,
+              },
       }
 
       console.log('🎤 Requesting getUserMedia with constraints:', audioConstraints)
@@ -437,8 +457,13 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     })
 
     // FORCE: Resume audio context on Android (critical!)
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      console.log('🔓 Resuming suspended audio context...')
+    // Skip on iOS - not needed and may interfere
+    if (
+      !isIOS.current &&
+      audioContextRef.current &&
+      audioContextRef.current.state === 'suspended'
+    ) {
+      console.log('🔓 Resuming suspended audio context (Android)...')
       await audioContextRef.current.resume()
       console.log('✅ Audio context resumed:', audioContextRef.current.state)
     }
@@ -452,7 +477,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
           muted: track.muted,
           readyState: track.readyState,
         })
-        // Force enable track
+        // Force enable track (but be gentle on iOS)
         if (!track.enabled) {
           console.log('⚡ Enabling audio track')
           track.enabled = true
