@@ -50,8 +50,8 @@ async function main() {
   const clientSecret = await question('Enter your LINKEDIN_CLIENT_SECRET: ')
   const redirectUri =
     (await question(
-      'Enter redirect URI (default: http://localhost:3000/api/auth/linkedin/callback): ',
-    )) || 'http://localhost:3000/api/auth/linkedin/callback'
+      'Enter redirect URI (default: https://www.sajal-app.online/api/auth/linkedin/callback): ',
+    )) || 'https://www.sajal-app.online/api/auth/linkedin/callback'
 
   // Generate authorization URL
   const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email%20r_basicprofile`
