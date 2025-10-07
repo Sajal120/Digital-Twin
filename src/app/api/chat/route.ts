@@ -401,7 +401,7 @@ I'm here to help once we get this sorted out! 😊`,
       }
     }
 
-    // Meeting booking detection - Two-step process
+    // Meeting booking detection - Use Cal.com (no auth needed!)
     if (
       lowerMessage.includes('book meeting') ||
       lowerMessage.includes('schedule meeting') ||
@@ -409,78 +409,30 @@ I'm here to help once we get this sorted out! 😊`,
       lowerMessage.includes('book a meeting') ||
       lowerMessage.includes('meeting with you')
     ) {
-      if (!isAuthenticated) {
-        return {
-          action: 'book_meeting_auth_needed',
-          response: `I'd be happy to help you book a meeting! 🗓️ 
-
-To schedule a meeting, I can create a Google Calendar event with a Meet link and send you the details. 
-
-**To get started:**
-1. Click the "Sign in with Google" button to authenticate
-2. Grant calendar permissions 
-3. Then tell me your preferred date and time!
-
-Once authenticated, I can:
-✅ Create calendar events with Google Meet links
-✅ Send calendar invites
-✅ Schedule meetings based on your preferences
-
-What would you like to discuss in our meeting? I'm excited to share my experience with:
-- AI-powered portfolio chatbot development
-- Full-stack development with Next.js and React
-- My internship experience at Aubot
-- Future opportunities in AI, Development, Security, and Support`,
-          needsAuth: true,
-          authUrl: '/api/auth/signin/google',
-        }
-      }
-
-      // If not a confirmation, show the initial confirmation dialog
-      // First request - show confirmation dialog
-      const userEmail = session.user?.email || 'anonymous@example.com'
-      const userName = session.user?.name || 'Anonymous User'
-
-      // Parse the requested time to show in confirmation
-      const { start, end } = googleService.parseDateTime(message || 'next Monday afternoon')
-
       return {
-        action: 'meeting_confirmation_needed',
-        response: `📅 I'd be happy to schedule a meeting for you!
+        action: 'book_meeting_calcom',
+        response: `📅 I'd be happy to schedule a meeting with you!
 
-**Meeting Details to Confirm:**
-👤 **Your Name:** ${userName}
-📧 **Your Email:** ${userEmail}
-⏰ **Proposed Time:** ${start.toLocaleString()} - ${end.toLocaleString()}
-🎯 **Your Request:** "${message}"
+I use **Cal.com** for easy, hassle-free booking - no authentication needed!
 
-**Meeting Agenda:**
-- Discussion about Sajal's AI-powered portfolio chatbot
-- Full-stack development experience and technical skills
-- Career opportunities and potential collaboration
-- Q&A about projects and achievements
+**📆 Book directly here:**
+🔗 https://cal.com/sajal-basnet-9820tk
 
-**What will happen when you confirm:**
-1. ✅ Calendar event will be created with Google Meet link
-2. ✅ You'll receive a calendar invite from Sajal
-3. ✅ Sajal will receive a notification with your meeting request
-4. ✅ Meeting reminders will be set automatically
+**Available meeting types:**
+• **30 Min Meeting** - Quick consultation or discussion
+• **15 Min Meeting** - Brief Q&A or introduction
+• **Secret Meeting** - Special project discussions
 
-**To confirm and book this meeting, please reply with:**
-- "Yes, book it"
-- "Confirm the meeting"  
-- "Go ahead and schedule it"
+**What we can discuss:**
+💼 **Projects** - Your ideas and technical requirements
+🤝 **Collaboration** - Partnership opportunities
+💡 **Consultation** - Technical advice and guidance
+🚀 **Career** - My experience and background
 
-**To modify the time, say something like:**
-- "Actually, can we do Tuesday at 3 PM instead?"
-- "Tomorrow at 10 AM would be better"
+**Google Meet link** will be automatically generated when you book!
 
-Would you like me to proceed with booking this meeting? 🚀`,
-        needsConfirmation: true,
-        proposedTime: {
-          start: start.toISOString(),
-          end: end.toISOString(),
-        },
+Click the link above to choose a time that works for you. Looking forward to connecting! 🎯`,
+        calcomUrl: 'https://cal.com/sajal-basnet-9820tk',
       }
     }
 

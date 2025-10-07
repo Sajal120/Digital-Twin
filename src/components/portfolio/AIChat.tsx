@@ -225,9 +225,16 @@ export function AIChat() {
 
       const data = await response.json()
 
+      // Check if response contains Cal.com booking link
+      let messageContent = data.response
+      if (data.calcomUrl) {
+        // Add a clickable button for Cal.com booking
+        messageContent += `\n\n[📅 Click here to book on Cal.com](${data.calcomUrl})`
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: data.response,
+        content: messageContent,
         role: 'assistant',
         timestamp: new Date(),
       }
@@ -418,7 +425,25 @@ export function AIChat() {
                       message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-muted'
                     }`}
                   >
-                    <div className="text-sm whitespace-pre-line">{message.content}</div>
+                    <div className="text-sm whitespace-pre-line">
+                      {message.content.split(/(\[.*?\]\(.*?\))/).map((part, i) => {
+                        const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/)
+                        if (linkMatch) {
+                          return (
+                            <a
+                              key={i}
+                              href={linkMatch[2]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                            >
+                              {linkMatch[1]}
+                            </a>
+                          )
+                        }
+                        return <span key={i}>{part}</span>
+                      })}
+                    </div>
                     <div className="flex items-center justify-between mt-1">
                       <p
                         className={`text-xs ${

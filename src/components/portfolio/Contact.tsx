@@ -86,7 +86,7 @@ export function Contact() {
       icon: <Calendar className="w-6 h-6" />,
       label: 'Schedule a Call',
       value: 'Book a Meeting',
-      href: 'https://calendly.com',
+      href: 'https://cal.com/sajal-basnet-9820tk',
       color: 'text-purple-600',
     },
   ]
