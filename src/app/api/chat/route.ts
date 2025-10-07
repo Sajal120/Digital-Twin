@@ -84,16 +84,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Try to insert the user message into database, but continue if it fails
+    // SKIP for phone calls (speed optimization)
     let userMessage = null
-    try {
-      userMessage = await ChatDatabase.insertMessage({
-        user_id,
-        role,
-        content,
-      })
-    } catch (dbError) {
-      console.error('Failed to insert user message:', dbError)
-      // Continue without database - we'll still provide a response
+    if (!phoneOptimized) {
+      try {
+        userMessage = await ChatDatabase.insertMessage({
+          user_id,
+          role,
+          content,
+        })
+      } catch (dbError) {
+        console.error('Failed to insert user message:', dbError)
+        // Continue without database - we'll still provide a response
+      }
+    } else {
+      console.log('📞 Skipping database write for phone (speed optimization)')
     }
 
     // Generate AI response using enhanced or basic RAG
@@ -128,16 +133,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Try to insert the AI response into the database, but continue if it fails
+    // SKIP for phone calls (speed optimization)
     let assistantMessage = null
-    try {
-      assistantMessage = await ChatDatabase.insertMessage({
-        user_id,
-        role: 'assistant',
-        content: aiResponse,
-      })
-    } catch (dbError) {
-      console.error('Failed to insert assistant message:', dbError)
-      // Continue without database - we still have the response
+    if (!phoneOptimized) {
+      try {
+        assistantMessage = await ChatDatabase.insertMessage({
+          user_id,
+          role: 'assistant',
+          content: aiResponse,
+        })
+      } catch (dbError) {
+        console.error('Failed to insert assistant message:', dbError)
+        // Continue without database - we still have the response
+      }
     }
 
     // For portfolio format, return enhanced response
@@ -704,7 +712,7 @@ async function generateEnhancedPortfolioResponse(
         // Query vector database
         const vectorResults = await index.query({
           data: query,
-          topK: phoneOptimized ? 10 : 15, // Increased to ensure education vector is retrieved (rank 7)
+          topK: phoneOptimized ? 5 : 15, // Ultra-fast phone: only top 5 results
           includeMetadata: true,
           includeData: true,
         })
@@ -756,7 +764,7 @@ async function generateEnhancedPortfolioResponse(
           searchQuery,
           vectorSearchFunction,
           interviewType || 'general',
-          phoneOptimized ? 2 : 3, // Fewer hops for phone
+          phoneOptimized ? 1 : 3, // Single hop for ultra-fast phone
         )
         result = {
           response: multiHopResult.finalResponse,
