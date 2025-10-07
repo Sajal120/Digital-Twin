@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="2"
+    timeout="5"
     finishOnKey="#"
     maxLength="30"
     playBeep="false"
@@ -275,14 +275,12 @@ export async function POST(request: NextRequest) {
       // Fallback to Say if ElevenLabs fails
       const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew-Neural" language="en-US">
-    I didn't catch that. Please speak after the beep.
-  </Say>
+  <Say voice="Polly.Matthew-Neural" language="en-US">I didn't catch that. Please speak after the beep.</Say>
   <Pause length="1"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="2"
+    timeout="5"
     finishOnKey="#"
     maxLength="30"
     playBeep="false"
@@ -509,17 +507,15 @@ export async function POST(request: NextRequest) {
 
       console.log('🏗️ BUILDING TwiML response...')
 
-      // Return TwiML with thinking sound + AI response + record next input
-      // The thinking sound played during processing, now play the answer
+      // Return TwiML with AI response + record next input
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${THINKING_SOUND_URL}</Play>
   <Play>${audioUrl}</Play>
   <Pause length="1"/>
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="2"
+    timeout="5"
     finishOnKey="#"
     maxLength="30"
     playBeep="false"
