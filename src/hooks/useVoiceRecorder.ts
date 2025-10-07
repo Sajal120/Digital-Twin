@@ -77,10 +77,42 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     recognition.continuous = continuous
     recognition.interimResults = interimResults
     recognition.lang = 'en-US'
+    recognition.maxAlternatives = 1 // Get best match only
+
+    console.log('🔧 Speech recognition configured:', {
+      continuous: recognition.continuous,
+      interimResults: recognition.interimResults,
+      lang: recognition.lang,
+      maxAlternatives: recognition.maxAlternatives,
+    })
 
     recognition.onstart = () => {
       console.log('🎤 Speech recognition STARTED')
       setState((prev) => ({ ...prev, isRecording: true, error: null }))
+    }
+
+    recognition.onaudiostart = () => {
+      console.log('🔊 Audio capture STARTED - browser is receiving sound from microphone')
+    }
+
+    recognition.onaudioend = () => {
+      console.log('🔇 Audio capture ENDED - browser stopped receiving sound')
+    }
+
+    recognition.onsoundstart = () => {
+      console.log('👂 Sound detected by microphone')
+    }
+
+    recognition.onsoundend = () => {
+      console.log('🤫 Sound ended (silence detected)')
+    }
+
+    recognition.onspeechstart = () => {
+      console.log('🗣️ Speech detected - processing...')
+    }
+
+    recognition.onspeechend = () => {
+      console.log('💬 Speech ended')
     }
 
     recognition.onresult = (event: any) => {
@@ -294,7 +326,21 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       return false
     }
 
-    console.log('🎙️ Starting recording...', { isMobile: isMobile.current, isIOS: isIOS.current })
+    console.log('🎙️ Starting recording...', {
+      isMobile: isMobile.current,
+      isIOS: isIOS.current,
+      hasRecognitionRef: !!recognitionRef.current,
+      hasMediaRecorder: !!mediaRecorderRef.current,
+    })
+
+    // Verify speech recognition is ready
+    if (!recognitionRef.current) {
+      console.error('❌ Speech recognition not initialized!')
+      const errorMsg = 'Speech recognition failed to initialize. Please refresh the page.'
+      setState((prev) => ({ ...prev, error: errorMsg }))
+      onError?.(errorMsg)
+      return false
+    }
 
     // iOS-specific: Check if we're in a secure context (HTTPS)
     if (isIOS.current && location.protocol !== 'https:' && location.hostname !== 'localhost') {
@@ -345,6 +391,19 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         mediaRecorderRef.current.start(1000) // Collect data every second
         console.log('🔴 MediaRecorder started (for audio capture)')
       }
+
+      // Verify speech recognition actually started after a brief delay
+      setTimeout(() => {
+        if (!state.isRecording) {
+          console.error('⚠️ WARNING: Speech recognition did not trigger onstart event!')
+          console.log('   This usually means:')
+          console.log('   1. Browser blocked speech recognition')
+          console.log('   2. Microphone permission not granted')
+          console.log('   3. Speech recognition API not available')
+        } else {
+          console.log('✅ Speech recognition verified as running')
+        }
+      }, 500)
 
       return true
     } catch (error: any) {
