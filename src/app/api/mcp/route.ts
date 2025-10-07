@@ -84,6 +84,13 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
 
       console.log(`🎯 Processing question for ${interviewType} interview context`)
 
+      // Extract omniChannelContext from parameters (passed by omni-channel-manager)
+      const omniChannelContext = parameters.omniChannelContext || {}
+      const isPhoneCall =
+        omniChannelContext.phoneCall || omniChannelContext.currentChannel === 'phone'
+
+      console.log(`📞 Phone optimization: ${isPhoneCall ? 'ENABLED ⚡' : 'disabled'}`)
+
       // Call enhanced chat API
       const chatResponse = await fetch(
         `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat`,
@@ -94,9 +101,11 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
           },
           body: JSON.stringify({
             message: question,
-            conversationHistory: [],
+            conversationHistory: omniChannelContext.conversationHistory || [],
             interviewType,
             enhancedMode,
+            phoneOptimized: isPhoneCall, // CRITICAL: Pass phone optimization flag
+            omniChannelContext, // Pass full context
           }),
         },
       )
