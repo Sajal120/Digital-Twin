@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
 async function getProfessionalContext(query: string, interactionType?: string): Promise<string> {
   try {
     // Try to connect to your existing chat API endpoint
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXTAUTH_URL || 'http://localhost:3000'
     const response = await fetch(`${baseUrl}/api/chat`, {
       method: 'POST',
       headers: {
@@ -184,7 +186,9 @@ Additional Context: ${additionalContext}`
 /*
 async function generateAudioResponse(text: string): Promise<string | null> {
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXTAUTH_URL || 'http://localhost:3000'
     const response = await fetch(`${baseUrl}/api/voice/speech`, {
       method: 'POST',
       headers: {

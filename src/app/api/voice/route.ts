@@ -78,7 +78,7 @@ async function getProfessionalContext(query: string): Promise<string> {
   try {
     // Try to connect to your existing MCP chat endpoint
     const response = await fetch(
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat`,
+      `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat`,
       {
         method: 'POST',
         headers: {

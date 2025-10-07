@@ -91,24 +91,30 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
 
       console.log(`📞 Phone optimization: ${isPhoneCall ? 'ENABLED ⚡' : 'disabled'}`)
 
+      // Determine the base URL for the Chat API
+      // In production (Vercel), use the deployment URL
+      // In development, use localhost
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
+      console.log(`🔗 Calling Chat API at: ${baseUrl}/api/chat`)
+
       // Call enhanced chat API
-      const chatResponse = await fetch(
-        `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: question,
-            conversationHistory: omniChannelContext.conversationHistory || [],
-            interviewType,
-            enhancedMode,
-            phoneOptimized: isPhoneCall, // CRITICAL: Pass phone optimization flag
-            omniChannelContext, // Pass full context
-          }),
+      const chatResponse = await fetch(`${baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      )
+        body: JSON.stringify({
+          message: question,
+          conversationHistory: omniChannelContext.conversationHistory || [],
+          interviewType,
+          enhancedMode,
+          phoneOptimized: isPhoneCall, // CRITICAL: Pass phone optimization flag
+          omniChannelContext, // Pass full context
+        }),
+      })
 
       if (!chatResponse.ok) {
         throw new Error(`Chat API error: ${chatResponse.status}`)
@@ -159,21 +165,23 @@ async function handleDigitalTwinTool(toolName: string, parameters: any) {
 
       console.log(`📊 Comparing RAG approaches for: "${question}"`)
 
+      // Determine the base URL (same as above)
+      const baseUrl = process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : process.env.NEXTAUTH_URL || 'http://localhost:3000'
+
       // Call comparison API
-      const comparisonResponse = await fetch(
-        `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/rag-compare`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            question,
-            interviewType,
-            includeAnalysis,
-          }),
+      const comparisonResponse = await fetch(`${baseUrl}/api/rag-compare`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      )
+        body: JSON.stringify({
+          question,
+          interviewType,
+          includeAnalysis,
+        }),
+      })
 
       if (!comparisonResponse.ok) {
         throw new Error(`Comparison API error: ${comparisonResponse.status}`)
