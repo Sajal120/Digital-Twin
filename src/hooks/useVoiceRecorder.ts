@@ -176,13 +176,25 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         ...prev,
         transcript: prev.transcript + finalTranscript,
         interimTranscript,
-        // Set audio active when receiving results (iOS fallback)
+        // Set BOTH audio active AND speech detected when receiving results (iOS fallback)
         isAudioCaptureActive: true,
+        isSpeechDetected: !!(finalTranscript || interimTranscript), // True if any text
       }))
 
       if (finalTranscript && onTranscriptionReceived) {
         console.log('✅ Sending final transcript to callback:', finalTranscript)
         onTranscriptionReceived(finalTranscript)
+      }
+
+      // iOS: Clear speech detected after a delay when we have final transcript
+      if (isIOS.current && finalTranscript) {
+        setTimeout(() => {
+          setState((prev) => ({
+            ...prev,
+            isSpeechDetected: false,
+            isAudioCaptureActive: false,
+          }))
+        }, 1000) // Clear 1 second after final result
       }
     }
 
@@ -287,9 +299,11 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     (stream: MediaStream) => {
       // SKIP audio monitoring on iOS - it interferes with Web Speech API
       if (isIOS.current) {
-        console.log('🍎 iOS detected - using Web Speech API events instead of audio monitoring')
-        // For iOS, we'll rely on the onaudiostart event from Web Speech API
-        setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
+        console.log(
+          '🍎 iOS detected - relying on speech recognition events (onspeechstart/onresult)',
+        )
+        // For iOS, we rely on onspeechstart and onresult events
+        // Don't set audio active here - let it show only when speech detected
         return
       }
 
