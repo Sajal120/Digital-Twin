@@ -304,16 +304,17 @@ export async function POST(request: NextRequest) {
     console.log('🎵 Returning instant acknowledgment (thinking sound)...')
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
-    const processingUrl = `${baseUrl}/api/phone/process-response?callSid=${encodeURIComponent(callSid)}&speech=${encodeURIComponent(speechResult)}`
+    const processingUrl = `${baseUrl}/api/phone/process-response`
 
     const acknowledgmentTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${THINKING_SOUND_URL}</Play>
-  <Redirect>${processingUrl}</Redirect>
+  <Redirect method="POST">${processingUrl}?CallSid=${encodeURIComponent(callSid)}&SpeechResult=${encodeURIComponent(speechResult)}</Redirect>
 </Response>`
 
     console.log('✅ Returning instant acknowledgment TwiML')
-    console.log('🔗 Will redirect to:', processingUrl.substring(0, 100))
+    console.log('🔗 Will redirect to:', processingUrl)
+    console.log('📝 Speech:', speechResult.substring(0, 50))
 
     return new NextResponse(acknowledgmentTwiml, {
       status: 200,

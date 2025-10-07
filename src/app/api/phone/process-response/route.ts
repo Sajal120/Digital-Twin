@@ -12,13 +12,35 @@ import { omniChannelManager } from '@/lib/omni-channel-manager'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-export async function GET(request: NextRequest) {
+async function processResponse(request: NextRequest) {
+  console.log('🚀 [PROCESS-RESPONSE] Endpoint called!')
+  console.log('📍 URL:', request.url)
+  console.log('📍 Method:', request.method)
+
   try {
+    let callSid: string | null = null
+    let speechResult: string | null = null
+
+    // Try query params first (for GET or query string in POST)
     const searchParams = request.nextUrl.searchParams
-    const callSid = searchParams.get('callSid')
-    const speechResult = searchParams.get('speech')
+    callSid = searchParams.get('CallSid') || searchParams.get('callSid')
+    speechResult = searchParams.get('SpeechResult') || searchParams.get('speech')
+
+    // If POST, also check form data (Twilio format)
+    if (request.method === 'POST' && (!callSid || !speechResult)) {
+      try {
+        const formData = await request.formData()
+        callSid = callSid || (formData.get('CallSid') as string)
+        speechResult = speechResult || (formData.get('SpeechResult') as string)
+      } catch (e) {
+        console.log('⚠️ No form data available')
+      }
+    }
+
+    console.log('📋 Parameters:', { callSid, speechLength: speechResult?.length })
 
     if (!callSid || !speechResult) {
+      console.error('❌ Missing parameters:', { callSid: !!callSid, speech: !!speechResult })
       throw new Error('Missing callSid or speech parameter')
     }
 
@@ -185,4 +207,13 @@ export async function GET(request: NextRequest) {
       headers: { 'Content-Type': 'text/xml' },
     })
   }
+}
+
+// Support both GET and POST methods
+export async function GET(request: NextRequest) {
+  return processResponse(request)
+}
+
+export async function POST(request: NextRequest) {
+  return processResponse(request)
 }
