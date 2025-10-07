@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
+    timeout="3"
     finishOnKey="#"
     maxLength="30"
     playBeep="true"
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
+    timeout="3"
     finishOnKey="#"
     maxLength="30"
     playBeep="true"
@@ -395,7 +395,7 @@ export async function POST(request: NextRequest) {
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
+    timeout="3"
     finishOnKey="#"
     maxLength="30"
     playBeep="true"
@@ -505,7 +505,7 @@ export async function POST(request: NextRequest) {
   <Record
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
+    timeout="3"
     finishOnKey="#"
     maxLength="30"
     playBeep="true"

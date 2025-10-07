@@ -229,7 +229,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     <Record 
       action="/api/phone/handle-speech"
       method="POST"
-      timeout="10"
+      timeout="3"
       finishOnKey="#"
       maxLength="30"
       playBeep="true"
@@ -247,7 +247,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   <Record 
     action="/api/phone/handle-speech"
     method="POST"
-    timeout="10"
+    timeout="3"
     finishOnKey="#"
     maxLength="30"
     playBeep="true"
