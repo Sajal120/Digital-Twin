@@ -5,10 +5,10 @@ const { put, del } = require('@vercel/blob')
 async function generateUltraSlowThinking() {
   console.log('🎵 Generating ULTRA SLOW single thinking sound with YOUR voice...')
 
-  // ONE complete thinking sequence - varied and natural
-  // Long slow hmm, pause, short hmm, pause, medium hmm
+  // ONE complete thinking sequence - two long natural hmms with pause
+  // Long hmm, PAUSE, long hmm for natural thinking feel
   // Total 8-10 seconds to cover entire AI processing
-  const text = 'Hmmmmmmmmmmmm... hmm... hmmmmmmm'
+  const text = 'Hmmmmmmmmmmmm. Hmmmmmmmmmmmm.'
 
   const voiceId = process.env.ELEVENLABS_VOICE_ID_ENGLISH || 'WcXkU7PbsO0uKKBdWJrG' // YOUR cloned voice (Sajal Basnet English)
 
@@ -26,11 +26,12 @@ async function generateUltraSlowThinking() {
     text: text,
     model_id: 'eleven_turbo_v2_5',
     voice_settings: {
-      stability: 0.75, // Very stable for slow thinking
+      stability: 0.7, // Stable for thinking
       similarity_boost: 0.95, // MAXIMUM similarity to YOUR voice
       style: 0.0, // No style variation - pure YOUR voice
       use_speaker_boost: true,
     },
+    output_format: 'mp3_44100_128', // Higher quality = louder, clearer
   })
 
   return new Promise((resolve, reject) => {
