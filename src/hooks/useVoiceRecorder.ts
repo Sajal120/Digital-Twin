@@ -110,7 +110,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
     recognition.onaudiostart = () => {
       console.log('🔊 Audio capture STARTED - browser is receiving sound from microphone')
-      setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
+      // iOS: Aggressively set speech detected on audio start
+      if (isIOS.current) {
+        console.log('🍎 iOS - FORCING isSpeechDetected=true on audio start')
+        setState((prev) => ({
+          ...prev,
+          isAudioCaptureActive: true,
+          isSpeechDetected: true, // Force true on iOS
+        }))
+      } else {
+        setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
+      }
     }
 
     recognition.onaudioend = () => {
@@ -120,7 +130,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
     recognition.onsoundstart = () => {
       console.log('👂 Sound detected by microphone')
-      setState((prev) => ({ ...prev, isSoundDetected: true }))
+      // iOS: Also set speech detected on sound
+      if (isIOS.current) {
+        console.log('🍎 iOS - FORCING isSpeechDetected=true on sound detected')
+        setState((prev) => ({
+          ...prev,
+          isSoundDetected: true,
+          isSpeechDetected: true, // Force true on iOS
+        }))
+      } else {
+        setState((prev) => ({ ...prev, isSoundDetected: true }))
+      }
     }
 
     recognition.onsoundend = () => {
@@ -186,30 +206,45 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         isIOS: isIOS.current,
       })
 
+      // AGGRESSIVE: Force all detection states on ANY transcript
+      if (isIOS.current) {
+        console.log('🍎 iOS - AGGRESSIVELY FORCING all detection states TRUE')
+      }
+
       setState((prev) => ({
         ...prev,
         transcript: prev.transcript + finalTranscript,
         interimTranscript,
-        // FORCE BOTH to true when ANY transcript received
+        // FORCE ALL to true when ANY transcript received
         isAudioCaptureActive: true,
-        isSpeechDetected: true, // ALWAYS true when onresult fires
+        isSoundDetected: true,
+        isSpeechDetected: true,
       }))
 
-      console.log('✅ State updated - should show SPEAKING DETECTED now!')
+      console.log('✅ State updated - SHOULD DEFINITELY show SPEAKING DETECTED now!')
+      console.log('   Current state will be:', {
+        isAudioCaptureActive: true,
+        isSoundDetected: true,
+        isSpeechDetected: true,
+        hasInterim: !!interimTranscript,
+        hasFinal: !!finalTranscript,
+      })
 
       if (finalTranscript && onTranscriptionReceived) {
         console.log('✅ Sending final transcript to callback:', finalTranscript)
         onTranscriptionReceived(finalTranscript)
 
-        // iOS: In continuous mode, clear detection quickly after sending to be ready for next speech
+        // iOS: Keep indicator showing longer to ensure user sees it
         if (isIOS.current) {
-          console.log('🍎 iOS - clearing speech indicator after transcript sent')
+          console.log('🍎 iOS - will clear speech indicator in 2 seconds')
           setTimeout(() => {
+            console.log('🍎 iOS - NOW clearing speech indicator')
             setState((prev) => ({
               ...prev,
               isSpeechDetected: false,
+              isSoundDetected: false,
             }))
-          }, 500)
+          }, 2000) // Longer delay for iOS
         }
       } else if (!isIOS.current && finalTranscript) {
         // Android: Clear after shorter delay
@@ -219,6 +254,11 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
             isSpeechDetected: false,
           }))
         }, 500)
+      }
+
+      // iOS: Even if no final transcript yet, if we have interim, keep showing indicator
+      if (isIOS.current && !finalTranscript && interimTranscript) {
+        console.log('🍎 iOS - have interim transcript, keeping indicator active')
       }
     }
 
@@ -243,11 +283,21 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
           console.log('⚠️ No speech detected - user may not be speaking loud enough')
           break
         case 'audio-capture':
-          errorMessage = 'Microphone access is required for voice input'
+          if (isIOS.current) {
+            errorMessage =
+              '🍎 iOS: Microphone access required. Please:\n1. Go to Settings > Safari > Microphone\n2. Allow this website'
+          } else {
+            errorMessage = 'Microphone access is required for voice input'
+          }
           console.error('⚠️ Audio capture failed - microphone may be in use by another app')
           break
         case 'not-allowed':
-          errorMessage = 'Microphone permission denied. Please allow access and try again.'
+          if (isIOS.current) {
+            errorMessage =
+              '🍎 iOS: Microphone permission denied. Please:\n1. Tap Safari icon in address bar\n2. Tap "Allow" for Microphone'
+          } else {
+            errorMessage = 'Microphone permission denied. Please allow access and try again.'
+          }
           console.error('⚠️ Permission denied for microphone')
           break
         case 'network':
@@ -546,7 +596,9 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       setState((prev) => ({ ...prev, error: errorMsg }))
       onError?.(errorMsg)
       return false
-    } // iOS-specific: Check if we're in a secure context (HTTPS)
+    }
+
+    // iOS-specific: Check if we're in a secure context (HTTPS)
     if (isIOS.current && location.protocol !== 'https:' && location.hostname !== 'localhost') {
       const errorMessage = '🔒 HTTPS required for microphone on iOS. Please use https://'
       setState((prev) => ({ ...prev, error: errorMessage }))
@@ -555,13 +607,16 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
 
     // Setup media recorder if needed (requests microphone permission)
-    if (!mediaRecorderRef.current) {
+    // iOS: Skip media recorder setup entirely - it conflicts with speech recognition
+    if (!isIOS.current && !mediaRecorderRef.current) {
       console.log('📱 Setting up media recorder...')
       const success = await setupMediaRecorder()
       if (!success) {
         console.error('❌ Failed to setup media recorder')
         return false
       }
+    } else if (isIOS.current) {
+      console.log('🍎 iOS - skipping media recorder, using speech recognition directly')
     }
 
     try {
