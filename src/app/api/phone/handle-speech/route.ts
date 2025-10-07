@@ -298,6 +298,32 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // INSTANT ACKNOWLEDGMENT: Play "hmm" and redirect to process AI response
+    // This gives immediate feedback (user hears "hmm" within 1 second)
+    // While AI processes in background (takes 5-7 seconds)
+    console.log('🎵 Returning instant acknowledgment (thinking sound)...')
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
+    const processingUrl = `${baseUrl}/api/phone/process-response?callSid=${encodeURIComponent(callSid)}&speech=${encodeURIComponent(speechResult)}`
+
+    const acknowledgmentTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${THINKING_SOUND_URL}</Play>
+  <Redirect>${processingUrl}</Redirect>
+</Response>`
+
+    console.log('✅ Returning instant acknowledgment TwiML')
+    console.log('🔗 Will redirect to:', processingUrl.substring(0, 100))
+
+    return new NextResponse(acknowledgmentTwiml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Cache-Control': 'no-cache',
+      },
+    })
+
+    // OLD CODE BELOW - Keep for reference but unreachable now
     // Get unified context
     console.log('🌐 Getting unified context...')
     const unifiedContext = await omniChannelManager.getUnifiedContext(
