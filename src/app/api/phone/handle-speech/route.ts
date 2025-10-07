@@ -3,6 +3,7 @@ import { omniChannelManager } from '../../../../lib/omni-channel-manager'
 import { voiceService } from '../../../../services/voiceService'
 import { put } from '@vercel/blob'
 import { createPhoneAudioUrl } from '../../../../lib/phone-audio-cache'
+import { storeSpeech } from '../../../../lib/redis-phone-cache'
 
 // Temporary storage for speech results (before processing)
 // Maps callSid -> speechResult
@@ -314,39 +315,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // INSTANT THINKING SOUNDS: Play immediately, then process in background
-    // This is the ONLY way to make sounds play DURING AI processing
-    console.log('🎵 Starting background AI processing + returning thinking sounds...')
+    // INSTANT FEEDBACK: Store speech in Redis and play thinking sounds IMMEDIATELY
+    // Then redirect to process-response which will retrieve from Redis and process
+    console.log('🎵 Storing speech in Redis and playing thinking sounds...')
 
-    // Start AI processing in background (don't await!)
-    const aiProcessingPromise = (async () => {
-      const context = await omniChannelManager.getUnifiedContext(
-        callSid,
-        'phone',
-        callSid,
-        'Twilio Voice API',
-      )
-      const lastTurn = context.conversationHistory[context.conversationHistory.length - 1]
-      const previousLanguage = (lastTurn?.metadata as any)?.detectedLanguage || null
+    // Store speech in Redis (survives across serverless instances!)
+    await storeSpeech(callSid, speechResult)
 
-      const response = await omniChannelManager.generateUnifiedResponse(callSid, speechResult, {
-        currentTurn: context.conversationHistory.length,
-        phoneCall: true,
-        ultraBrief: true,
-        deepgramLanguage: (request as any).deepgramLanguage,
-        enableMCP: true,
-        enableDatabase: true,
-        enableMultiLanguage: true,
-      })
-
-      return { response, context, previousLanguage }
-    })()
-
-    // Store speech and AI promise globally (for process-response endpoint)
-    global.pendingSpeechMap.set(callSid, speechResult)
-    global.pendingAIPromises.set(callSid, aiProcessingPromise)
-
-    // Return thinking sounds IMMEDIATELY (AI processes in parallel)
+    // Return thinking sounds IMMEDIATELY (AI will process after redirect)
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
     const thinkingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -360,7 +336,8 @@ export async function POST(request: NextRequest) {
   <Redirect method="POST">${baseUrl}/api/phone/process-response/${callSid}</Redirect>
 </Response>`
 
-    console.log('✅ Returning thinking sounds TwiML (AI processing in background)')
+    console.log('✅ Returning instant thinking sounds TwiML')
+    console.log('🔗 Will redirect to:', `${baseUrl}/api/phone/process-response/${callSid}`)
 
     return new NextResponse(thinkingTwiml, {
       status: 200,
@@ -370,7 +347,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // UNREACHABLE - old synchronous code below
+    // UNREACHABLE CODE BELOW - old synchronous flow (kept for reference)
     // Get unified context
     console.log('🌐 Getting unified context...')
     const unifiedContext = await omniChannelManager.getUnifiedContext(
