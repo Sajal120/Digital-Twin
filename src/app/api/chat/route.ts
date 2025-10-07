@@ -855,14 +855,37 @@ async function generateEnhancedPortfolioResponse(
       confidence: result.finalConfidence || result.metadata?.confidence,
     })
 
-    // Generate multi-language response if needed
-    const multiLanguageResponse = await generateMultiLanguageResponse(
-      result,
-      multiLanguageResult.languageContext,
-      message,
-      sessionId,
-      conversationHistory,
-    )
+    // Generate multi-language response if needed (with timeout for phone calls)
+    const multiLangTimeout = phoneOptimized ? 3000 : 10000 // 3s for phone, 10s for web
+    let multiLanguageResponse
+    try {
+      multiLanguageResponse = await Promise.race([
+        generateMultiLanguageResponse(
+          result,
+          multiLanguageResult.languageContext,
+          message,
+          sessionId,
+          conversationHistory,
+        ),
+        new Promise<any>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Multi-lang timeout ${multiLangTimeout}ms`)),
+            multiLangTimeout,
+          ),
+        ),
+      ])
+    } catch (error) {
+      console.error('⚠️ Multi-language generation timed out, using English:', error)
+      // Fallback to English response
+      multiLanguageResponse = {
+        response: result.response,
+        originalLanguage: multiLanguageResult.languageContext.detectedLanguage,
+        responseLanguage: 'en',
+        translationUsed: false,
+        searchLanguage: multiLanguageResult.languageContext.detectedLanguage,
+        metadata: { crossLanguageSearch: false },
+      }
+    }
 
     // Final cleanup to ensure no quotes in response
     let cleanResponse = multiLanguageResponse.response
