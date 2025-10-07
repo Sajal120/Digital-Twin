@@ -517,14 +517,6 @@ export function AIChat() {
                     </div>
                   )}
                 </div>
-
-                {/* DEBUG: Show all detection states */}
-                <div className="text-xs text-gray-500 mt-1 font-mono">
-                  Speech:{voiceChat.isSpeechDetected ? '✅' : '❌'} | Audio:
-                  {voiceChat.isAudioCaptureActive ? '✅' : '❌'} | Interim:
-                  {voiceChat.interimTranscript?.length || 0} | Final:
-                  {voiceChat.transcript?.length || 0}
-                </div>
               </div>
             </div>
           )}

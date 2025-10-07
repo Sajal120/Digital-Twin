@@ -56,7 +56,6 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         navigator.userAgent,
       )
       isIOS.current = /iPad|iPhone|iPod/.test(navigator.userAgent)
-      console.log('Mobile detection:', { isMobile: isMobile.current, isIOS: isIOS.current })
     }
   }, [])
 
@@ -91,50 +90,28 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     recognition.lang = 'en-US'
     recognition.maxAlternatives = isIOS.current ? 3 : 1 // More alternatives on iOS
 
-    console.log('🔧 Speech recognition configured:', {
-      continuous: recognition.continuous,
-      interimResults: recognition.interimResults,
-      lang: recognition.lang,
-      maxAlternatives: recognition.maxAlternatives,
-      platform: isIOS.current ? 'iOS' : 'Other',
-    })
-
     recognition.onstart = () => {
-      console.log('🎙️ Speech recognition STARTED')
-
       // iOS: IMMEDIATELY force all detection states on start
       if (isIOS.current) {
-        console.log('🍎 iOS - IMMEDIATELY FORCING all detection states TRUE on start')
-        setState((prev) => {
-          const newState = {
-            ...prev,
-            isRecording: true,
-            error: null,
-            isAudioCaptureActive: true,
-            isSoundDetected: true,
-            isSpeechDetected: true, // Show "SPEAKING DETECTED" immediately on iOS
-          }
-          console.log('🍎 iOS - New state after forcing:', {
-            isRecording: newState.isRecording,
-            isAudioCaptureActive: newState.isAudioCaptureActive,
-            isSpeechDetected: newState.isSpeechDetected,
-          })
-          return newState
-        })
+        setState((prev) => ({
+          ...prev,
+          isRecording: true,
+          error: null,
+          isAudioCaptureActive: true,
+          isSoundDetected: true,
+          isSpeechDetected: true,
+        }))
       } else {
         setState((prev) => ({ ...prev, isRecording: true, error: null }))
       }
     }
 
     recognition.onaudiostart = () => {
-      console.log('🔊 Audio capture STARTED - browser is receiving sound from microphone')
-      // iOS: Aggressively set speech detected on audio start
       if (isIOS.current) {
-        console.log('🍎 iOS - FORCING isSpeechDetected=true on audio start')
         setState((prev) => ({
           ...prev,
           isAudioCaptureActive: true,
-          isSpeechDetected: true, // Force true on iOS
+          isSpeechDetected: true,
         }))
       } else {
         setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
@@ -142,24 +119,17 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
 
     recognition.onaudioend = () => {
-      console.log('🔇 Audio capture ENDED - browser stopped receiving sound')
-      // iOS: Don't clear audio active state - it fires incorrectly
       if (!isIOS.current) {
         setState((prev) => ({ ...prev, isAudioCaptureActive: false }))
-      } else {
-        console.log('🍎 iOS - ignoring onaudioend, keeping audio active')
       }
     }
 
     recognition.onsoundstart = () => {
-      console.log('👂 Sound detected by microphone')
-      // iOS: Also set speech detected on sound
       if (isIOS.current) {
-        console.log('🍎 iOS - FORCING isSpeechDetected=true on sound detected')
         setState((prev) => ({
           ...prev,
           isSoundDetected: true,
-          isSpeechDetected: true, // Force true on iOS
+          isSpeechDetected: true,
         }))
       } else {
         setState((prev) => ({ ...prev, isSoundDetected: true }))
@@ -167,51 +137,33 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
 
     recognition.onsoundend = () => {
-      console.log('🤫 Sound ended (silence detected)')
       setState((prev) => ({ ...prev, isSoundDetected: false }))
     }
 
     recognition.onspeechstart = () => {
-      console.log('🗣️ Speech detected - processing...')
       setState((prev) => ({
         ...prev,
         isSpeechDetected: true,
-        isAudioCaptureActive: true, // Set active when speech starts
+        isAudioCaptureActive: true,
       }))
     }
 
     recognition.onspeechend = () => {
-      console.log('💬 Speech ended')
-      // iOS: Don't immediately clear speech detection, let onresult handle it
       if (!isIOS.current) {
         setState((prev) => ({
           ...prev,
           isSpeechDetected: false,
           isAudioCaptureActive: prev.isRecording,
         }))
-      } else {
-        console.log('🍎 iOS - keeping speech detected state for onresult')
       }
     }
 
     recognition.onresult = (event: any) => {
-      console.log('🎤 Speech recognition RESULT received:', {
-        resultIndex: event.resultIndex,
-        resultsLength: event.results.length,
-        isFinal: event.results[event.resultIndex]?.isFinal,
-      })
-
       let finalTranscript = ''
       let interimTranscript = ''
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript
-        console.log(`   Result ${i}:`, {
-          transcript,
-          isFinal: event.results[i].isFinal,
-          confidence: event.results[i][0].confidence,
-        })
-
         if (event.results[i].isFinal) {
           finalTranscript += transcript
         } else {
@@ -219,55 +171,26 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         }
       }
 
-      console.log('📝 Transcripts:', { finalTranscript, interimTranscript })
-
-      const hasSpeech = !!(finalTranscript || interimTranscript)
-      console.log('🗣️ Setting speech detected state:', {
-        hasSpeech,
-        finalLength: finalTranscript.length,
-        interimLength: interimTranscript.length,
-        isIOS: isIOS.current,
-      })
-
-      // AGGRESSIVE: Force all detection states on ANY transcript
-      if (isIOS.current) {
-        console.log('🍎 iOS - AGGRESSIVELY FORCING all detection states TRUE')
-      }
-
       setState((prev) => ({
         ...prev,
         transcript: prev.transcript + finalTranscript,
         interimTranscript,
-        // FORCE ALL to true when ANY transcript received
         isAudioCaptureActive: true,
         isSoundDetected: true,
         isSpeechDetected: true,
       }))
 
-      console.log('✅ State updated - SHOULD DEFINITELY show SPEAKING DETECTED now!')
-      console.log('   Current state will be:', {
-        isAudioCaptureActive: true,
-        isSoundDetected: true,
-        isSpeechDetected: true,
-        hasInterim: !!interimTranscript,
-        hasFinal: !!finalTranscript,
-      })
-
       if (finalTranscript && onTranscriptionReceived) {
-        console.log('✅ Sending final transcript to callback:', finalTranscript)
         onTranscriptionReceived(finalTranscript)
 
-        // iOS: Keep indicator showing longer to ensure user sees it
         if (isIOS.current) {
-          console.log('🍎 iOS - will clear speech indicator in 2 seconds')
           setTimeout(() => {
-            console.log('🍎 iOS - NOW clearing speech indicator')
             setState((prev) => ({
               ...prev,
               isSpeechDetected: false,
               isSoundDetected: false,
             }))
-          }, 2000) // Longer delay for iOS
+          }, 2000)
         }
       } else if (!isIOS.current && finalTranscript) {
         // Android: Clear after shorter delay
@@ -277,11 +200,6 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
             isSpeechDetected: false,
           }))
         }, 500)
-      }
-
-      // iOS: Even if no final transcript yet, if we have interim, keep showing indicator
-      if (isIOS.current && !finalTranscript && interimTranscript) {
-        console.log('🍎 iOS - have interim transcript, keeping indicator active')
       }
     }
 
@@ -645,10 +563,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
               interimTranscript: '',
             }))
 
-            // Call callback
             onTranscriptionReceived?.(result.transcript)
-          } else {
-            console.warn('⚠️ Empty transcript from Deepgram')
           }
         } catch (error) {
           console.error('❌ Deepgram transcription error:', error)
@@ -687,17 +602,8 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
   }, [onTranscriptionReceived, onError])
 
   const startRecording = useCallback(async () => {
-    console.log('🎙️ Starting recording...', {
-      isMobile: isMobile.current,
-      isIOS: isIOS.current,
-      hasRecognitionRef: !!recognitionRef.current,
-      hasMediaRecorder: !!mediaRecorderRef.current,
-      hasAudioStream: !!audioStreamRef.current,
-    })
-
     // iOS: Use Deepgram cloud transcription (Web Speech API is broken on iOS)
     if (isIOS.current) {
-      console.log('🍎 iOS detected - using Deepgram cloud transcription')
       return startDeepgramRecording()
     }
 
@@ -910,46 +816,32 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
   const stopRecording = useCallback(() => {
     try {
-      console.log('🛑 Stopping recording...', { isIOS: isIOS.current })
-
-      // Mark as user-initiated stop
       isUserStoppedRef.current = true
 
-      // Clear any pending restart timeout
       if (restartTimeoutRef.current) {
         clearTimeout(restartTimeoutRef.current)
         restartTimeoutRef.current = null
       }
 
-      // iOS: Clear polling interval
       if (iosPollingIntervalRef.current) {
         clearInterval(iosPollingIntervalRef.current)
         iosPollingIntervalRef.current = null
-        console.log('🍎 iOS polling stopped')
       }
 
-      // Stop speech recognition (not used on iOS anymore, but safe to call)
       recognitionRef.current?.stop()
 
-      // Stop MediaRecorder (iOS: triggers Deepgram transcription, Android: just stops)
       if (mediaRecorderRef.current?.state === 'recording') {
-        console.log('🛑 Stopping MediaRecorder...')
         mediaRecorderRef.current.stop()
       }
-
-      // Stop audio monitoring and close audio context
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close()
         audioContextRef.current = null
         analyserRef.current = null
-        console.log('🔇 Audio monitoring stopped')
       }
 
-      // Stop audio tracks
       if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach((track) => track.stop())
         audioStreamRef.current = null
-        console.log('🛑 Audio stream stopped')
       }
 
       return true
