@@ -64,6 +64,7 @@ class MCPServer {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(postData),
         },
+        timeout: 30000, // 30 second timeout for AI processing
       }
 
       const req = client.request(options, (res) => {
@@ -72,14 +73,31 @@ class MCPServer {
         res.on('end', () => {
           try {
             const response = JSON.parse(data)
-            resolve(response.result || response)
+            // Check for errors in the response
+            if (response.error) {
+              reject(new Error(response.error.message || 'API returned an error'))
+            } else {
+              resolve(response.result || response)
+            }
           } catch (error) {
-            reject(new Error(`Failed to parse response: ${error.message}`))
+            reject(
+              new Error(
+                `Failed to parse response: ${error.message}. Data: ${data.substring(0, 200)}`,
+              ),
+            )
           }
         })
       })
 
-      req.on('error', reject)
+      req.on('error', (error) => {
+        reject(new Error(`Request failed: ${error.message}`))
+      })
+
+      req.on('timeout', () => {
+        req.destroy()
+        reject(new Error('Request timeout - server took too long to respond'))
+      })
+
       req.write(postData)
       req.end()
     })
@@ -143,18 +161,25 @@ class MCPServer {
           break
 
         case 'tools/call':
-          // Check Next.js server only when actually calling tools
+          // Check server availability before calling tools
           const serverRunning = await this.checkServer()
           if (!serverRunning) {
             this.sendResponse(id, null, {
               code: -32603,
-              message: 'Next.js server not running on localhost:3000. Please start with: pnpm dev',
+              message: `MCP server not reachable at ${this.serverUrl}. Please check the server is running.`,
             })
             return
           }
 
-          const callResult = await this.proxyToNextJS('tools/call', params)
-          this.sendResponse(id, callResult)
+          try {
+            const callResult = await this.proxyToNextJS('tools/call', params)
+            this.sendResponse(id, callResult)
+          } catch (error) {
+            this.sendResponse(id, null, {
+              code: -32603,
+              message: `Failed to execute tool: ${error.message}`,
+            })
+          }
           break
 
         default:
