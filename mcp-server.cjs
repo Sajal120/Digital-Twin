@@ -7,10 +7,13 @@
  */
 
 const http = require('http')
+const https = require('https')
 
 class MCPServer {
   constructor() {
     this.requestId = 0
+    this.serverUrl = process.env.MCP_SERVER_URL || 'http://localhost:3000'
+    this.isHttps = this.serverUrl.startsWith('https')
   }
 
   // Send JSON-RPC response
@@ -26,12 +29,13 @@ class MCPServer {
   // Check if Next.js server is running
   async checkServer() {
     return new Promise((resolve) => {
-      const req = http.get('http://localhost:3000/api/mcp', (res) => {
+      const client = this.isHttps ? https : http
+      const url = `${this.serverUrl}/api/mcp`
+      const req = client.get(url, (res) => {
         resolve(true)
       })
       req.on('error', () => resolve(false))
-      req.setTimeout(2000, () => {
-        // Reduced timeout from 5s to 2s
+      req.setTimeout(5000, () => {
         req.destroy()
         resolve(false)
       })
@@ -48,9 +52,12 @@ class MCPServer {
         params,
       })
 
+      const urlObj = new URL(this.serverUrl)
+      const client = this.isHttps ? https : http
+
       const options = {
-        hostname: 'localhost',
-        port: 3000,
+        hostname: urlObj.hostname,
+        port: urlObj.port || (this.isHttps ? 443 : 80),
         path: '/api/mcp',
         method: 'POST',
         headers: {
@@ -59,7 +66,7 @@ class MCPServer {
         },
       }
 
-      const req = http.request(options, (res) => {
+      const req = client.request(options, (res) => {
         let data = ''
         res.on('data', (chunk) => (data += chunk))
         res.on('end', () => {

@@ -5,7 +5,7 @@
       "type": "http"
     },
     "digital-twin": {
-      "url": "http://localhost:3000/api/mcp",
+      "url": "https://www.sajal-app.online/api/mcp",
       "type": "http"
     }
   },
