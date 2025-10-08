@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Github, Linkedin, Menu, X } from 'lucide-react'
+import { GithubLogo, LinkedinLogo, List, X } from 'phosphor-react'
 
 const TraditionalNavigation = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -66,7 +66,7 @@ const TraditionalNavigation = () => {
                 rel="noopener noreferrer"
                 className="p-2 rounded-full bg-white/5 hover:bg-blue-400/20 transition-all duration-300"
               >
-                <Github size={20} />
+                <GithubLogo size={20} weight="fill" />
               </a>
               <a
                 href="https://linkedin.com/in/sajal-basnet-7926aa188"
@@ -74,13 +74,13 @@ const TraditionalNavigation = () => {
                 rel="noopener noreferrer"
                 className="p-2 rounded-full bg-white/5 hover:bg-blue-400/20 transition-all duration-300"
               >
-                <Linkedin size={20} />
+                <LinkedinLogo size={20} weight="fill" />
               </a>
             </div>
 
             {/* Mobile Menu Button */}
             <button onClick={toggleMenu} className="md:hidden p-2 rounded-full bg-white/5">
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X size={24} weight="bold" /> : <List size={24} weight="bold" />}
             </button>
           </div>
         </div>
@@ -96,7 +96,7 @@ const TraditionalNavigation = () => {
               onClick={toggleMenu}
               className="absolute top-6 right-6 p-2 rounded-full bg-white/5"
             >
-              <X size={24} />
+              <X size={24} weight="bold" />
             </button>
 
             {/* Menu items */}
@@ -120,7 +120,7 @@ const TraditionalNavigation = () => {
                 rel="noopener noreferrer"
                 className="p-3 rounded-full bg-white/5 hover:bg-blue-400/20 transition-all duration-300"
               >
-                <Github size={24} />
+                <GithubLogo size={24} weight="fill" />
               </a>
               <a
                 href="https://linkedin.com/in/sajal-basnet-7926aa188"
@@ -128,7 +128,7 @@ const TraditionalNavigation = () => {
                 rel="noopener noreferrer"
                 className="p-3 rounded-full bg-white/5 hover:bg-blue-400/20 transition-all duration-300"
               >
-                <Linkedin size={24} />
+                <LinkedinLogo size={24} weight="fill" />
               </a>
             </div>
           </div>

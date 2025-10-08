@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
-  Github,
-  Linkedin,
-  Mail,
+  GithubLogo,
+  LinkedinLogo,
+  EnvelopeSimple,
   MapPin,
   Phone,
   ArrowRight,
-  ExternalLink,
+  ArrowSquareOut,
   ArrowUp,
-} from 'lucide-react'
+} from 'phosphor-react'
+
+gsap.registerPlugin(ScrollTrigger)
 
 const TraditionalPortfolio = () => {
   const portfolioRef = useRef<HTMLDivElement>(null)
@@ -288,7 +291,7 @@ const TraditionalPortfolio = () => {
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-sm hover:text-blue-400 transition-colors"
                   >
-                    <Github size={16} /> Code
+                    <GithubLogo size={16} weight="fill" /> Code
                   </a>
                   <a
                     href={project.live}
@@ -296,7 +299,7 @@ const TraditionalPortfolio = () => {
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 text-sm hover:text-blue-400 transition-colors"
                   >
-                    <ExternalLink size={16} /> Live Demo
+                    <ArrowSquareOut size={16} weight="fill" /> Live Demo
                   </a>
                 </div>
               </div>
@@ -340,7 +343,7 @@ const TraditionalPortfolio = () => {
                   className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 group"
                 >
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Mail size={24} />
+                    <EnvelopeSimple size={24} weight="fill" />
                   </div>
                   <div>
                     <div className="text-sm text-gray-400">Email</div>
@@ -353,7 +356,7 @@ const TraditionalPortfolio = () => {
                   className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 group"
                 >
                   <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <Phone size={24} />
+                    <Phone size={24} weight="fill" />
                   </div>
                   <div>
                     <div className="text-sm text-gray-400">Phone</div>
@@ -363,7 +366,7 @@ const TraditionalPortfolio = () => {
 
                 <div className="flex items-center gap-4 p-4 bg-white/5 rounded-xl">
                   <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
-                    <MapPin size={24} />
+                    <MapPin size={24} weight="fill" />
                   </div>
                   <div>
                     <div className="text-sm text-gray-400">Location</div>
@@ -380,7 +383,7 @@ const TraditionalPortfolio = () => {
                   rel="noopener noreferrer"
                   className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center hover:bg-blue-400/20 transition-all duration-300"
                 >
-                  <Github size={20} />
+                  <GithubLogo size={20} weight="fill" />
                 </a>
                 <a
                   href={personalInfo.linkedin}
@@ -388,7 +391,7 @@ const TraditionalPortfolio = () => {
                   rel="noopener noreferrer"
                   className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center hover:bg-blue-400/20 transition-all duration-300"
                 >
-                  <Linkedin size={20} />
+                  <LinkedinLogo size={20} weight="fill" />
                 </a>
               </div>
             </div>
