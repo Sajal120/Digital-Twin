@@ -241,6 +241,8 @@ export function AIControllerChat() {
       }
     }
 
+    // For Plain Chat mode, ALWAYS call API - no brief responses
+
     // For Plain Chat mode OR AI Control mode without intent, get detailed response from API
     try {
       const response = await fetch('/api/chat', {
@@ -275,7 +277,10 @@ export function AIControllerChat() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-      handleAIResponse(data.response, chatMode === 'ai_control')
+      // Only process intents and auto-hide in AI Control mode
+      if (chatMode === 'ai_control') {
+        handleAIResponse(data.response, true)
+      }
     } catch (error) {
       console.error('Error:', error)
       const errorMessage: Message = {

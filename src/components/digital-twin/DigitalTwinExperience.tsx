@@ -60,11 +60,7 @@ export function DigitalTwinExperience() {
           </motion.div>
         )}
 
-        {(currentMode === 'chat' ||
-          currentMode === 'projects' ||
-          currentMode === 'skills' ||
-          currentMode === 'resume' ||
-          currentMode === 'contact') && (
+        {currentMode === 'chat' && (
           <motion.div
             key="chat-interface"
             initial={{ opacity: 0 }}
@@ -98,7 +94,7 @@ export function DigitalTwinExperience() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => {
-            // Go back to pure chat mode and hide all overlays
+            // Restore chat and hide all content overlays
             setMode('chat')
             toggleComponent('projects', false)
             toggleComponent('skills', false)
