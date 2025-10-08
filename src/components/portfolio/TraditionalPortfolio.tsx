@@ -32,19 +32,54 @@ const TraditionalPortfolio = () => {
     technicalSkills: 20,
   }
 
-  const skills = [
+  // Import from skills data file
+  const allSkills = [
+    // This will be replaced with actual import
     { name: 'React', level: 95, category: 'Development', icon: '⚛️' },
     { name: 'TypeScript', level: 88, category: 'Development', icon: '🔷' },
     { name: 'Python', level: 88, category: 'Development', icon: '🐍' },
     { name: 'Node.js', level: 90, category: 'Development', icon: '💚' },
-    { name: 'Next.js', level: 88, category: 'Development', icon: '⚡' },
-    { name: 'AWS', level: 85, category: 'Cloud', icon: '☁️' },
-    { name: 'Docker', level: 82, category: 'DevOps', icon: '🐳' },
-    { name: 'MongoDB', level: 85, category: 'Database', icon: '🍃' },
-    { name: 'PostgreSQL', level: 85, category: 'Database', icon: '🐘' },
-    { name: 'Cybersecurity', level: 85, category: 'Security', icon: '🛡️' },
-    { name: 'AI Integration', level: 92, category: 'AI', icon: '🤖' },
-    { name: 'Prompt Engineering', level: 95, category: 'AI', icon: '🎯' },
+    { name: 'Next.js', level: 88, category: 'Development', icon: '▲' },
+    { name: 'JavaScript', level: 95, category: 'Development', icon: '📜' },
+    { name: 'HTML5', level: 98, category: 'Development', icon: '🌐' },
+    { name: 'CSS3', level: 95, category: 'Development', icon: '🎨' },
+    { name: 'Tailwind CSS', level: 92, category: 'Development', icon: '💨' },
+    { name: 'MongoDB', level: 85, category: 'Development', icon: '🍃' },
+    { name: 'PostgreSQL', level: 88, category: 'Development', icon: '🐘' },
+    { name: 'MySQL', level: 85, category: 'Development', icon: '🐬' },
+    { name: 'Supabase', level: 90, category: 'Development', icon: '⚡' },
+    { name: 'Firebase', level: 88, category: 'Development', icon: '🔥' },
+    { name: 'Git/GitHub', level: 92, category: 'Development', icon: '🐙' },
+    { name: 'Docker', level: 82, category: 'Development', icon: '🐳' },
+    { name: 'AWS', level: 85, category: 'Development', icon: '☁️' },
+    { name: 'Three.js', level: 82, category: 'Development', icon: '🎮' },
+    { name: 'AI Agents', level: 92, category: 'AI Tools', icon: '🤖' },
+    { name: 'OpenAI API', level: 95, category: 'AI Tools', icon: '🧠' },
+    { name: 'Claude API', level: 90, category: 'AI Tools', icon: '�' },
+    { name: 'Prompt Engineering', level: 95, category: 'AI Tools', icon: '🎯' },
+    { name: 'AI-Assisted Coding', level: 92, category: 'AI Tools', icon: '💻' },
+    { name: 'LangChain', level: 85, category: 'AI Tools', icon: '⛓️' },
+    { name: 'RAG Systems', level: 88, category: 'AI Tools', icon: '📚' },
+    { name: 'ChatGPT Integration', level: 95, category: 'AI Tools', icon: '💬' },
+    { name: 'Deepgram API', level: 88, category: 'AI Tools', icon: '🎙️' },
+    { name: 'Voice AI', level: 85, category: 'AI Tools', icon: '�️' },
+    { name: 'Semantic Search', level: 88, category: 'AI Tools', icon: '🔍' },
+    { name: 'Penetration Testing', level: 88, category: 'Security', icon: '🔓' },
+    { name: 'Vulnerability Assessment', level: 85, category: 'Security', icon: '🛡️' },
+    { name: 'SIEM/Splunk', level: 80, category: 'Security', icon: '📊' },
+    { name: 'Wireshark', level: 82, category: 'Security', icon: '🦈' },
+    { name: 'OWASP Top 10', level: 88, category: 'Security', icon: '🔟' },
+    { name: 'Network Security', level: 85, category: 'Security', icon: '🌐' },
+    { name: 'Security Auditing', level: 83, category: 'Security', icon: '🔐' },
+    { name: 'Threat Analysis', level: 85, category: 'Security', icon: '⚠️' },
+    { name: 'Help Desk Management', level: 95, category: 'IT Support', icon: '🎧' },
+    { name: 'Ticketing Systems', level: 92, category: 'IT Support', icon: '🎫' },
+    { name: 'Remote Support', level: 90, category: 'IT Support', icon: '🖥️' },
+    { name: 'Hardware Troubleshooting', level: 88, category: 'IT Support', icon: '🔧' },
+    { name: 'System Administration', level: 88, category: 'IT Support', icon: '⚙️' },
+    { name: 'Software Installation', level: 92, category: 'IT Support', icon: '💿' },
+    { name: 'Windows Admin', level: 90, category: 'IT Support', icon: '🪟' },
+    { name: 'Customer Service', level: 95, category: 'IT Support', icon: '🤝' },
   ]
 
   const projects = [
@@ -89,9 +124,11 @@ const TraditionalPortfolio = () => {
     },
   }
 
-  const filterButtons = ['All', 'Development', 'AI', 'Cloud', 'Security']
+  const filterButtons = ['All', 'AI Tools', 'Development', 'Security', 'IT Support']
   const filteredSkills =
-    activeFilter === 'All' ? skills : skills.filter((skill) => skill.category === activeFilter)
+    activeFilter === 'All'
+      ? allSkills
+      : allSkills.filter((skill) => skill.category === activeFilter)
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -158,11 +195,58 @@ const TraditionalPortfolio = () => {
             </span>
           </h2>
 
-          <div className="grid lg:grid-cols-2 gap-16 items-center max-w-6xl mx-auto">
-            {/* Left side - Description */}
-            <div className="about-content space-y-6">
-              <h3 className="text-3xl font-bold">Passionate About Technology</h3>
-              <p className="text-gray-300 leading-relaxed">
+          {/* Profile Image Section */}
+          <div className="max-w-6xl mx-auto mb-20">
+            <div className="relative w-80 h-80 mx-auto">
+              {/* Glowing ring effect */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-20 blur-xl animate-pulse" />
+
+              {/* Profile Image Container */}
+              <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/20 bg-white/5 backdrop-blur-sm group hover:scale-105 transition-all duration-500">
+                <img
+                  src="https://ycojkzlwzdydilveqdjv.supabase.co/storage/v1/object/public/portfolio-images/lovable-uploads/7957a48c-b6ce-4e62-a999-09a1565abddb.png"
+                  alt={personalInfo.name}
+                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
+                  style={{ objectPosition: 'center top' }}
+                />
+              </div>
+
+              {/* Floating decorative elements */}
+              <div className="absolute -top-4 -right-4 w-8 h-8 bg-blue-500 rounded-full animate-bounce" />
+              <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-purple-500 rounded-full animate-bounce delay-75" />
+              <div className="absolute top-1/4 -left-8 w-4 h-4 bg-pink-500 rounded-full animate-bounce delay-150" />
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-16">
+            <div className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent mb-2">
+                {personalInfo.yearsExperience}+
+              </div>
+              <div className="text-gray-400 font-medium">Years Experience</div>
+            </div>
+            <div className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent mb-2">
+                45+
+              </div>
+              <div className="text-gray-400 font-medium">Technical Skills</div>
+            </div>
+            <div className="text-center p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:bg-white/10 transition-all duration-300">
+              <div className="text-5xl font-bold bg-gradient-to-r from-pink-400 to-pink-600 bg-clip-text text-transparent mb-2">
+                {personalInfo.projectsCompleted}+
+              </div>
+              <div className="text-gray-400 font-medium">Projects Completed</div>
+            </div>
+          </div>
+
+          {/* About Description */}
+          <div className="max-w-4xl mx-auto mb-20">
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-8">
+              <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Passionate About Technology
+              </h3>
+              <p className="text-gray-300 leading-relaxed mb-4">
                 Versatile IT professional with comprehensive expertise across software development,
                 security analysis, and IT support. Master of Software Development from Swinburne
                 University (Sep 2022 – May 2024) with a GPA of 3.688/4.0. Member of Golden Key
@@ -174,80 +258,74 @@ const TraditionalPortfolio = () => {
                 experience spans from developing secure applications to conducting security analysis
                 with intelligent automation.
               </p>
+            </div>
+          </div>
 
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 mt-8">
-                <div className="text-center p-4 bg-white/5 backdrop-blur-sm rounded-xl">
-                  <div className="text-3xl font-bold text-blue-400">
-                    {personalInfo.yearsExperience}+
-                  </div>
-                  <div className="text-sm text-gray-400">Years Experience</div>
-                </div>
-                <div className="text-center p-4 bg-white/5 backdrop-blur-sm rounded-xl">
-                  <div className="text-3xl font-bold text-purple-400">
-                    {personalInfo.technicalSkills}+
-                  </div>
-                  <div className="text-sm text-gray-400">Technical Skills</div>
-                </div>
-                <div className="text-center p-4 bg-white/5 backdrop-blur-sm rounded-xl">
-                  <div className="text-3xl font-bold text-pink-400">
-                    {personalInfo.projectsCompleted}+
-                  </div>
-                  <div className="text-sm text-gray-400">Projects Completed</div>
-                </div>
-              </div>
+          {/* Skills Section */}
+          <div className="max-w-6xl mx-auto">
+            <h3 className="text-4xl font-bold mb-12 text-center">
+              <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-blue-400 bg-clip-text text-transparent">
+                Technical Skills
+              </span>
+            </h3>
+
+            {/* Filter Buttons */}
+            <div className="flex flex-wrap justify-center gap-3 mb-12">
+              {filterButtons.map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 text-sm ${
+                    activeFilter === filter
+                      ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105'
+                      : 'bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-white/20'
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
             </div>
 
-            {/* Right side - Skills */}
-            <div className="about-content">
-              <h3 className="text-3xl font-bold mb-8 text-center">
-                <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
-                  Core Technical Skills
-                </span>
-              </h3>
-
-              {/* Filter Buttons */}
-              <div className="flex flex-wrap justify-center gap-3 mb-8">
-                {filterButtons.map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setActiveFilter(filter)}
-                    className={`px-6 py-2 rounded-full font-medium transition-all duration-300 ${
-                      activeFilter === filter
-                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                        : 'bg-white/5 hover:bg-white/10'
-                    }`}
-                  >
-                    {filter}
-                  </button>
-                ))}
-              </div>
-
-              {/* Skills Grid */}
-              <div className="skills-grid grid grid-cols-2 gap-4">
-                {filteredSkills.map((skill, index) => (
-                  <div
-                    key={`${skill.name}-${activeFilter}`}
-                    className="skill-item bg-white/5 backdrop-blur-sm p-4 rounded-xl hover:bg-white/10 transition-all duration-300 group"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl group-hover:scale-110 transition-transform duration-300">
-                          {skill.icon}
-                        </span>
-                        <span className="font-semibold text-sm">{skill.name}</span>
-                      </div>
-                      <span className="text-xs text-gray-400">{skill.level}%</span>
+            {/* Skills Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredSkills.map((skill, index) => (
+                <div
+                  key={`${skill.name}-${activeFilter}-${index}`}
+                  className="bg-white/5 backdrop-blur-sm border border-white/10 p-5 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 group"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl group-hover:scale-125 transition-transform duration-300">
+                        {skill.icon}
+                      </span>
+                      <span className="font-semibold text-white">{skill.name}</span>
                     </div>
-                    <div className="w-full bg-gray-700/50 rounded-full h-2">
-                      <div
-                        className="h-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full transition-all duration-1000"
-                        style={{ width: `${skill.level}%` }}
-                      />
-                    </div>
+                    <span className="text-sm font-bold text-purple-400">{skill.level}%</span>
                   </div>
-                ))}
-              </div>
+                  <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${skill.level}%` }}
+                    />
+                  </div>
+                  {/* Category Badge */}
+                  <div className="mt-3">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                        skill.category === 'AI Tools'
+                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                          : skill.category === 'Development'
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            : skill.category === 'Security'
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                              : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                      }`}
+                    >
+                      {skill.category}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
