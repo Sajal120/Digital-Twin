@@ -12,6 +12,7 @@ import {
   ArrowSquareOut,
   ArrowUp,
 } from 'phosphor-react'
+import { projects as githubProjects } from '@/data/projects'
 
 const Animated3DBackground = dynamic(() => import('./Animated3DBackground'), { ssr: false })
 
@@ -27,6 +28,7 @@ const TraditionalPortfolio = () => {
     title: 'Full-Stack Developer & IT Specialist',
     email: 'basnetsajal120@gmail.com',
     phone: '+61 424 425 793',
+    aiPhone: '+61 480 048 648',
     location: 'Auburn, Sydney, NSW',
     github: 'https://github.com/Sajal120',
     linkedin: 'https://linkedin.com/in/sajal-basnet-7926aa188',
@@ -209,11 +211,11 @@ const TraditionalPortfolio = () => {
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-20 blur-xl animate-pulse" />
 
               {/* Profile Image Container */}
-              <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/20 bg-gradient-to-br from-purple-900/40 to-blue-900/40 backdrop-blur-sm group hover:scale-105 transition-all duration-500">
+              <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/20 bg-gradient-to-br from-purple-900/40 to-blue-900/40 backdrop-blur-sm group hover:scale-105 transition-all duration-500 p-2">
                 <img
                   src="/profile-avatar.png"
                   alt={personalInfo.name}
-                  className="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
                   onError={(e) => {
                     // Show gradient background if image fails to load
                     const target = e.target as HTMLImageElement
@@ -299,44 +301,72 @@ const TraditionalPortfolio = () => {
 
             {/* Skills Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSkills.map((skill, index) => (
-                <div
-                  key={`${skill.name}-${activeFilter}-${index}`}
-                  className="bg-white/5 backdrop-blur-sm border border-white/10 p-5 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 group"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl group-hover:scale-125 transition-transform duration-300">
-                        {skill.icon}
+              {filteredSkills.map((skill, index) => {
+                const [animatedLevel, setAnimatedLevel] = useState(0)
+
+                useEffect(() => {
+                  const timer = setTimeout(() => {
+                    setAnimatedLevel(skill.level)
+                  }, index * 50)
+                  return () => clearTimeout(timer)
+                }, [activeFilter])
+
+                return (
+                  <div
+                    key={`${skill.name}-${activeFilter}-${index}`}
+                    className="bg-white/5 backdrop-blur-sm border border-white/10 p-5 rounded-xl hover:bg-white/10 hover:border-white/20 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 group hover:-translate-y-2 skill-card"
+                    style={{
+                      animation: `fadeInUp 0.6s ease-out ${index * 0.05}s both`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">
+                          {skill.icon}
+                        </span>
+                        <span className="font-semibold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-500 transition-all duration-300">
+                          {skill.name}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold text-purple-400 tabular-nums">
+                        {animatedLevel}%
                       </span>
-                      <span className="font-semibold text-white">{skill.name}</span>
                     </div>
-                    <span className="text-sm font-bold text-purple-400">{skill.level}%</span>
+                    <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden relative">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                        style={{ width: `${animatedLevel}%` }}
+                      >
+                        <div
+                          className="absolute inset-0 bg-white/20 animate-shimmer"
+                          style={{
+                            backgroundImage:
+                              'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
+                            backgroundSize: '200% 100%',
+                            animation: 'shimmer 2s infinite',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    {/* Category Badge */}
+                    <div className="mt-3">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 group-hover:scale-105 ${
+                          skill.category === 'AI Tools'
+                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                            : skill.category === 'Development'
+                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                              : skill.category === 'Security'
+                                ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                                : 'bg-green-500/20 text-green-300 border border-green-500/30'
+                        }`}
+                      >
+                        {skill.category}
+                      </span>
+                    </div>
                   </div>
-                  <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out"
-                      style={{ width: `${skill.level}%` }}
-                    />
-                  </div>
-                  {/* Category Badge */}
-                  <div className="mt-3">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                        skill.category === 'AI Tools'
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                          : skill.category === 'Development'
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                            : skill.category === 'Security'
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                              : 'bg-green-500/20 text-green-300 border border-green-500/30'
-                      }`}
-                    >
-                      {skill.category}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
@@ -354,42 +384,62 @@ const TraditionalPortfolio = () => {
           </h2>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
-            {projects.map((project, index) => (
+            {githubProjects.map((project, index) => (
               <div
                 key={index}
-                className="project-card bg-white/5 backdrop-blur-sm rounded-xl p-6 hover:bg-white/10 transition-all duration-300 group"
+                className="project-card bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-500 group hover:-translate-y-2 hover:shadow-2xl hover:shadow-purple-500/20 border border-white/10 hover:border-purple-500/30"
+                style={{
+                  animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
+                }}
               >
-                <h3 className="text-2xl font-bold mb-4 group-hover:text-blue-400 transition-colors">
-                  {project.title}
-                </h3>
-                <p className="text-gray-300 mb-6">{project.description}</p>
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {project.tech.map((tech, i) => (
-                    <span
-                      key={i}
-                      className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs"
-                    >
-                      {tech}
+                {/* Project Image Placeholder */}
+                <div className="h-48 bg-gradient-to-br from-purple-900/40 via-blue-900/40 to-pink-900/40 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  {project.language && (
+                    <span className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full text-xs font-medium border border-white/20">
+                      {project.language}
                     </span>
-                  ))}
+                  )}
+                  <div className="absolute bottom-4 left-4 text-4xl opacity-20 group-hover:opacity-40 transition-opacity">
+                    💻
+                  </div>
                 </div>
-                <div className="flex gap-4">
-                  <a
-                    href={project.github}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm hover:text-blue-400 transition-colors"
-                  >
-                    <GithubLogo size={16} weight="fill" /> Code
-                  </a>
-                  <a
-                    href={project.live}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm hover:text-blue-400 transition-colors"
-                  >
-                    <ArrowSquareOut size={16} weight="fill" /> Live Demo
-                  </a>
+
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-500 transition-all duration-300">
+                    {project.title}
+                  </h3>
+                  <p className="text-gray-300 mb-6 line-clamp-3">{project.description}</p>
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {project.tech.map((tech, i) => (
+                      <span
+                        key={i}
+                        className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs border border-blue-500/30 hover:bg-blue-500/30 hover:scale-110 transition-all duration-300"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-4">
+                    <a
+                      href={project.github}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm hover:text-blue-400 transition-all duration-300 hover:gap-3"
+                    >
+                      <GithubLogo size={18} weight="fill" /> Code
+                    </a>
+                    {project.live !== '#' && (
+                      <a
+                        href={project.live}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm hover:text-purple-400 transition-all duration-300 hover:gap-3"
+                      >
+                        <ArrowSquareOut size={18} weight="fill" /> Live Demo
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -429,32 +479,66 @@ const TraditionalPortfolio = () => {
               <div className="space-y-4">
                 <a
                   href={`mailto:${personalInfo.email}`}
-                  className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 group"
+                  className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 group hover:-translate-x-2 border border-white/10 hover:border-blue-500/30"
+                  style={{ animation: 'fadeInLeft 0.6s ease-out 0.1s both' }}
                 >
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     <EnvelopeSimple size={24} weight="fill" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-400">Email</div>
-                    <div className="font-medium">{personalInfo.email}</div>
+                    <div className="text-sm text-gray-400 group-hover:text-blue-400 transition-colors">
+                      Email
+                    </div>
+                    <div className="font-medium group-hover:text-blue-300 transition-colors">
+                      {personalInfo.email}
+                    </div>
                   </div>
                 </a>
 
                 <a
                   href={`tel:${personalInfo.phone}`}
-                  className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-all duration-300 group"
+                  className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group hover:-translate-x-2 border border-white/10 hover:border-purple-500/30"
+                  style={{ animation: 'fadeInLeft 0.6s ease-out 0.2s both' }}
                 >
-                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
                     <Phone size={24} weight="fill" />
                   </div>
                   <div>
-                    <div className="text-sm text-gray-400">Phone</div>
-                    <div className="font-medium">{personalInfo.phone}</div>
+                    <div className="text-sm text-gray-400 group-hover:text-purple-400 transition-colors">
+                      Phone
+                    </div>
+                    <div className="font-medium group-hover:text-purple-300 transition-colors">
+                      {personalInfo.phone}
+                    </div>
                   </div>
                 </a>
 
-                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-xl">
-                  <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <a
+                  href={`tel:${personalInfo.aiPhone}`}
+                  className="flex items-center gap-4 p-4 bg-white/5 rounded-xl hover:bg-white/10 hover:shadow-lg hover:shadow-pink-500/20 transition-all duration-300 group hover:-translate-x-2 border border-white/10 hover:border-pink-500/30 relative overflow-hidden"
+                  style={{ animation: 'fadeInLeft 0.6s ease-out 0.3s both' }}
+                >
+                  <div className="absolute top-0 right-0 px-2 py-1 bg-gradient-to-r from-pink-500 to-purple-600 text-xs font-bold rounded-bl-lg">
+                    AI ✨
+                  </div>
+                  <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-orange-600 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
+                    <Phone size={24} weight="fill" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-400 group-hover:text-pink-400 transition-colors">
+                      AI Phone
+                    </div>
+                    <div className="font-medium group-hover:text-pink-300 transition-colors">
+                      {personalInfo.aiPhone}
+                    </div>
+                  </div>
+                </a>
+
+                <div
+                  className="flex items-center gap-4 p-4 bg-white/5 rounded-xl border border-white/10"
+                  style={{ animation: 'fadeInLeft 0.6s ease-out 0.4s both' }}
+                >
+                  <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
                     <MapPin size={24} weight="fill" />
                   </div>
                   <div>
@@ -486,25 +570,45 @@ const TraditionalPortfolio = () => {
             </div>
 
             {/* Contact Form Placeholder */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-8">
-              <h3 className="text-2xl font-bold mb-6">Send a Message</h3>
+            <div
+              className="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 hover:border-purple-500/30 transition-all duration-500"
+              style={{ animation: 'fadeInRight 0.6s ease-out 0.3s both' }}
+            >
+              <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-pink-400 to-purple-500 bg-clip-text text-transparent">
+                Send a Message
+              </h3>
               <p className="text-gray-400 mb-6">
                 Feel free to reach out via email or connect on social media!
               </p>
               <div className="space-y-4">
                 <a
-                  href={`mailto:${personalInfo.email}`}
-                  className="block w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full text-center font-semibold hover:scale-105 transition-transform duration-300"
+                  href={`mailto:${personalInfo.email}?subject=Let's Connect&body=Hi Sajal,%0D%0A%0D%0AI'd like to discuss...`}
+                  className="block w-full px-6 py-4 bg-gradient-to-r from-blue-500 via-purple-600 to-pink-600 rounded-full text-center font-semibold hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/50 transition-all duration-300 group relative overflow-hidden"
                 >
-                  Email Me
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <EnvelopeSimple
+                      size={20}
+                      weight="fill"
+                      className="group-hover:animate-bounce"
+                    />
+                    Email Me
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </a>
                 <a
                   href={personalInfo.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full px-6 py-3 bg-white/10 rounded-full text-center font-semibold hover:bg-white/20 transition-all duration-300"
+                  className="block w-full px-6 py-4 bg-white/10 rounded-full text-center font-semibold hover:bg-white/20 hover:scale-105 transition-all duration-300 border border-white/20 hover:border-blue-400/50 group"
                 >
-                  Connect on LinkedIn
+                  <span className="flex items-center justify-center gap-2">
+                    <LinkedinLogo
+                      size={20}
+                      weight="fill"
+                      className="group-hover:scale-125 transition-transform"
+                    />
+                    Connect on LinkedIn
+                  </span>
                 </a>
               </div>
             </div>
