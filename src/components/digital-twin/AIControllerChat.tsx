@@ -54,8 +54,8 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! I'm Sajal's Digital Twin in AI Control mode. Ask me to show you projects, skills, resume, or anything else - I'll transform the interface for you!`
-        : "Hi! I'm Sajal's Digital Twin in AI Control mode. Ask me to show you projects, skills, resume, or anything else - I'll transform the interface for you!",
+        ? `Hi ${session.user.name}! 🤖 **AI Control Mode**\n\nI'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!`
+        : "Hi! 🤖 **AI Control Mode**\n\nI'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -65,8 +65,8 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! I'm Sajal's Digital Twin. Let's have a conversation about my experience, skills, or anything else you'd like to know!`
-        : "Hi! I'm Sajal's Digital Twin. Let's have a conversation about my experience, skills, or anything else you'd like to know!",
+        ? `Hi ${session.user.name}! 💬 **Plain Chat Mode**\n\nI'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.`
+        : "Hi! 💬 **Plain Chat Mode**\n\nI'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -146,19 +146,19 @@ export function AIControllerChat() {
     }
   }, [voiceChat.messages])
 
-  const handleAIResponse = (content: string) => {
+  const handleAIResponse = (content: string, isAIControl: boolean = false) => {
     setLastAIMessage(content)
 
     // Only process intents in AI Control mode
-    if (chatMode === 'ai_control') {
-      // Detect intent from AI response
+    if (chatMode === 'ai_control' || isAIControl) {
+      // Detect intent from AI response or user message
       const intent = detectIntent(content)
       if (intent) {
         console.log('🎯 Detected intent from AI:', intent)
-        // Auto-hide chat and show content in AI Control mode
+        // Auto-hide chat and show content in AI Control mode - faster response
         setTimeout(() => {
           processAIIntent(intent)
-        }, 500)
+        }, 300)
       }
 
       // Set emotional tone based on content
@@ -199,15 +199,49 @@ export function AIControllerChat() {
     setInputValue('')
     setIsLoading(true)
 
-    // Only detect intent in AI Control mode
+    // Detect intent in AI Control mode and provide brief response
     if (chatMode === 'ai_control') {
       const intent = detectIntent(inputValue)
       if (intent) {
         console.log('🎯 Detected intent from user:', intent)
-        processAIIntent(intent)
+
+        // Provide brief response based on intent type
+        let briefResponse = ''
+        switch (intent.type) {
+          case 'show_projects':
+            briefResponse = 'Here are my projects! ✨'
+            break
+          case 'show_skills':
+            briefResponse = 'Check out my skills! 🚀'
+            break
+          case 'show_resume':
+            briefResponse = "Here's my resume! 📄"
+            break
+          case 'show_contact':
+            briefResponse = "Let's connect! 📧"
+            break
+          case 'show_about':
+            briefResponse = "Here's my story! 👋"
+            break
+          default:
+            briefResponse = 'Here you go! ✨'
+        }
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: briefResponse,
+          role: 'assistant',
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => [...prev, assistantMessage])
+        handleAIResponse(inputValue, true)
+        setIsLoading(false)
+        return
       }
     }
 
+    // For Plain Chat mode OR AI Control mode without intent, get detailed response from API
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -218,7 +252,7 @@ export function AIControllerChat() {
             role: m.role,
             content: m.content,
           })),
-          enhancedMode: true,
+          enhancedMode: chatMode === 'plain_chat', // Only use enhanced mode for plain chat
           interviewType: 'general',
           user: session?.user
             ? {
@@ -241,7 +275,7 @@ export function AIControllerChat() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-      handleAIResponse(data.response)
+      handleAIResponse(data.response, chatMode === 'ai_control')
     } catch (error) {
       console.error('Error:', error)
       const errorMessage: Message = {
@@ -352,7 +386,7 @@ export function AIControllerChat() {
                     ? 'bg-purple-600 text-white shadow-lg'
                     : 'text-gray-300 hover:text-white'
                 }`}
-                title="AI Control Mode - Triggers UI changes based on conversation"
+                title="AI Control: Brief responses + instant UI visualization"
               >
                 🤖 AI Control
               </button>
@@ -363,7 +397,7 @@ export function AIControllerChat() {
                     ? 'bg-blue-600 text-white shadow-lg'
                     : 'text-gray-300 hover:text-white'
                 }`}
-                title="Plain Chat - Standard conversation only"
+                title="Plain Chat: Detailed text responses + no UI changes"
               >
                 💬 Plain Chat
               </button>
@@ -453,6 +487,61 @@ export function AIControllerChat() {
 
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Quick Action Buttons - Only in AI Control Mode */}
+        {chatMode === 'ai_control' && messages.length <= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="absolute bottom-32 left-0 right-0 px-6"
+          >
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+              <p className="text-white/70 text-sm mb-3 text-center">Quick Actions:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button
+                  onClick={() => {
+                    setInputValue('show me your projects')
+                    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                    handleSubmit(fakeEvent)
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  \ud83d\udcbc Projects
+                </button>
+                <button
+                  onClick={() => {
+                    setInputValue('show me your skills')
+                    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                    handleSubmit(fakeEvent)
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  \u2728 Skills
+                </button>
+                <button
+                  onClick={() => {
+                    setInputValue('show me your resume')
+                    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                    handleSubmit(fakeEvent)
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  \ud83d\udcc4 Resume
+                </button>
+                <button
+                  onClick={() => {
+                    setInputValue('show me your contact')
+                    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                    handleSubmit(fakeEvent)
+                  }}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                >
+                  \ud83d\udce7 Contact
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
