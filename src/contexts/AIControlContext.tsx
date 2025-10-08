@@ -148,61 +148,36 @@ export function AIControlProvider({ children }: { children: ReactNode }) {
       switch (intent.type) {
         case 'show_projects':
           setMode('projects')
-          // Scroll to traditional portfolio projects section
-          setTimeout(() => {
-            const element = document.getElementById('portfolio-projects')
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }, 100)
+          toggleComponent('projects', true)
+          toggleComponent('chat', false)
           setEmotionalTone('excited')
           break
 
         case 'show_skills':
           setMode('skills')
-          // Scroll to traditional portfolio skills section
-          setTimeout(() => {
-            const element = document.getElementById('portfolio-skills')
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }, 100)
+          toggleComponent('skills', true)
+          toggleComponent('chat', false)
           setEmotionalTone('focused')
           break
 
         case 'show_resume':
-          // Since resume doesn't exist in traditional portfolio, scroll to about or projects
-          setMode('projects')
-          setTimeout(() => {
-            const element = document.getElementById('portfolio-projects')
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }, 100)
+          setMode('resume')
+          toggleComponent('resume', true)
+          toggleComponent('chat', false)
           setEmotionalTone('focused')
           break
 
         case 'show_about':
           setMode('about')
-          // Scroll to traditional portfolio about section
-          setTimeout(() => {
-            const element = document.getElementById('portfolio-about')
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }, 100)
+          toggleComponent('about', true)
+          toggleComponent('chat', false)
           setEmotionalTone('calm')
           break
 
         case 'show_contact':
           setMode('contact')
-          // Scroll to traditional portfolio contact section
-          setTimeout(() => {
-            const element = document.getElementById('portfolio-contact')
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }
-          }, 100)
+          toggleComponent('contact', true)
+          toggleComponent('chat', false)
           setEmotionalTone('neutral')
           break
 

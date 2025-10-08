@@ -9,6 +9,7 @@ import { AnimatedProjects } from './AnimatedProjects'
 import { AnimatedSkills } from './AnimatedSkills'
 import { ResumePanel } from './ResumePanel'
 import { ContactTransform } from './ContactTransform'
+import { AboutPanel } from './AboutPanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot } from 'lucide-react'
 import LoadingAnimation from '@/components/portfolio/LoadingAnimation'
@@ -88,6 +89,7 @@ export function DigitalTwinExperience() {
       </AnimatePresence>
 
       {/* Overlay components that appear on top of chat */}
+      <AboutPanel />
       <AnimatedProjects />
       <AnimatedSkills />
       <ResumePanel />

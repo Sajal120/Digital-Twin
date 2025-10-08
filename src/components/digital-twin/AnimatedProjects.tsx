@@ -1,49 +1,9 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
-import { ExternalLink, Github, X } from 'lucide-react'
-import Image from 'next/image'
+import { Github, X } from 'lucide-react'
 import { useAIControl } from '@/contexts/AIControlContext'
-
-const projects = [
-  {
-    id: 1,
-    title: 'AI-Powered Analytics Dashboard',
-    description:
-      'A comprehensive analytics platform that uses machine learning to provide predictive insights.',
-    image: '/media/image-post1.webp',
-    technologies: ['React', 'Node.js', 'Python', 'TensorFlow', 'PostgreSQL'],
-    github: 'https://github.com',
-    demo: 'https://example.com',
-  },
-  {
-    id: 2,
-    title: 'E-Commerce Platform with AI',
-    description: 'Full-featured e-commerce platform with AI-powered product recommendations.',
-    image: '/media/image-post2.webp',
-    technologies: ['Next.js', 'TypeScript', 'Stripe', 'Prisma', 'OpenAI'],
-    github: 'https://github.com',
-    demo: 'https://example.com',
-  },
-  {
-    id: 3,
-    title: 'Real-Time Chat Application',
-    description: 'Scalable messaging application with file sharing and video calling capabilities.',
-    image: '/media/image-post3.webp',
-    technologies: ['React', 'Socket.io', 'Node.js', 'MongoDB', 'WebRTC'],
-    github: 'https://github.com',
-    demo: 'https://example.com',
-  },
-  {
-    id: 4,
-    title: 'Smart Home IoT System',
-    description: 'IoT-based smart home automation with AI-powered energy optimization.',
-    image: '/media/image-hero1.webp',
-    technologies: ['React Native', 'Python', 'Raspberry Pi', 'MQTT'],
-    github: 'https://github.com',
-    demo: 'https://example.com',
-  },
-]
+import { projects as projectsData } from '@/data/projects'
 
 export function AnimatedProjects() {
   const { activeComponents, toggleComponent, setMode, currentMode } = useAIControl()
@@ -87,9 +47,9 @@ export function AnimatedProjects() {
 
           {/* Projects grid */}
           <div className="grid md:grid-cols-2 gap-6">
-            {projects.map((project, index) => (
+            {projectsData.map((project, index) => (
               <motion.div
-                key={project.id}
+                key={index}
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{
@@ -103,11 +63,10 @@ export function AnimatedProjects() {
               >
                 {/* Project image */}
                 <div className="relative h-48 overflow-hidden">
-                  <Image
+                  <img
                     src={project.image}
                     alt={project.title}
-                    fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                 </div>
@@ -121,7 +80,7 @@ export function AnimatedProjects() {
 
                   {/* Technologies */}
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {project.technologies.map((tech, i) => (
+                    {project.tech.map((tech, i) => (
                       <motion.span
                         key={i}
                         initial={{ opacity: 0, scale: 0 }}
@@ -137,22 +96,13 @@ export function AnimatedProjects() {
                   {/* Actions */}
                   <div className="flex space-x-3">
                     <a
-                      href={project.demo}
+                      href={project.github}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all text-sm"
                     >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Demo</span>
-                    </a>
-                    <a
-                      href={project.github}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all text-sm"
-                    >
                       <Github className="w-4 h-4" />
-                      <span>Code</span>
+                      <span>View Code</span>
                     </a>
                   </div>
                 </div>
