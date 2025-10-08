@@ -232,6 +232,12 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
 
         // Auto-play response if enabled
         if (autoPlayResponses && data.response) {
+          // Stop listening if mic is active to prevent echo
+          if (state.isListening) {
+            await voiceRecorder.stopRecording()
+            setState((prev) => ({ ...prev, isListening: false }))
+          }
+
           try {
             // Use ElevenLabs voice cloning if available, fallback to OpenAI
             await audioPlayer.playText(data.response, 'elevenlabs')
@@ -254,7 +260,9 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
     [
       state.currentInteractionType,
       state.conversationId,
+      state.isListening,
       audioPlayer,
+      voiceRecorder,
       autoPlayResponses,
       onMessageReceived,
       onError,

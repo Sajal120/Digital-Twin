@@ -38,7 +38,7 @@ const skillsData = [
 ]
 
 export function AnimatedSkills() {
-  const { activeComponents, toggleComponent, currentMode } = useAIControl()
+  const { activeComponents, toggleComponent, currentMode, setMode } = useAIControl()
 
   if (!activeComponents.skills || currentMode !== 'skills') return null
 
@@ -67,7 +67,10 @@ export function AnimatedSkills() {
               Skills & Expertise
             </motion.h2>
             <button
-              onClick={() => toggleComponent('skills', false)}
+              onClick={() => {
+                toggleComponent('skills', false)
+                setMode('chat')
+              }}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
             >
               <X className="w-6 h-6 text-white" />

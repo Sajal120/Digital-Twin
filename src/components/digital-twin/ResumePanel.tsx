@@ -5,7 +5,7 @@ import { X, Download, FileText, Briefcase, GraduationCap } from 'lucide-react'
 import { useAIControl } from '@/contexts/AIControlContext'
 
 export function ResumePanel() {
-  const { activeComponents, toggleComponent, currentMode } = useAIControl()
+  const { activeComponents, toggleComponent, setMode, currentMode } = useAIControl()
 
   if (!activeComponents.resume || currentMode !== 'resume') return null
 
@@ -46,7 +46,10 @@ export function ResumePanel() {
                 <span>Download PDF</span>
               </motion.a>
               <button
-                onClick={() => toggleComponent('resume', false)}
+                onClick={() => {
+                  toggleComponent('resume', false)
+                  setMode('chat')
+                }}
                 className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
               >
                 <X className="w-6 h-6 text-white" />

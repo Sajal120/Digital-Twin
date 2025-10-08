@@ -254,7 +254,7 @@ export function AIControllerChat() {
             role: m.role,
             content: m.content,
           })),
-          enhancedMode: true, // Always use enhanced mode for detailed responses
+          enhancedMode: chatMode === 'plain_chat' ? true : false, // Force enhanced mode for Plain Chat
           interviewType: chatMode === 'plain_chat' ? 'general' : 'brief',
           user: session?.user
             ? {

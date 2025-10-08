@@ -6,7 +6,7 @@ import { useAIControl } from '@/contexts/AIControlContext'
 import { useState } from 'react'
 
 export function ContactTransform() {
-  const { activeComponents, toggleComponent, currentMode } = useAIControl()
+  const { activeComponents, toggleComponent, setMode, currentMode } = useAIControl()
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -61,7 +61,10 @@ export function ContactTransform() {
               <h2 className="text-4xl font-bold text-white">Get in Touch</h2>
             </motion.div>
             <button
-              onClick={() => toggleComponent('contact', false)}
+              onClick={() => {
+                toggleComponent('contact', false)
+                setMode('chat')
+              }}
               className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
             >
               <X className="w-6 h-6 text-white" />

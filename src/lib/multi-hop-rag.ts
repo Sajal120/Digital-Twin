@@ -288,9 +288,9 @@ Return JSON:
 Analysis:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: complexityPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama3-70b-8192',
       temperature: 0.3,
       max_tokens: 200,
     })
@@ -380,10 +380,10 @@ Return JSON:
 Search Plan:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: planPrompt }],
-      model: 'gpt-3.5-turbo',
-      temperature: 0.4,
+      model: 'llama3-70b-8192',
+      temperature: 0.3,
       max_tokens: 400,
     })
 
@@ -466,10 +466,10 @@ If no follow-up search would be helpful, respond with "NONE".
 Follow-up query:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: followUpPrompt }],
-      model: 'gpt-3.5-turbo',
-      temperature: 0.5,
+      model: 'llama3-70b-8192',
+      temperature: 0.2,
       max_tokens: 100,
     })
 
@@ -529,6 +529,14 @@ async function synthesizeResults(
     return "I don't have specific information about that topic in my knowledge base. Could you ask about something more specific?"
   }
 
+  // Determine response style based on interview type
+  const isDetailedMode = interviewType === 'general'
+  const lengthGuidance = isDetailedMode
+    ? '- Provide a detailed, comprehensive response (3-5 paragraphs)\n- Include specific examples and context\n- Explain technical concepts thoroughly'
+    : '- Keep response under 100 words (2-3 sentences)'
+
+  const maxTokens = isDetailedMode ? 800 : 200
+
   const synthesisPrompt = `
 You are Sajal Basnet responding to a question using information from multiple searches.
 
@@ -541,7 +549,7 @@ ${informationContext}
 Synthesize this information into a natural, conversational response as Sajal:
 - Combine information from all searches logically
 - Answer the original question directly
-- Keep response under 100 words (2-3 sentences)
+${lengthGuidance}
 - Sound natural and conversational
 - Use "I" statements
 - Focus only on the information provided
@@ -549,11 +557,11 @@ Synthesize this information into a natural, conversational response as Sajal:
 Response:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: synthesisPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama3-70b-8192',
       temperature: 0.6,
-      max_tokens: 200,
+      max_tokens: maxTokens,
     })
 
     const synthesizedResponse = completion.choices[0]?.message?.content?.trim()
@@ -609,11 +617,11 @@ Return JSON array: ["sub-query 1", "sub-query 2", "sub-query 3"]
 Sub-queries:`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await groq.chat.completions.create({
       messages: [{ role: 'user', content: decompositionPrompt }],
-      model: 'gpt-3.5-turbo',
+      model: 'llama3-70b-8192',
       temperature: 0.3,
-      max_tokens: 200,
+      max_tokens: 150,
     })
 
     const responseContent = completion.choices[0]?.message?.content?.trim()
