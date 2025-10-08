@@ -15,11 +15,7 @@ import { Posts } from './collections/Posts'
 import { Users } from './collections/Users'
 // Admin collections - re-enabling
 import { PortfolioContent } from './collections/PortfolioContent'
-import { ChatAnalytics, SystemLogs } from './collections/AnalyticsCollections'
 import { ContentChunks } from './collections/ContentChunks'
-import { EmbeddingOperations } from './collections/EmbeddingOperations'
-import { DatabaseOperations } from './collections/DatabaseOperations'
-import { AuditLogs } from './collections/AuditLogs'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
 import { plugins } from './plugins'
@@ -107,20 +103,7 @@ export default buildConfig({
   },
   editor: defaultLexical,
   db: getDatabaseConfig(),
-  collections: [
-    Pages,
-    Posts,
-    Media,
-    Categories,
-    Users,
-    PortfolioContent,
-    ChatAnalytics,
-    SystemLogs,
-    ContentChunks,
-    EmbeddingOperations,
-    DatabaseOperations,
-    AuditLogs,
-  ],
+  collections: [Pages, Posts, Media, Categories, Users, PortfolioContent, ContentChunks],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
   plugins: [...plugins],
