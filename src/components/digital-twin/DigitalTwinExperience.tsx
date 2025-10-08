@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useAIControl } from '@/contexts/AIControlContext'
 import { LandingScreen } from './LandingScreen'
 import { AIControllerChat } from './AIControllerChat'
@@ -10,30 +11,41 @@ import { ResumePanel } from './ResumePanel'
 import { ContactTransform } from './ContactTransform'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot } from 'lucide-react'
+import LoadingAnimation from '@/components/portfolio/LoadingAnimation'
+import TraditionalPortfolio from '@/components/portfolio/TraditionalPortfolio'
+import TraditionalNavigation from '@/components/portfolio/TraditionalNavigation'
 
 function PortfolioModeView() {
+  const [showLoading, setShowLoading] = useState(true)
   const { setMode } = useAIControl()
+
+  if (showLoading) {
+    return <LoadingAnimation onComplete={() => setShowLoading(false)} />
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen flex items-center justify-center p-8"
+      transition={{ duration: 1 }}
+      className="relative"
     >
-      <div className="text-center text-white">
-        <h2 className="text-4xl font-bold mb-4">Traditional Portfolio View</h2>
-        <p className="text-gray-300 mb-8">
-          This will be your traditional portfolio layout. For now, use the chat mode to explore!
-        </p>
-        <button
-          onClick={() => setMode('chat')}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all"
-        >
-          Open AI Chat
-        </button>
-      </div>
+      <TraditionalNavigation />
+      <TraditionalPortfolio />
+
+      {/* Floating back to AI button */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setMode('chat')}
+        className="fixed bottom-24 right-8 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"
+        title="Back to AI Chat"
+      >
+        <Bot className="w-8 h-8 text-white" />
+      </motion.button>
     </motion.div>
   )
 }
