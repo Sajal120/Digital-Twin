@@ -120,8 +120,8 @@ def embed_digital_twin():
             },
             {
                 "id": "technical_skills_summary",
-                "content": f"Technical skills include: {', '.join([skill['name'] for skill in twin_data['skills']['technical'][0]['skills'][:10]])}. Years of experience range from 1-4 years across different technologies.",
-                "title": "Technical Skills Overview", 
+                "content": f"Technical skills include: {', '.join([skill['name'] for skill in twin_data['skills']['technical'][0]['skills'][:10]])}. Professional experience includes: Software Developer Intern at Aubot (Dec 2024-Mar 2025), Web Developer at edgedVR (Jan 2023-Dec 2023), and Assistant Bar Manager at Kimpton (Mar 2022-Nov 2023). Total 3+ years of professional experience.",
+                "title": "Technical Skills and Experience Overview", 
                 "type": "skills"
             }
         ]

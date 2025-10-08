@@ -123,6 +123,71 @@ export function AboutPanel() {
             </p>
           </motion.div>
 
+          {/* Professional Experience Timeline */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="mb-8"
+          >
+            <h3 className="text-2xl font-bold text-white mb-4">Professional Experience</h3>
+            <div className="space-y-4">
+              {/* Aubot */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 }}
+                className="p-4 bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 hover:border-purple-500/30 transition-colors"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="text-lg font-bold text-purple-300">Software Developer Intern</h4>
+                  <span className="text-xs text-gray-400">Dec 2024 - Mar 2025</span>
+                </div>
+                <p className="text-sm text-blue-300 mb-2">Aubot</p>
+                <p className="text-sm text-gray-300">
+                  Developed Python automation scripts, improved QA efficiency by 30%, maintained
+                  9,500+ exercises for 15,000+ learners
+                </p>
+              </motion.div>
+
+              {/* edgedVR */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.55 }}
+                className="p-4 bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 hover:border-purple-500/30 transition-colors"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="text-lg font-bold text-purple-300">Web Developer (Contract)</h4>
+                  <span className="text-xs text-gray-400">Jan 2023 - Dec 2023</span>
+                </div>
+                <p className="text-sm text-blue-300 mb-2">edgedVR</p>
+                <p className="text-sm text-gray-300">
+                  Built responsive web applications, reduced load times by 20%, delivered 12+
+                  modules with 92% satisfaction
+                </p>
+              </motion.div>
+
+              {/* Kimpton */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 }}
+                className="p-4 bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 hover:border-purple-500/30 transition-colors"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <h4 className="text-lg font-bold text-purple-300">Assistant Bar Manager</h4>
+                  <span className="text-xs text-gray-400">Mar 2022 - Nov 2023</span>
+                </div>
+                <p className="text-sm text-blue-300 mb-2">Kimpton Margot Hotel</p>
+                <p className="text-sm text-gray-300">
+                  Led 15+ staff, improved inventory accuracy to 95%, maintained 4.2/5 satisfaction
+                  rating
+                </p>
+              </motion.div>
+            </div>
+          </motion.div>
+
           {/* Background Cards */}
           <div className="grid md:grid-cols-3 gap-4 mb-8">
             {/* Experience */}

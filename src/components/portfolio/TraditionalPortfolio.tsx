@@ -255,7 +255,7 @@ const TraditionalPortfolio = () => {
           </div>
 
           {/* About Description */}
-          <div className="max-w-4xl mx-auto mb-20">
+          <div className="max-w-4xl mx-auto mb-12">
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-8">
               <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
                 Passionate About Technology
@@ -272,6 +272,114 @@ const TraditionalPortfolio = () => {
                 experience spans from developing secure applications to conducting security analysis
                 with intelligent automation.
               </p>
+            </div>
+          </div>
+
+          {/* Experience Section */}
+          <div className="max-w-4xl mx-auto mb-20">
+            <h3 className="text-3xl font-bold mb-8 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent text-center">
+              Professional Experience
+            </h3>
+            <div className="space-y-6">
+              {/* Aubot Internship */}
+              <div
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.1s both' }}
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                  <div>
+                    <h4 className="text-xl font-bold text-white mb-1">Software Developer Intern</h4>
+                    <p className="text-purple-400 font-medium">Aubot</p>
+                  </div>
+                  <span className="text-gray-400 text-sm mt-2 md:mt-0">
+                    December 2024 - March 2025
+                  </span>
+                </div>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  Developed Python automation scripts for QA workflows, improving bug detection
+                  efficiency by 30%. Maintained 9,500+ educational coding exercises (Python & Java)
+                  with 99.5% accuracy for 15,000+ learners. Participated in Agile sprints,
+                  contributing to 15% reduction in critical bugs.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Python', 'Java', 'React', 'QA Automation', 'Agile'].map((tech) => (
+                    <span
+                      key={tech}
+                      className="px-3 py-1 bg-purple-500/20 text-purple-300 text-xs rounded-full border border-purple-500/30"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* edgedVR Contract */}
+              <div
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.2s both' }}
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                  <div>
+                    <h4 className="text-xl font-bold text-white mb-1">Web Developer (Contract)</h4>
+                    <p className="text-blue-400 font-medium">edgedVR</p>
+                  </div>
+                  <span className="text-gray-400 text-sm mt-2 md:mt-0">
+                    January 2023 - December 2023
+                  </span>
+                </div>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  Built responsive web applications with JavaScript, reducing content load times by
+                  20% (40s to 32s). Delivered 12+ training modules across 3 enterprise clients,
+                  achieving 92% user satisfaction. Optimized cross-platform performance for desktop,
+                  mobile, and web.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['JavaScript', 'HTML/CSS', 'Web APIs', 'Performance Optimization'].map(
+                    (tech) => (
+                      <span
+                        key={tech}
+                        className="px-3 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30"
+                      >
+                        {tech}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              {/* Kimpton Experience */}
+              <div
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                style={{ animation: 'fadeInUp 0.6s ease-out 0.3s both' }}
+              >
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                  <div>
+                    <h4 className="text-xl font-bold text-white mb-1">Assistant Bar Manager</h4>
+                    <p className="text-pink-400 font-medium">Kimpton Margot Hotel</p>
+                  </div>
+                  <span className="text-gray-400 text-sm mt-2 md:mt-0">
+                    March 2022 - November 2023
+                  </span>
+                </div>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  Led team of 15+ staff, implementing Deputy scheduling system and reducing
+                  conflicts by 40%. Improved inventory accuracy from 78% to 95% using SAP and Oracle
+                  Micros POS. Maintained 4.2/5 customer satisfaction while managing high-volume
+                  operations.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Team Leadership', 'Oracle Micros POS', 'SAP', 'Operations Management'].map(
+                    (tech) => (
+                      <span
+                        key={tech}
+                        className="px-3 py-1 bg-pink-500/20 text-pink-300 text-xs rounded-full border border-pink-500/30"
+                      >
+                        {tech}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

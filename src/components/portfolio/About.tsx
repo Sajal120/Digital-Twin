@@ -42,21 +42,21 @@ export function About() {
               </div>
 
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                With over 5 years of experience in software development, I specialize in creating
-                innovative solutions that bridge the gap between traditional software engineering
-                and cutting-edge AI technologies. My passion lies in building scalable applications
-                that make a meaningful impact.
+                With 3+ years of professional experience in software development, I specialize in
+                creating innovative solutions that bridge the gap between traditional software
+                engineering and cutting-edge AI technologies. My passion lies in building scalable
+                applications that make a meaningful impact.
               </p>
             </div>
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-card border rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-blue-600">5+</div>
+                <div className="text-2xl font-bold text-blue-600">3+</div>
                 <div className="text-sm text-muted-foreground">Years Experience</div>
               </div>
               <div className="bg-card border rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-purple-600">50+</div>
+                <div className="text-2xl font-bold text-purple-600">15+</div>
                 <div className="text-sm text-muted-foreground">Projects Completed</div>
               </div>
             </div>
