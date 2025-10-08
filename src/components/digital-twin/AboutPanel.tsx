@@ -177,7 +177,7 @@ export function AboutPanel() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="text-lg font-bold text-purple-300">Assistant Bar Manager</h4>
-                  <span className="text-xs text-gray-400">Mar 2022 - Nov 2023</span>
+                  <span className="text-xs text-gray-400">Mar 2022 - Present</span>
                 </div>
                 <p className="text-sm text-blue-300 mb-2">Kimpton Margot Hotel</p>
                 <p className="text-sm text-gray-300">

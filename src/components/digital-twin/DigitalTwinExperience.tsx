@@ -10,6 +10,7 @@ import { AnimatedSkills } from './AnimatedSkills'
 import { ResumePanel } from './ResumePanel'
 import { ContactTransform } from './ContactTransform'
 import { AboutPanel } from './AboutPanel'
+import { ExperiencePanel } from './ExperiencePanel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot } from 'lucide-react'
 import LoadingAnimation from '@/components/portfolio/LoadingAnimation'
@@ -90,6 +91,7 @@ export function DigitalTwinExperience() {
 
       {/* Overlay components that appear on top of chat */}
       <AboutPanel />
+      <ExperiencePanel />
       <AnimatedProjects />
       <AnimatedSkills />
       <ResumePanel />
@@ -100,6 +102,7 @@ export function DigitalTwinExperience() {
         activeComponents.skills ||
         activeComponents.resume ||
         activeComponents.about ||
+        activeComponents.experience ||
         activeComponents.contact) && (
         <motion.button
           initial={{ scale: 0, opacity: 0 }}
@@ -114,6 +117,7 @@ export function DigitalTwinExperience() {
             toggleComponent('skills', false)
             toggleComponent('resume', false)
             toggleComponent('about', false)
+            toggleComponent('experience', false)
             toggleComponent('contact', false)
           }}
           className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all"

@@ -496,109 +496,122 @@ export function AIControllerChat() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Quick Action Buttons - Different for each mode */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-32 left-0 right-0 px-6"
-        >
-          <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
-            <p className="text-white/70 text-sm mb-3 text-center">
-              {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {chatMode === 'ai_control' ? (
-                // AI Control Mode: Visual action buttons
-                <>
-                  <button
-                    onClick={() => {
-                      setInputValue('show me about section')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    About
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('show me your skills')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    Skills
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('show me your projects')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    Projects
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('show me your contact')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    Contact
-                  </button>
-                </>
-              ) : (
-                // Plain Chat Mode: Question buttons
-                <>
-                  <button
-                    onClick={() => {
-                      setInputValue('What are your key skills and technical expertise?')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    💡 Skills
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('Tell me about your professional experience and background')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    💼 Experience
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('What projects have you worked on recently?')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    🚀 Projects
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('How can I get in touch with you?')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    📧 Contact
-                  </button>
-                </>
-              )}
+        {/* Quick Action Buttons - Different for each mode - Only show when messages are few */}
+        {messages.length <= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute bottom-32 left-0 right-0 px-6"
+          >
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+              <p className="text-white/70 text-sm mb-3 text-center">
+                {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {chatMode === 'ai_control' ? (
+                  // AI Control Mode: Visual action buttons
+                  <>
+                    <button
+                      onClick={() => {
+                        setInputValue('show me about section')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      About
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('show me your experience')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      Experience
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('show me your skills')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      Skills
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('show me your projects')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      Projects
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('show me your contact')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      Contact
+                    </button>
+                  </>
+                ) : (
+                  // Plain Chat Mode: Question buttons
+                  <>
+                    <button
+                      onClick={() => {
+                        setInputValue('What are your key skills and technical expertise?')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      💡 Skills
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('Tell me about your professional experience and background')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      💼 Experience
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('What projects have you worked on recently?')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      🚀 Projects
+                    </button>
+                    <button
+                      onClick={() => {
+                        setInputValue('How can I get in touch with you?')
+                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                        handleSubmit(fakeEvent)
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                    >
+                      📧 Contact
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">

@@ -283,7 +283,7 @@ const TraditionalPortfolio = () => {
             <div className="space-y-6">
               {/* Aubot Internship */}
               <div
-                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20 hover:border-purple-500/40 transition-all duration-500 transform hover:-rotate-1 cursor-pointer"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.1s both' }}
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
@@ -315,7 +315,7 @@ const TraditionalPortfolio = () => {
 
               {/* edgedVR Contract */}
               <div
-                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/40 transition-all duration-500 transform hover:rotate-1 cursor-pointer"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.2s both' }}
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
@@ -349,7 +349,7 @@ const TraditionalPortfolio = () => {
 
               {/* Kimpton Experience */}
               <div
-                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 transition-all duration-300"
+                className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:bg-white/10 hover:scale-105 hover:shadow-2xl hover:shadow-pink-500/20 hover:border-pink-500/40 transition-all duration-500 transform hover:-rotate-1 cursor-pointer"
                 style={{ animation: 'fadeInUp 0.6s ease-out 0.3s both' }}
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
@@ -357,9 +357,7 @@ const TraditionalPortfolio = () => {
                     <h4 className="text-xl font-bold text-white mb-1">Assistant Bar Manager</h4>
                     <p className="text-pink-400 font-medium">Kimpton Margot Hotel</p>
                   </div>
-                  <span className="text-gray-400 text-sm mt-2 md:mt-0">
-                    March 2022 - November 2023
-                  </span>
+                  <span className="text-gray-400 text-sm mt-2 md:mt-0">March 2022 - Present</span>
                 </div>
                 <p className="text-gray-300 leading-relaxed mb-4">
                   Led team of 15+ staff, implementing Deputy scheduling system and reducing

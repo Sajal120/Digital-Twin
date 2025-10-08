@@ -11,6 +11,7 @@ export type UIMode =
   | 'skills'
   | 'resume'
   | 'about'
+  | 'experience'
   | 'contact'
 export type Theme = 'default' | 'calm_blue' | 'energetic_purple' | 'warm_orange' | 'tech_green'
 export type VoiceState = 'idle' | 'listening' | 'speaking' | 'processing'
@@ -22,6 +23,7 @@ export interface AIIntent {
     | 'show_skills'
     | 'show_resume'
     | 'show_about'
+    | 'show_experience'
     | 'show_contact'
     | 'change_theme'
     | 'reset'
@@ -37,6 +39,7 @@ export interface ActiveComponents {
   skills: boolean
   resume: boolean
   about: boolean
+  experience: boolean
   contact: boolean
 }
 
@@ -52,7 +55,7 @@ interface AIControlState {
   lastAIMessage: string
   isTransitioning: boolean
   backgroundIntensity: number
-  emotionalTone: 'neutral' | 'excited' | 'calm' | 'focused'
+  emotionalTone: 'neutral' | 'excited' | 'calm' | 'focused' | 'professional'
   chatMode: ChatMode
 }
 
@@ -85,6 +88,7 @@ const initialState: AIControlState = {
     skills: false,
     resume: false,
     about: false,
+    experience: false,
     contact: false,
   },
   lastAIMessage: '',
@@ -172,6 +176,13 @@ export function AIControlProvider({ children }: { children: ReactNode }) {
           toggleComponent('about', true)
           toggleComponent('chat', false)
           setEmotionalTone('calm')
+          break
+
+        case 'show_experience':
+          setMode('experience')
+          toggleComponent('experience', true)
+          toggleComponent('chat', false)
+          setEmotionalTone('professional')
           break
 
         case 'show_contact':
@@ -283,6 +294,17 @@ export function detectIntent(message: string): AIIntent | null {
     lowerMessage.includes('story')
   ) {
     return { type: 'show_about' }
+  }
+
+  // Experience intent
+  if (
+    lowerMessage.includes('experience') ||
+    lowerMessage.includes('work history') ||
+    lowerMessage.includes('employment') ||
+    lowerMessage.includes('jobs') ||
+    lowerMessage.includes('career')
+  ) {
+    return { type: 'show_experience' }
   }
 
   // Contact intent
