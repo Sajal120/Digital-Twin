@@ -108,11 +108,12 @@ const LoadingAnimation = ({ onComplete }: LoadingAnimationProps) => {
     ],
   }
 
+  const [statusMessage, setStatusMessage] = useState(content.status_messages[0])
+
   // Get status message based on progress
   const getStatusMessage = (progress: number) => {
     const messages = content.status_messages
-    const progressPercentage = Math.floor(progress / (100 / messages.length))
-    const index = Math.min(progressPercentage, messages.length - 1)
+    const index = Math.min(Math.floor((progress / 100) * messages.length), messages.length - 1)
     return messages[index] || messages[0]
   }
 
@@ -142,22 +143,22 @@ const LoadingAnimation = ({ onComplete }: LoadingAnimationProps) => {
       '-=0.6',
     )
 
-    // Animate progress bar with percentage updates
-    const updateProgress = () => {
-      const prog = Math.round((tl.progress() / tl.duration()) * 100)
-      setProgress(prog)
-      if (percentageRef.current) {
-        percentageRef.current.textContent = `${prog}%`
-      }
-    }
-
+    // Animate progress bar with percentage updates and status messages
     tl.to(
       progressBarRef.current,
       {
         width: '100%',
         duration: 3,
         ease: 'power2.out',
-        onUpdate: updateProgress,
+        onUpdate: function () {
+          const prog = Math.round(this.progress() * 100)
+          setProgress(prog)
+          if (percentageRef.current) {
+            percentageRef.current.textContent = `${prog}%`
+          }
+          // Update status message based on progress
+          setStatusMessage(getStatusMessage(prog))
+        },
       },
       '-=0.2',
     )
@@ -255,7 +256,7 @@ const LoadingAnimation = ({ onComplete }: LoadingAnimationProps) => {
         </div>
 
         {/* Status message */}
-        <div className="text-gray-400 text-sm">{getStatusMessage(progress)}</div>
+        <div className="text-gray-400 text-sm">{statusMessage}</div>
       </div>
 
       {/* Corner decorations */}
