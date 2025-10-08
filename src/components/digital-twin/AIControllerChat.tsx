@@ -322,6 +322,45 @@ export function AIControllerChat() {
     setVoiceState('idle')
   }
 
+  // Helper function to render message content with clickable links
+  const renderMessageContent = (content: string) => {
+    // Convert markdown links [text](url) to clickable HTML
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g
+    const parts: (string | React.ReactNode)[] = []
+    let lastIndex = 0
+    let match
+
+    while ((match = linkRegex.exec(content)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index))
+      }
+
+      // Add the clickable link
+      parts.push(
+        <a
+          key={match.index}
+          href={match[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:text-blue-300 underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {match[1]}
+        </a>,
+      )
+
+      lastIndex = match.index + match[0].length
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex))
+    }
+
+    return parts.length > 0 ? parts : content
+  }
+
   const handlePhoneCall = () => {
     window.location.href = 'tel:+61278044137'
   }
@@ -466,7 +505,9 @@ export function AIControllerChat() {
                     }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <p className="text-sm whitespace-pre-line">{message.content}</p>
+                    <p className="text-sm whitespace-pre-line">
+                      {renderMessageContent(message.content)}
+                    </p>
                     {message.isVoice && (
                       <span className="text-xs opacity-70 mt-1 block">🎙️ Voice</span>
                     )}
@@ -651,22 +692,97 @@ export function AIControllerChat() {
               )}
             </motion.button>
 
-            {/* Stop Voice Button - Next to Mic */}
-            {(voiceState === 'speaking' || voiceChat.audioPlayerState.isPlaying) && (
-              <motion.button
-                type="button"
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                onClick={stopVoice}
-                className="p-4 rounded-full bg-red-500 hover:bg-red-600 transition-all"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="Stop Voice"
-              >
+            {/* Play/Stop Voice Button - Always visible next to Mic */}
+            <motion.button
+              type="button"
+              onClick={async () => {
+                await unlockAudio()
+
+                if (voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking') {
+                  // Currently playing - stop it
+                  console.log('⏹️ Stopping voice playback')
+                  voiceChat.stopAudio()
+                  stopVoice()
+                } else {
+                  // Not playing - start playing last assistant message
+                  // CRITICAL: Stop mic if it's recording to prevent feedback
+                  if (voiceChat.isListening) {
+                    console.log('🛑 Stopping mic before playing voice to prevent feedback')
+                    voiceChat.stopListening()
+                    await new Promise((resolve) => setTimeout(resolve, 200))
+                  }
+
+                  // Find last assistant message and play it
+                  const lastAssistantMessage = messages
+                    .slice()
+                    .reverse()
+                    .find((m) => m.role === 'assistant')
+
+                  if (lastAssistantMessage) {
+                    console.log('▶️ Playing last assistant message')
+                    // Trigger text-to-speech for the message
+                    setVoiceState('speaking')
+                    // The voiceChat will automatically play via autoPlayResponses
+                    // Or we can manually trigger TTS via the API
+                    const playAudio = async () => {
+                      try {
+                        const response = await fetch('/api/voice/speech', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            text: lastAssistantMessage.content,
+                            voice: 'alloy',
+                            provider: 'elevenlabs',
+                            language: 'auto',
+                          }),
+                        })
+
+                        if (response.ok) {
+                          const audioBlob = await response.blob()
+                          const audioUrl = URL.createObjectURL(audioBlob)
+                          const audio = new Audio(audioUrl)
+
+                          audio.onended = () => {
+                            setVoiceState('idle')
+                            URL.revokeObjectURL(audioUrl)
+                          }
+
+                          audio.onerror = () => {
+                            setVoiceState('idle')
+                            URL.revokeObjectURL(audioUrl)
+                          }
+
+                          await audio.play()
+                        }
+                      } catch (error) {
+                        console.error('Failed to play audio:', error)
+                        setVoiceState('idle')
+                      }
+                    }
+                    playAudio()
+                  }
+                }
+              }}
+              disabled={!isMounted || messages.filter((m) => m.role === 'assistant').length === 0}
+              className={`p-4 rounded-full transition-all ${
+                voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+              } disabled:opacity-50`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title={
+                voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
+                  ? 'Stop Voice'
+                  : 'Play Last Response'
+              }
+            >
+              {voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
                 <VolumeX className="w-6 h-6 text-white" />
-              </motion.button>
-            )}
+              ) : (
+                <Volume2 className="w-6 h-6 text-white" />
+              )}
+            </motion.button>
 
             <input
               type="text"
