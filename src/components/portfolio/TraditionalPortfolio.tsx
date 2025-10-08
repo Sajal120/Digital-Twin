@@ -13,6 +13,7 @@ import {
   ArrowUp,
 } from 'phosphor-react'
 import { projects as githubProjects } from '@/data/projects'
+import SkillCard from './SkillCard'
 
 const Animated3DBackground = dynamic(() => import('./Animated3DBackground'), { ssr: false })
 
@@ -275,7 +276,7 @@ const TraditionalPortfolio = () => {
           </div>
 
           {/* Skills Section */}
-          <div className="max-w-6xl mx-auto">
+          <div id="portfolio-skills" className="max-w-6xl mx-auto">
             <h3 className="text-4xl font-bold mb-12 text-center">
               <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-blue-400 bg-clip-text text-transparent">
                 Technical Skills
@@ -287,7 +288,11 @@ const TraditionalPortfolio = () => {
               {filterButtons.map((filter) => (
                 <button
                   key={filter}
-                  onClick={() => setActiveFilter(filter)}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setActiveFilter(filter)
+                  }}
                   className={`px-6 py-3 rounded-full font-semibold transition-all duration-300 text-sm ${
                     activeFilter === filter
                       ? 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50 scale-105'
@@ -301,72 +306,14 @@ const TraditionalPortfolio = () => {
 
             {/* Skills Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredSkills.map((skill, index) => {
-                const [animatedLevel, setAnimatedLevel] = useState(0)
-
-                useEffect(() => {
-                  const timer = setTimeout(() => {
-                    setAnimatedLevel(skill.level)
-                  }, index * 50)
-                  return () => clearTimeout(timer)
-                }, [activeFilter])
-
-                return (
-                  <div
-                    key={`${skill.name}-${activeFilter}-${index}`}
-                    className="bg-white/5 backdrop-blur-sm border border-white/10 p-5 rounded-xl hover:bg-white/10 hover:border-white/20 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 group hover:-translate-y-2 skill-card"
-                    style={{
-                      animation: `fadeInUp 0.6s ease-out ${index * 0.05}s both`,
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl group-hover:scale-125 group-hover:rotate-12 transition-all duration-300">
-                          {skill.icon}
-                        </span>
-                        <span className="font-semibold text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-500 transition-all duration-300">
-                          {skill.name}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-purple-400 tabular-nums">
-                        {animatedLevel}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden relative">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
-                        style={{ width: `${animatedLevel}%` }}
-                      >
-                        <div
-                          className="absolute inset-0 bg-white/20 animate-shimmer"
-                          style={{
-                            backgroundImage:
-                              'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)',
-                            backgroundSize: '200% 100%',
-                            animation: 'shimmer 2s infinite',
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {/* Category Badge */}
-                    <div className="mt-3">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 group-hover:scale-105 ${
-                          skill.category === 'AI Tools'
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                            : skill.category === 'Development'
-                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                              : skill.category === 'Security'
-                                ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                                : 'bg-green-500/20 text-green-300 border border-green-500/30'
-                        }`}
-                      >
-                        {skill.category}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
+              {filteredSkills.map((skill, index) => (
+                <SkillCard
+                  key={`${skill.name}-${activeFilter}-${index}`}
+                  skill={skill}
+                  index={index}
+                  activeFilter={activeFilter}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -425,20 +372,10 @@ const TraditionalPortfolio = () => {
                       href={project.github}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm hover:text-blue-400 transition-all duration-300 hover:gap-3"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-400/50 rounded-full text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
                     >
-                      <GithubLogo size={18} weight="fill" /> Code
+                      <GithubLogo size={18} weight="fill" /> View on GitHub
                     </a>
-                    {project.live !== '#' && (
-                      <a
-                        href={project.live}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm hover:text-purple-400 transition-all duration-300 hover:gap-3"
-                      >
-                        <ArrowSquareOut size={18} weight="fill" /> Live Demo
-                      </a>
-                    )}
                   </div>
                 </div>
               </div>

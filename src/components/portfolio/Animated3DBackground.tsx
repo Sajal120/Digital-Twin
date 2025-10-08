@@ -34,65 +34,134 @@ function FlyingDragon() {
 
   return (
     <group ref={dragonRef}>
-      {/* Dragon Body */}
-      <mesh position={[0, 0, 0]}>
-        <capsuleGeometry args={[0.15, 0.6, 8, 16]} />
+      {/* Dragon Neck */}
+      <mesh position={[0, 0, 0.3]} rotation={[Math.PI / 6, 0, 0]}>
+        <cylinderGeometry args={[0.12, 0.15, 0.4, 12]} />
         <meshStandardMaterial
           color="#ff4466"
           emissive="#ff0033"
           emissiveIntensity={0.6}
+          metalness={0.4}
+        />
+      </mesh>
+
+      {/* Dragon Body - elongated */}
+      <mesh position={[0, 0, 0]}>
+        <capsuleGeometry args={[0.2, 1.0, 12, 20]} />
+        <meshStandardMaterial
+          color="#ff3355"
+          emissive="#ff0033"
+          emissiveIntensity={0.5}
           metalness={0.3}
         />
       </mesh>
 
-      {/* Dragon Head */}
-      <mesh position={[0, 0, 0.45]}>
-        <coneGeometry args={[0.2, 0.3, 8]} />
+      {/* Dragon Head - more defined */}
+      <mesh position={[0, 0, 0.65]}>
+        <sphereGeometry args={[0.25, 16, 16]} />
+        <meshStandardMaterial color="#ff5577" emissive="#ff0033" emissiveIntensity={0.7} />
+      </mesh>
+
+      {/* Dragon Snout */}
+      <mesh position={[0, -0.05, 0.85]} rotation={[Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.12, 0.3, 12]} />
         <meshStandardMaterial color="#ff6688" emissive="#ff0033" emissiveIntensity={0.6} />
       </mesh>
 
-      {/* Dragon Tail */}
-      <mesh position={[0, 0, -0.5]} rotation={[0, 0, 0]}>
-        <coneGeometry args={[0.08, 0.5, 8]} />
+      {/* Dragon Horns */}
+      <mesh position={[-0.1, 0.15, 0.7]} rotation={[0, 0, -0.5]}>
+        <coneGeometry args={[0.04, 0.25, 8]} />
+        <meshStandardMaterial color="#8b0000" emissive="#ff0033" emissiveIntensity={0.8} />
+      </mesh>
+      <mesh position={[0.1, 0.15, 0.7]} rotation={[0, 0, 0.5]}>
+        <coneGeometry args={[0.04, 0.25, 8]} />
+        <meshStandardMaterial color="#8b0000" emissive="#ff0033" emissiveIntensity={0.8} />
+      </mesh>
+
+      {/* Dragon Tail - long and serpentine */}
+      <mesh position={[0, 0, -0.7]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[0.12, 1.2, 12]} />
         <meshStandardMaterial color="#cc0033" emissive="#ff0033" emissiveIntensity={0.5} />
       </mesh>
 
-      {/* Wings */}
+      {/* Tail Spikes */}
+      <mesh position={[0, 0.08, -0.9]}>
+        <coneGeometry args={[0.06, 0.2, 8]} />
+        <meshStandardMaterial color="#8b0000" emissive="#ff0033" emissiveIntensity={0.7} />
+      </mesh>
+
+      {/* Wings - much larger and more dramatic */}
       <group ref={wingsRef}>
         {/* Left Wing */}
-        <mesh position={[-0.3, 0, 0]} rotation={[0, 0, -0.5]}>
-          <boxGeometry args={[0.8, 0.02, 0.4]} />
-          <meshStandardMaterial
-            color="#8b5cf6"
-            emissive="#6d28d9"
-            emissiveIntensity={0.5}
-            transparent
-            opacity={0.8}
-          />
-        </mesh>
+        <group position={[-0.25, 0, 0]}>
+          <mesh rotation={[0, 0, -0.6]}>
+            <boxGeometry args={[1.5, 0.02, 0.8]} />
+            <meshStandardMaterial
+              color="#8b5cf6"
+              emissive="#6d28d9"
+              emissiveIntensity={0.6}
+              transparent
+              opacity={0.85}
+            />
+          </mesh>
+          {/* Wing membrane details */}
+          <mesh position={[-0.4, 0, -0.2]} rotation={[0, 0, -0.8]}>
+            <boxGeometry args={[0.8, 0.015, 0.5]} />
+            <meshStandardMaterial
+              color="#7c3aed"
+              emissive="#6d28d9"
+              emissiveIntensity={0.5}
+              transparent
+              opacity={0.7}
+            />
+          </mesh>
+        </group>
 
         {/* Right Wing */}
-        <mesh position={[0.3, 0, 0]} rotation={[0, 0, 0.5]}>
-          <boxGeometry args={[0.8, 0.02, 0.4]} />
-          <meshStandardMaterial
-            color="#8b5cf6"
-            emissive="#6d28d9"
-            emissiveIntensity={0.5}
-            transparent
-            opacity={0.8}
-          />
-        </mesh>
+        <group position={[0.25, 0, 0]}>
+          <mesh rotation={[0, 0, 0.6]}>
+            <boxGeometry args={[1.5, 0.02, 0.8]} />
+            <meshStandardMaterial
+              color="#8b5cf6"
+              emissive="#6d28d9"
+              emissiveIntensity={0.6}
+              transparent
+              opacity={0.85}
+            />
+          </mesh>
+          {/* Wing membrane details */}
+          <mesh position={[0.4, 0, -0.2]} rotation={[0, 0, 0.8]}>
+            <boxGeometry args={[0.8, 0.015, 0.5]} />
+            <meshStandardMaterial
+              color="#7c3aed"
+              emissive="#6d28d9"
+              emissiveIntensity={0.5}
+              transparent
+              opacity={0.7}
+            />
+          </mesh>
+        </group>
       </group>
 
-      {/* Fire Breath Effect - particles trailing behind */}
-      <mesh position={[0, 0, 0.6]}>
-        <sphereGeometry args={[0.08, 8, 8]} />
+      {/* Fire Breath Effect */}
+      <mesh position={[0, -0.1, 0.95]}>
+        <sphereGeometry args={[0.12, 10, 10]} />
         <meshStandardMaterial
           color="#ffa500"
           emissive="#ff6600"
-          emissiveIntensity={1.5}
+          emissiveIntensity={2.0}
           transparent
-          opacity={0.7}
+          opacity={0.8}
+        />
+      </mesh>
+      <mesh position={[0, -0.15, 1.1]}>
+        <sphereGeometry args={[0.08, 8, 8]} />
+        <meshStandardMaterial
+          color="#ff8800"
+          emissive="#ff4400"
+          emissiveIntensity={1.8}
+          transparent
+          opacity={0.6}
         />
       </mesh>
     </group>

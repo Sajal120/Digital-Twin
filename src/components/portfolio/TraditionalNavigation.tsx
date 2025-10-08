@@ -21,6 +21,7 @@ const TraditionalNavigation = () => {
   const navItems = [
     { name: 'Home', href: '#portfolio-home' },
     { name: 'About', href: '#portfolio-about' },
+    { name: 'Skills', href: '#portfolio-skills' },
     { name: 'Projects', href: '#portfolio-projects' },
     { name: 'Contact', href: '#portfolio-contact' },
   ]
