@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
@@ -11,6 +12,8 @@ import {
   ArrowSquareOut,
   ArrowUp,
 } from 'phosphor-react'
+
+const Animated3DBackground = dynamic(() => import('./Animated3DBackground'), { ssr: false })
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -185,10 +188,14 @@ const TraditionalPortfolio = () => {
       </section>
 
       {/* About Section */}
-      <section id="portfolio-about" className="py-20 relative">
-        <div className="absolute top-20 right-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
+      <section id="portfolio-about" className="py-20 relative overflow-hidden">
+        {/* 3D Animated Background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <Animated3DBackground />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
+        </div>
 
-        <div className="container mx-auto px-6">
+        <div className="container mx-auto px-6 relative z-10">
           <h2 className="text-4xl md:text-6xl font-bold text-center mb-16">
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               About Me
@@ -202,19 +209,23 @@ const TraditionalPortfolio = () => {
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-20 blur-xl animate-pulse" />
 
               {/* Profile Image Container */}
-              <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/20 bg-white/5 backdrop-blur-sm group hover:scale-105 transition-all duration-500">
+              <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-white/20 bg-gradient-to-br from-purple-900/40 to-blue-900/40 backdrop-blur-sm group hover:scale-105 transition-all duration-500">
                 <img
                   src="/profile-avatar.png"
                   alt={personalInfo.name}
-                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-500"
-                  style={{ objectPosition: 'center center' }}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  onError={(e) => {
+                    // Show gradient background if image fails to load
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                  }}
                 />
               </div>
 
               {/* Floating decorative elements */}
-              <div className="absolute -top-4 -right-4 w-8 h-8 bg-blue-500 rounded-full animate-bounce" />
-              <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-purple-500 rounded-full animate-bounce delay-75" />
-              <div className="absolute top-1/4 -left-8 w-4 h-4 bg-pink-500 rounded-full animate-bounce delay-150" />
+              <div className="absolute -top-4 -right-4 w-8 h-8 bg-cyan-400 rounded-full animate-bounce" />
+              <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-pink-500 rounded-full animate-bounce delay-75" />
+              <div className="absolute top-1/4 -left-8 w-4 h-4 bg-purple-500 rounded-full animate-bounce delay-150" />
             </div>
           </div>
 
