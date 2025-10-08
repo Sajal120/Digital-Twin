@@ -35,6 +35,7 @@ export function AIControllerChat() {
   const [isMounted, setIsMounted] = useState(false)
   const [currentInteractionType, setCurrentInteractionType] = useState<InteractionType>('general')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const localAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Get context first
   const {
@@ -670,13 +671,24 @@ export function AIControllerChat() {
                     console.log('🛑 Stopping audio before mic recording to prevent feedback')
                     voiceChat.stopAudio()
                     stopVoice()
+                    // Stop local audio if playing
+                    if (localAudioRef.current) {
+                      localAudioRef.current.pause()
+                      localAudioRef.current.currentTime = 0
+                      localAudioRef.current = null
+                    }
                     // Wait for audio to fully stop
                     await new Promise((resolve) => setTimeout(resolve, 200))
                   }
                   voiceChat.startListening()
                 }
               }}
-              disabled={!isMounted || !voiceChat.isSupported}
+              disabled={
+                !isMounted ||
+                !voiceChat.isSupported ||
+                voiceChat.audioPlayerState.isPlaying ||
+                voiceState === 'speaking'
+              }
               className={`p-4 rounded-full transition-all ${
                 voiceChat.isListening
                   ? 'bg-red-500 hover:bg-red-600'
@@ -703,6 +715,12 @@ export function AIControllerChat() {
                   console.log('⏹️ Stopping voice playback')
                   voiceChat.stopAudio()
                   stopVoice()
+                  // Stop local audio if playing
+                  if (localAudioRef.current) {
+                    localAudioRef.current.pause()
+                    localAudioRef.current.currentTime = 0
+                    localAudioRef.current = null
+                  }
                 } else {
                   // Not playing - start playing last assistant message
                   // CRITICAL: Stop mic if it's recording to prevent feedback
@@ -741,15 +759,18 @@ export function AIControllerChat() {
                           const audioBlob = await response.blob()
                           const audioUrl = URL.createObjectURL(audioBlob)
                           const audio = new Audio(audioUrl)
+                          localAudioRef.current = audio
 
                           audio.onended = () => {
                             setVoiceState('idle')
                             URL.revokeObjectURL(audioUrl)
+                            localAudioRef.current = null
                           }
 
                           audio.onerror = () => {
                             setVoiceState('idle')
                             URL.revokeObjectURL(audioUrl)
+                            localAudioRef.current = null
                           }
 
                           await audio.play()
@@ -763,7 +784,11 @@ export function AIControllerChat() {
                   }
                 }
               }}
-              disabled={!isMounted || messages.filter((m) => m.role === 'assistant').length === 0}
+              disabled={
+                !isMounted ||
+                messages.filter((m) => m.role === 'assistant').length === 0 ||
+                voiceChat.isListening
+              }
               className={`p-4 rounded-full transition-all ${
                 voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
                   ? 'bg-red-500 hover:bg-red-600'
