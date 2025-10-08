@@ -34,9 +34,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             }}
           />
 
-          <Header />
+          {/* Header and Footer hidden for fullscreen Digital Twin experience */}
           {children}
-          <Footer />
         </Providers>
       </body>
     </html>

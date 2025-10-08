@@ -54,8 +54,8 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! 🤖 **AI Control Mode**\n\nI'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!`
-        : "Hi! 🤖 **AI Control Mode**\n\nI'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!",
+        ? `Hi ${session.user.name}! 🤖 I'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!`
+        : "Hi! 🤖 I'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -65,8 +65,8 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! 💬 **Plain Chat Mode**\n\nI'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.`
-        : "Hi! 💬 **Plain Chat Mode**\n\nI'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.",
+        ? `Hi ${session.user.name}! 💬 I'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.`
+        : "Hi! 💬 I'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.",
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -252,8 +252,8 @@ export function AIControllerChat() {
             role: m.role,
             content: m.content,
           })),
-          enhancedMode: chatMode === 'plain_chat', // Only use enhanced mode for plain chat
-          interviewType: 'general',
+          enhancedMode: true, // Always use enhanced mode for detailed responses
+          interviewType: chatMode === 'plain_chat' ? 'general' : 'brief',
           user: session?.user
             ? {
                 name: session.user.name,
@@ -325,13 +325,16 @@ export function AIControllerChat() {
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className="fixed inset-0 z-40 flex items-center justify-center p-4"
     >
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
       />
 
@@ -489,7 +492,7 @@ export function AIControllerChat() {
         </div>
 
         {/* Quick Action Buttons - Only in AI Control Mode */}
-        {chatMode === 'ai_control' && messages.length <= 2 && (
+        {chatMode === 'ai_control' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -516,7 +519,7 @@ export function AIControllerChat() {
                   }}
                   className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
                 >
-                  \u2728 Skills
+                  🚀 Skills
                 </button>
                 <button
                   onClick={() => {
