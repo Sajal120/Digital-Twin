@@ -35,7 +35,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
   const [state, setState] = useState<AudioRecorderState>({
     isRecording: false,
-    isSupported: typeof window !== 'undefined' && 'webkitSpeechRecognition' in window,
+    isSupported: typeof window !== 'undefined' && 'mediaDevices' in navigator, // Check for microphone support instead
     error: null,
     transcript: '',
     interimTranscript: '',
@@ -69,245 +69,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
   const audioStreamRef = useRef<MediaStream | null>(null)
   const iosPollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Initialize speech recognition
-  useEffect(() => {
-    if (typeof window === 'undefined' || !('webkitSpeechRecognition' in window)) {
-      setState((prev) => ({
-        ...prev,
-        isSupported: false,
-        error: 'Speech recognition not supported in this browser',
-      }))
-      return
-    }
-
-    const SpeechRecognition =
-      (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition
-    const recognition = new SpeechRecognition()
-
-    // iOS needs continuous mode to properly detect speech
-    recognition.continuous = isIOS.current ? true : continuous
-    recognition.interimResults = true // Always true for better feedback
-    recognition.lang = 'en-US'
-    recognition.maxAlternatives = isIOS.current ? 3 : 1 // More alternatives on iOS
-
-    recognition.onstart = () => {
-      // iOS: IMMEDIATELY force all detection states on start
-      if (isIOS.current) {
-        setState((prev) => ({
-          ...prev,
-          isRecording: true,
-          error: null,
-          isAudioCaptureActive: true,
-          isSoundDetected: true,
-          isSpeechDetected: true,
-        }))
-      } else {
-        setState((prev) => ({ ...prev, isRecording: true, error: null }))
-      }
-    }
-
-    recognition.onaudiostart = () => {
-      if (isIOS.current) {
-        setState((prev) => ({
-          ...prev,
-          isAudioCaptureActive: true,
-          isSpeechDetected: true,
-        }))
-      } else {
-        setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
-      }
-    }
-
-    recognition.onaudioend = () => {
-      if (!isIOS.current) {
-        setState((prev) => ({ ...prev, isAudioCaptureActive: false }))
-      }
-    }
-
-    recognition.onsoundstart = () => {
-      if (isIOS.current) {
-        setState((prev) => ({
-          ...prev,
-          isSoundDetected: true,
-          isSpeechDetected: true,
-        }))
-      } else {
-        setState((prev) => ({ ...prev, isSoundDetected: true }))
-      }
-    }
-
-    recognition.onsoundend = () => {
-      setState((prev) => ({ ...prev, isSoundDetected: false }))
-    }
-
-    recognition.onspeechstart = () => {
-      setState((prev) => ({
-        ...prev,
-        isSpeechDetected: true,
-        isAudioCaptureActive: true,
-      }))
-    }
-
-    recognition.onspeechend = () => {
-      if (!isIOS.current) {
-        setState((prev) => ({
-          ...prev,
-          isSpeechDetected: false,
-          isAudioCaptureActive: prev.isRecording,
-        }))
-      }
-    }
-
-    recognition.onresult = (event: any) => {
-      let finalTranscript = ''
-      let interimTranscript = ''
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript
-        } else {
-          interimTranscript += transcript
-        }
-      }
-
-      setState((prev) => ({
-        ...prev,
-        transcript: prev.transcript + finalTranscript,
-        interimTranscript,
-        isAudioCaptureActive: true,
-        isSoundDetected: true,
-        isSpeechDetected: true,
-      }))
-
-      if (finalTranscript && onTranscriptionReceived) {
-        onTranscriptionReceived(finalTranscript)
-
-        if (isIOS.current) {
-          setTimeout(() => {
-            setState((prev) => ({
-              ...prev,
-              isSpeechDetected: false,
-              isSoundDetected: false,
-            }))
-          }, 2000)
-        }
-      } else if (!isIOS.current && finalTranscript) {
-        // Android: Clear after shorter delay
-        setTimeout(() => {
-          setState((prev) => ({
-            ...prev,
-            isSpeechDetected: false,
-          }))
-        }, 500)
-      }
-    }
-
-    recognition.onerror = (event: any) => {
-      console.error('❌ Speech recognition ERROR:', {
-        error: event.error,
-        message: event.message,
-        timeStamp: event.timeStamp,
-      })
-
-      // Handle different types of speech recognition errors
-      let errorMessage = ''
-      let shouldNotify = true
-
-      switch (event.error) {
-        case 'aborted':
-          errorMessage = 'Voice recognition was stopped'
-          shouldNotify = false // Don't show error for user-initiated stops
-          break
-        case 'no-speech':
-          errorMessage = 'No speech detected. Please try speaking again.'
-          console.log('⚠️ No speech detected - user may not be speaking loud enough')
-          break
-        case 'audio-capture':
-          if (isIOS.current) {
-            errorMessage =
-              '🍎 iOS: Microphone access required. Please:\n1. Go to Settings > Safari > Microphone\n2. Allow this website'
-          } else {
-            errorMessage = 'Microphone access is required for voice input'
-          }
-          console.error('⚠️ Audio capture failed - microphone may be in use by another app')
-          break
-        case 'not-allowed':
-          if (isIOS.current) {
-            errorMessage =
-              '🍎 iOS: Microphone permission denied. Please:\n1. Tap Safari icon in address bar\n2. Tap "Allow" for Microphone'
-          } else {
-            errorMessage = 'Microphone permission denied. Please allow access and try again.'
-          }
-          console.error('⚠️ Permission denied for microphone')
-          break
-        case 'network':
-          errorMessage = 'Network error occurred. Please check your connection.'
-          console.error('⚠️ Network error - speech recognition requires internet')
-          break
-        case 'service-not-allowed':
-          errorMessage = 'Speech recognition service not available'
-          console.error('⚠️ Speech recognition service blocked or unavailable')
-          break
-        default:
-          errorMessage = `Speech recognition error: ${event.error}`
-          console.error('⚠️ Unknown speech recognition error:', event.error)
-      }
-
-      setState((prev) => ({
-        ...prev,
-        isRecording: false,
-        error: shouldNotify ? errorMessage : null,
-      }))
-
-      if (shouldNotify) {
-        onError?.(errorMessage)
-      }
-    }
-
-    recognition.onend = () => {
-      console.log('🛑 Speech recognition ENDED', {
-        userStopped: isUserStoppedRef.current,
-        continuous,
-        retryCount: state.retryCount,
-      })
-
-      setState((prev) => ({ ...prev, isRecording: false }))
-
-      // If this wasn't a user-initiated stop and we're in continuous mode,
-      // try to restart automatically
-      if (!isUserStoppedRef.current && continuous && state.retryCount < state.maxRetries) {
-        console.log(
-          `🔄 Auto-restarting speech recognition (attempt ${state.retryCount + 1}/${state.maxRetries})`,
-        )
-        restartTimeoutRef.current = setTimeout(() => {
-          setState((prev) => ({ ...prev, retryCount: prev.retryCount + 1 }))
-          try {
-            recognitionRef.current?.start()
-            setState((prev) => ({ ...prev, isRecording: true }))
-            console.log('✅ Speech recognition restarted successfully')
-          } catch (error) {
-            console.error('❌ Failed to restart recognition:', error)
-            onError?.(`Failed to restart recognition: ${error}`)
-          }
-        }, 100) // Brief delay before restart
-      }
-
-      // Reset user stopped flag
-      isUserStoppedRef.current = false
-    }
-
-    recognitionRef.current = recognition
-
-    return () => {
-      if (recognition) {
-        recognition.stop()
-      }
-      if (restartTimeoutRef.current) {
-        clearTimeout(restartTimeoutRef.current)
-      }
-    }
-  }, [continuous, interimResults, onTranscriptionReceived, onError])
+  // No Web Speech API initialization - using Deepgram for all platforms
 
   // Monitor audio levels to verify microphone is actually capturing sound
   const startAudioLevelMonitoring = useCallback(
@@ -484,9 +246,9 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
     }
   }, [onAudioDataReceived, onError])
 
-  // iOS: Use Deepgram cloud transcription instead of broken Web Speech API
+  // Use Deepgram cloud transcription for ALL platforms (web + phone)
   const startDeepgramRecording = useCallback(async () => {
-    console.log('🍎 iOS - Starting Deepgram cloud transcription')
+    console.log('� Starting Deepgram cloud transcription (multi-language)')
 
     try {
       // Request microphone access
@@ -524,7 +286,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
       }
 
       mediaRecorder.onstop = async () => {
-        console.log('🍎 iOS - MediaRecorder stopped, sending to Deepgram...')
+        console.log('� MediaRecorder stopped, sending to Deepgram...')
 
         if (audioChunksRef.current.length === 0) {
           console.warn('⚠️ No audio chunks recorded')
@@ -532,7 +294,7 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         }
 
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        console.log('🍎 iOS - Audio blob created:', audioBlob.size, 'bytes')
+        console.log('� Audio blob created:', audioBlob.size, 'bytes')
 
         // Clear for next recording
         audioChunksRef.current = []
@@ -584,238 +346,42 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
 
       mediaRecorderRef.current = mediaRecorder
 
-      // Start recording in chunks (5 seconds each for near real-time)
-      mediaRecorder.start(5000)
-      console.log('🍎 iOS - MediaRecorder started with 5s chunks')
+      // Start recording in chunks (3 seconds each for near real-time)
+      mediaRecorder.start(3000)
+      console.log('� MediaRecorder started with 3s chunks for Deepgram transcription')
 
       return true
     } catch (error) {
-      console.error('❌ iOS Deepgram recording error:', error)
+      console.error('❌ Deepgram recording error:', error)
       setState((prev) => ({
         ...prev,
         error: 'Microphone access denied',
         isRecording: false,
       }))
-      onError?.('Microphone access denied. Please allow microphone access in Safari settings.')
+      onError?.(
+        'Microphone access denied. Please allow microphone access in your browser settings.',
+      )
       return false
     }
   }, [onTranscriptionReceived, onError])
 
   const startRecording = useCallback(async () => {
-    // iOS: Use Deepgram cloud transcription (Web Speech API is broken on iOS)
-    if (isIOS.current) {
-      return startDeepgramRecording()
-    }
-
-    // Android/Desktop: Use Web Speech API (works fine)
+    // Use Deepgram cloud transcription for ALL platforms (web + phone)
     if (!state.isSupported) {
-      const message = isMobile.current
-        ? '🎤 Voice input not supported on this mobile browser. Please use Chrome or Safari.'
-        : 'Speech recognition not supported'
+      const message = '🎤 Microphone not available. Please check browser permissions.'
       onError?.(message)
       return false
     }
 
-    // Skip iOS hack - not needed anymore since we use Deepgram on iOS
-    if (false) {
-      console.log('🍎 iOS - requesting getUserMedia to wake up audio system')
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        })
-        audioStreamRef.current = stream
-        console.log('✅ iOS - audio system awakened, microphone ready')
+    // Always use Deepgram for consistent multi-language support
+    return startDeepgramRecording()
 
-        // iOS: Immediately force speech detection after getting mic access
-        console.log('🍎 iOS - FORCING speech detection after mic access')
-        setState((prev) => ({
-          ...prev,
-          isAudioCaptureActive: true,
-          isSoundDetected: true,
-          isSpeechDetected: true,
-        }))
-      } catch (error) {
-        console.error('❌ iOS - failed to get microphone access:', error)
-        const errorMsg = '🍎 iOS: Please allow microphone access in Safari settings'
-        setState((prev) => ({ ...prev, error: errorMsg }))
-        onError?.(errorMsg)
-        return false
-      }
-    }
-
-    // FORCE: Resume audio context (critical for both platforms!)
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      const platform = isIOS.current ? 'iOS' : 'Android'
-      console.log(`🔓 ${platform} - Resuming suspended audio context...`)
-      await audioContextRef.current.resume()
-      console.log(`✅ ${platform} - Audio context resumed:`, audioContextRef.current.state)
-    } else if (audioContextRef.current) {
-      console.log(`✅ Audio context already active:`, audioContextRef.current.state)
-    }
-
-    // Verify audio stream is active
-    if (audioStreamRef.current) {
-      const tracks = audioStreamRef.current.getAudioTracks()
-      tracks.forEach((track) => {
-        console.log('🎵 Audio track status:', {
-          enabled: track.enabled,
-          muted: track.muted,
-          readyState: track.readyState,
-        })
-        // Force enable track (but be gentle on iOS)
-        if (!track.enabled) {
-          console.log('⚡ Enabling audio track')
-          track.enabled = true
-        }
-      })
-    }
-
-    // Verify speech recognition is ready
-    if (!recognitionRef.current) {
-      console.error('❌ Speech recognition not initialized!')
-      const errorMsg = 'Speech recognition failed to initialize. Please refresh the page.'
-      setState((prev) => ({ ...prev, error: errorMsg }))
-      onError?.(errorMsg)
-      return false
-    }
-
-    // iOS-specific: Check if we're in a secure context (HTTPS)
-    if (isIOS.current && location.protocol !== 'https:' && location.hostname !== 'localhost') {
-      const errorMessage = '🔒 HTTPS required for microphone on iOS. Please use https://'
-      setState((prev) => ({ ...prev, error: errorMessage }))
-      onError?.(errorMessage)
-      return false
-    }
-
-    // Setup media recorder if needed (requests microphone permission)
-    // iOS: Skip media recorder setup entirely - it conflicts with speech recognition
-    if (!isIOS.current && !mediaRecorderRef.current) {
-      console.log('📱 Setting up media recorder...')
-      const success = await setupMediaRecorder()
-      if (!success) {
-        console.error('❌ Failed to setup media recorder')
-        return false
-      }
-    } else if (isIOS.current) {
-      console.log('🍎 iOS - skipping media recorder, using speech recognition directly')
-    }
-
-    try {
-      // Clear previous transcripts and reset retry count
-      setState((prev) => ({
-        ...prev,
-        transcript: '',
-        interimTranscript: '',
-        error: null,
-        retryCount: 0,
-      }))
-
-      console.log('🎤 Starting speech recognition...', {
-        recognitionExists: !!recognitionRef.current,
-        recognitionLang: recognitionRef.current?.lang,
-        continuous: recognitionRef.current?.continuous,
-        interimResults: recognitionRef.current?.interimResults,
-      })
-
-      // iOS: Force states one more time RIGHT before starting recognition
-      if (isIOS.current) {
-        console.log('🍎 iOS - PRE-START: Forcing all detection states ACTIVE')
-        setState((prev) => ({
-          ...prev,
-          isAudioCaptureActive: true,
-          isSpeechDetected: true,
-          isSoundDetected: true,
-        }))
-      }
-
-      // Start speech recognition
-      if (recognitionRef.current) {
-        recognitionRef.current.start()
-        console.log('✅ Speech recognition start() called')
-
-        if (isIOS.current) {
-          console.log('🍎 iOS - speech recognition started, starting iOS keep-alive polling...')
-
-          // iOS HACK: Poll every 300ms to aggressively keep detection states active
-          iosPollingIntervalRef.current = setInterval(() => {
-            // Always force states active on iOS while polling is running
-            console.log('🍎 iOS polling - FORCING detection states ACTIVE')
-            setState((prev) => {
-              // ALWAYS update on iOS - don't check, just force
-              return {
-                ...prev,
-                isAudioCaptureActive: true,
-                isSpeechDetected: true,
-                isSoundDetected: true,
-              }
-            })
-          }, 300) // Faster polling for more responsive state
-        }
-      } else {
-        console.error('❌ Recognition ref is null!')
-        throw new Error('Speech recognition not initialized')
-      } // Start audio recording
-      if (mediaRecorderRef.current?.state === 'inactive') {
-        mediaRecorderRef.current.start(1000) // Collect data every second
-        console.log('🔴 MediaRecorder started (for audio capture)')
-      } // Verify speech recognition actually started after a brief delay
-      setTimeout(() => {
-        if (!state.isRecording) {
-          console.error('⚠️ WARNING: Speech recognition did not trigger onstart event!')
-          console.log('   This usually means:')
-          console.log('   1. Browser blocked speech recognition')
-          console.log('   2. Microphone permission not granted')
-          console.log('   3. Speech recognition API not available')
-        } else {
-          console.log('✅ Speech recognition verified as running')
-
-          // Double-check iOS audio state
-          if (isIOS.current && !state.isAudioCaptureActive) {
-            console.log('🍎 iOS audio state check - forcing active')
-            setState((prev) => ({ ...prev, isAudioCaptureActive: true }))
-          }
-        }
-      }, 500)
-
-      return true
-    } catch (error: any) {
-      console.error('❌ Start recording error:', error)
-
-      // Handle iOS-specific errors
-      if (isIOS.current && error.message?.includes('not-allowed')) {
-        const iosError =
-          '🎤 Microphone blocked on iOS. Go to Settings > Safari > Microphone and allow access.'
-        setState((prev) => ({ ...prev, error: iosError }))
-        onError?.(iosError)
-        return false
-      }
-
-      // Handle automatic retry for certain errors
-      if (state.retryCount < state.maxRetries) {
-        console.log(`🔄 Retrying... (${state.retryCount + 1}/${state.maxRetries})`)
-        setState((prev) => ({ ...prev, retryCount: prev.retryCount + 1 }))
-
-        // Retry after a short delay
-        setTimeout(() => {
-          startRecording()
-        }, 1000)
-
-        return true
-      }
-
-      const errorMessage = `Failed to start recording after ${state.maxRetries} attempts: ${error.message || error}`
-      setState((prev) => ({ ...prev, error: errorMessage, retryCount: 0 }))
-      onError?.(errorMessage)
-      return false
-    }
+    // Deepgram handles everything - no additional logic needed
   }, [state.isSupported, state.retryCount, state.maxRetries, setupMediaRecorder, onError])
 
   const stopRecording = useCallback(() => {
     try {
+      console.log('🛑 Stopping Deepgram recording...')
       isUserStoppedRef.current = true
 
       if (restartTimeoutRef.current) {
@@ -828,21 +394,34 @@ export const useVoiceRecorder = (options: VoiceRecorderOptions = {}) => {
         iosPollingIntervalRef.current = null
       }
 
-      recognitionRef.current?.stop()
-
+      // Stop MediaRecorder (Deepgram)
       if (mediaRecorderRef.current?.state === 'recording') {
         mediaRecorderRef.current.stop()
+        console.log('✅ MediaRecorder stopped')
       }
+
+      // Clean up audio context
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close()
         audioContextRef.current = null
         analyserRef.current = null
       }
 
+      // Stop all audio tracks
       if (audioStreamRef.current) {
         audioStreamRef.current.getTracks().forEach((track) => track.stop())
         audioStreamRef.current = null
+        console.log('✅ Audio stream stopped')
       }
+
+      // Reset states
+      setState((prev) => ({
+        ...prev,
+        isRecording: false,
+        isAudioCaptureActive: false,
+        isSoundDetected: false,
+        isSpeechDetected: false,
+      }))
 
       return true
     } catch (error) {
