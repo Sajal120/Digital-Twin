@@ -710,18 +710,36 @@ export function AIControllerChat() {
               onClick={async () => {
                 await unlockAudio()
 
-                if (voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking') {
+                // CRITICAL: Check if audio is actually playing using localAudioRef
+                const isActuallyPlaying = localAudioRef.current && !localAudioRef.current.paused
+
+                if (
+                  isActuallyPlaying ||
+                  voiceChat.audioPlayerState.isPlaying ||
+                  voiceState === 'speaking'
+                ) {
                   // Currently playing - stop it
                   console.log('⏹️ Stopping voice playback')
                   voiceChat.stopAudio()
+                  setVoiceState('idle') // Set to idle immediately
                   stopVoice()
                   // Stop local audio if playing
                   if (localAudioRef.current) {
                     localAudioRef.current.pause()
                     localAudioRef.current.currentTime = 0
+                    localAudioRef.current.src = '' // Clear the source to prevent replay
                     localAudioRef.current = null
                   }
                 } else {
+                  // CRITICAL: Stop any existing audio before starting new playback
+                  if (localAudioRef.current) {
+                    console.log('🧹 Cleaning up existing audio before new playback')
+                    localAudioRef.current.pause()
+                    localAudioRef.current.currentTime = 0
+                    localAudioRef.current.src = ''
+                    localAudioRef.current = null
+                  }
+
                   // Not playing - start playing last assistant message
                   // CRITICAL: Stop mic if it's recording to prevent feedback
                   if (voiceChat.isListening) {
@@ -774,6 +792,8 @@ export function AIControllerChat() {
                           }
 
                           await audio.play()
+                        } else {
+                          setVoiceState('idle')
                         }
                       } catch (error) {
                         console.error('Failed to play audio:', error)
