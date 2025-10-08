@@ -17,7 +17,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/Digital-Twin',
     live: 'https://digital-twin-prj.vercel.app',
     language: 'TypeScript',
-    image: '/project-images/digital-twin.jpg',
+    image: '/project-images/digital-twin.svg',
   },
   {
     title: 'Portfolio App',
@@ -27,7 +27,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/portfolio-app',
     live: 'https://portfolio-app-coral-beta.vercel.app',
     language: 'TypeScript',
-    image: '/project-images/portfolio-app.jpg',
+    image: '/project-images/portfolio-app.svg',
   },
   {
     title: 'Person Search App',
@@ -37,7 +37,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/person-search',
     live: 'https://person-search-mu.vercel.app',
     language: 'TypeScript',
-    image: '/project-images/person-search.jpg',
+    image: '/project-images/person-search.svg',
   },
   {
     title: 'Security Analysis Dashboard',
@@ -47,7 +47,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/my-digital-portfolio',
     live: 'https://my-digital-portfolio-ivory.vercel.app',
     language: 'TypeScript',
-    image: '/project-images/security-dashboard.jpg',
+    image: '/project-images/security-dashboard.svg',
   },
   {
     title: 'Movie Database Website',
@@ -57,7 +57,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/Movie-Website',
     live: '#',
     language: 'JavaScript',
-    image: '/project-images/movie-website.jpg',
+    image: '/project-images/movie-website.svg',
   },
   {
     title: 'XC3 Cloud Management',
@@ -67,7 +67,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/XC3',
     live: '#',
     language: 'Python',
-    image: '/project-images/xc3-cloud.jpg',
+    image: '/project-images/xc3-cloud.svg',
   },
   {
     title: 'Marketplace Website',
@@ -77,7 +77,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/Marketplace-Website',
     live: '#',
     language: 'PHP',
-    image: '/project-images/marketplace.jpg',
+    image: '/project-images/marketplace.svg',
   },
   {
     title: 'Fertility Tracking App',
@@ -87,7 +87,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/Fertility-App',
     live: '#',
     language: 'C#',
-    image: '/project-images/fertility-app.jpg',
+    image: '/project-images/fertility-app.svg',
   },
   {
     title: 'OpenAI Realtime Agents',
@@ -97,7 +97,7 @@ export const projects: Project[] = [
     github: 'https://github.com/Sajal120/openai-realtime-agents',
     live: '#',
     language: 'JavaScript',
-    image: '/project-images/openai-agents.jpg',
+    image: '/project-images/openai-agents.svg',
   },
 ]
 

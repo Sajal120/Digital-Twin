@@ -215,7 +215,7 @@ export function AIControllerChat() {
             briefResponse = 'Check out my skills! 🚀'
             break
           case 'show_resume':
-            briefResponse = "Here's my resume! 📄"
+            briefResponse = 'Here are my projects! ✨'
             break
           case 'show_contact':
             briefResponse = "Let's connect! 📧"
@@ -512,13 +512,13 @@ export function AIControllerChat() {
                 <>
                   <button
                     onClick={() => {
-                      setInputValue('show me your projects')
+                      setInputValue('show me about section')
                       const fakeEvent = { preventDefault: () => {} } as React.FormEvent
                       handleSubmit(fakeEvent)
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
                   >
-                    \ud83d\udcbc Projects
+                    About
                   </button>
                   <button
                     onClick={() => {
@@ -528,17 +528,17 @@ export function AIControllerChat() {
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
                   >
-                    🚀 Skills
+                    Skills
                   </button>
                   <button
                     onClick={() => {
-                      setInputValue('show me your resume')
+                      setInputValue('show me your projects')
                       const fakeEvent = { preventDefault: () => {} } as React.FormEvent
                       handleSubmit(fakeEvent)
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
                   >
-                    \ud83d\udcc4 Resume
+                    Projects
                   </button>
                   <button
                     onClick={() => {
@@ -548,7 +548,7 @@ export function AIControllerChat() {
                     }}
                     className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
                   >
-                    📧 Contact
+                    Contact
                   </button>
                 </>
               ) : (

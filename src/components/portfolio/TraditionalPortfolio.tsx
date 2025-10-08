@@ -334,48 +334,78 @@ const TraditionalPortfolio = () => {
             {githubProjects.map((project, index) => (
               <div
                 key={index}
-                className="project-card bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden hover:bg-white/10 transition-all duration-500 group hover:-translate-y-2 hover:shadow-2xl hover:shadow-purple-500/20 border border-white/10 hover:border-purple-500/30"
+                className="project-card bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden transition-all duration-500 group border border-white/10 hover:border-purple-500/50 relative"
                 style={{
                   animation: `fadeInUp 0.6s ease-out ${index * 0.1}s both`,
                 }}
               >
-                {/* Project Image Placeholder */}
-                <div className="h-48 bg-gradient-to-br from-purple-900/40 via-blue-900/40 to-pink-900/40 relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  {project.language && (
-                    <span className="absolute top-4 right-4 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full text-xs font-medium border border-white/20">
-                      {project.language}
-                    </span>
-                  )}
-                  <div className="absolute bottom-4 left-4 text-4xl opacity-20 group-hover:opacity-40 transition-opacity">
-                    💻
-                  </div>
-                </div>
+                {/* Animated gradient border effect on hover */}
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500" />
 
-                <div className="p-6">
-                  <h3 className="text-2xl font-bold mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-purple-500 transition-all duration-300">
-                    {project.title}
-                  </h3>
-                  <p className="text-gray-300 mb-6 line-clamp-3">{project.description}</p>
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {project.tech.map((tech, i) => (
-                      <span
-                        key={i}
-                        className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs border border-blue-500/30 hover:bg-blue-500/30 hover:scale-110 transition-all duration-300"
-                      >
-                        {tech}
+                <div className="relative">
+                  {/* Project Image */}
+                  <div className="h-48 relative overflow-hidden">
+                    {project.image && (
+                      <img
+                        src={project.image}
+                        alt={project.title}
+                        className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:rotate-2"
+                      />
+                    )}
+                    {/* Overlay gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent group-hover:from-black/60 transition-all duration-500" />
+
+                    {/* Animated shine effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+
+                    {/* Language badge */}
+                    {project.language && (
+                      <span className="absolute top-4 right-4 px-3 py-1 bg-black/70 backdrop-blur-md rounded-full text-xs font-medium border border-white/30 group-hover:bg-black/90 group-hover:scale-110 transition-all duration-300 z-10">
+                        {project.language}
                       </span>
-                    ))}
+                    )}
+
+                    {/* Floating icon indicator */}
+                    <div className="absolute bottom-4 left-4 w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center opacity-60 group-hover:opacity-100 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500">
+                      <span className="text-2xl">💻</span>
+                    </div>
                   </div>
-                  <div className="flex gap-4">
-                    <a
-                      href={project.github}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-400/50 rounded-full text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
-                    >
-                      <GithubLogo size={18} weight="fill" /> View on GitHub
-                    </a>
+
+                  <div className="p-6 relative">
+                    <h3 className="text-2xl font-bold mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:via-purple-500 group-hover:to-pink-500 transition-all duration-500 transform group-hover:translate-x-1">
+                      {project.title}
+                    </h3>
+                    <p className="text-gray-300 group-hover:text-gray-200 mb-6 line-clamp-3 transition-colors duration-300">
+                      {project.description}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {project.tech.map((tech, i) => (
+                        <span
+                          key={i}
+                          className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs border border-blue-500/30 hover:bg-blue-500/40 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 cursor-default"
+                          style={{
+                            animation: `fadeInUp 0.4s ease-out ${0.1 + i * 0.05}s both`,
+                          }}
+                        >
+                          {tech}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-4">
+                      <a
+                        href={project.github}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/40 hover:to-purple-500/40 text-blue-300 hover:text-white border border-blue-500/30 hover:border-purple-400/60 rounded-full text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-purple-500/40 group/btn"
+                      >
+                        <GithubLogo
+                          size={18}
+                          weight="fill"
+                          className="group-hover/btn:rotate-12 transition-transform duration-300"
+                        />
+                        View on GitHub
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

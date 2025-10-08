@@ -148,3 +148,27 @@ html[data-theme='light'] {
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
+
+/* Project Card Hover Effects */
+.project-card {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.project-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 60px rgba(139, 92, 246, 0.3);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.project-card:hover .floating-icon {
+  animation: float 2s ease-in-out infinite;
+}
