@@ -147,9 +147,11 @@ const TraditionalPortfolio = () => {
         id="portfolio-home"
         className="min-h-screen flex items-center justify-center relative overflow-hidden pt-20"
       >
-        {/* Background effects */}
-        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-40 right-20 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        {/* 3D Animated Background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <Animated3DBackground />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
+        </div>
 
         <div id="portfolio-hero" className="container mx-auto px-6 text-center z-10">
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
@@ -189,11 +191,9 @@ const TraditionalPortfolio = () => {
 
       {/* About Section */}
       <section id="portfolio-about" className="py-20 relative overflow-hidden">
-        {/* 3D Animated Background */}
-        <div className="absolute inset-0 pointer-events-none">
-          <Animated3DBackground />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/80" />
-        </div>
+        {/* Background decoration */}
+        <div className="absolute top-20 right-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-10 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl" />
 
         <div className="container mx-auto px-6 relative z-10">
           <h2 className="text-4xl md:text-6xl font-bold text-center mb-16">
@@ -213,7 +213,7 @@ const TraditionalPortfolio = () => {
                 <img
                   src="/profile-avatar.png"
                   alt={personalInfo.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  className="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-500"
                   onError={(e) => {
                     // Show gradient background if image fails to load
                     const target = e.target as HTMLImageElement
