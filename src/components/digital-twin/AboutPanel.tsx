@@ -90,7 +90,7 @@ export function AboutPanel() {
                 transition={{ delay: 0.5 }}
                 className="text-xl text-purple-300"
               >
-                Full-Stack Developer & AI Enthusiast
+                Full-Stack Developer & IT Specialist
               </motion.p>
             </div>
           </motion.div>
@@ -114,10 +114,12 @@ export function AboutPanel() {
               <h3 className="text-2xl font-bold text-white">My Story</h3>
             </div>
             <p className="text-gray-300 leading-relaxed">
-              I'm a passionate full-stack developer with a deep love for creating innovative
-              solutions that blend cutting-edge technology with exceptional user experiences. My
-              journey in tech started with curiosity and evolved into a career focused on AI, web
-              development, and building systems that make a real impact.
+              Versatile IT professional with comprehensive expertise across software development,
+              security analysis, and IT support. Master of Software Development from Swinburne
+              University (Sep 2022 – May 2024) with a GPA of 3.688/4.0. Member of Golden Key
+              International Honour Society – Top 15%. From full-stack development with modern
+              frameworks to implementing enterprise security solutions, I leverage AI tools to
+              enhance every aspect of my work.
             </p>
           </motion.div>
 
@@ -141,7 +143,8 @@ export function AboutPanel() {
               </motion.div>
               <h4 className="text-xl font-bold text-white mb-2">Experience</h4>
               <p className="text-gray-300 text-sm">
-                5+ years building scalable applications, from startups to enterprise solutions
+                3+ years building scalable applications, security analysis, and IT support for
+                enterprise solutions
               </p>
             </motion.div>
 
@@ -163,7 +166,8 @@ export function AboutPanel() {
               </motion.div>
               <h4 className="text-xl font-bold text-white mb-2">Technical Skills</h4>
               <p className="text-gray-300 text-sm">
-                React, Next.js, TypeScript, Node.js, Python, AI/ML, Cloud Architecture
+                45+ skills including React, Next.js, TypeScript, Python, AI Tools, Security
+                Analysis, Cloud & IT Support
               </p>
             </motion.div>
 
@@ -185,7 +189,8 @@ export function AboutPanel() {
               </motion.div>
               <h4 className="text-xl font-bold text-white mb-2">Education</h4>
               <p className="text-gray-300 text-sm">
-                Computer Science graduate with focus on AI, software engineering, and system design
+                Master of Software Development, Swinburne University (GPA: 3.688/4.0) - Golden Key
+                Society Top 15%
               </p>
             </motion.div>
           </div>
@@ -206,11 +211,11 @@ export function AboutPanel() {
             />
             <h3 className="text-2xl font-bold text-white mb-3 relative z-10">Mission & Vision</h3>
             <p className="text-gray-200 leading-relaxed relative z-10">
-              My mission is to leverage technology to solve real-world problems and create
-              meaningful experiences. I believe in building products that not only work flawlessly
-              but also delight users. Whether it's developing AI-powered applications, architecting
-              scalable systems, or mentoring fellow developers, I'm driven by the impact I can make
-              through code.
+              My mission is to leverage technology to solve real-world problems across development,
+              security, and IT operations. I actively seek opportunities in IT Support, Software
+              Development, and Security Analysis. Whether it's developing AI-powered applications,
+              conducting security audits, or providing expert IT support, I'm driven by the impact I
+              can make through diverse technical expertise and continuous innovation.
             </p>
           </motion.div>
 
