@@ -40,11 +40,13 @@ export async function POST(request: NextRequest) {
     // Convert blob to buffer
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
 
-    console.log('🎙️ Sending to Deepgram for transcription (nova-3)...')
+    console.log('🎙️ Sending to Deepgram for transcription (nova-3 with multi-language)...')
+    console.log('🌍 Audio format:', audioFile.type, 'Size:', audioBuffer.length, 'bytes')
+
     const { result, error } = await deepgram.listen.prerecorded.transcribeFile(audioBuffer, {
-      model: 'nova-3', // Best multilingual support
-      language: 'multi', // Auto-detect language
-      detect_language: true,
+      model: 'nova-3', // Best multilingual support (supports 100+ languages including Hindi)
+      language: 'multi', // Auto-detect language (critical for Hindi/English/etc)
+      detect_language: true, // Enable language detection
       punctuate: true,
       smart_format: true,
       filler_words: false,
@@ -52,6 +54,9 @@ export async function POST(request: NextRequest) {
       diarize: false,
       utterances: false,
       vad_events: false,
+      // Additional settings for better Hindi support
+      numerals: true, // Convert numbers properly
+      replacements: [], // No word replacements
     })
 
     if (error) {

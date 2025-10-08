@@ -624,6 +624,14 @@ export function AIControllerChat() {
                 if (voiceChat.isListening) {
                   voiceChat.stopListening()
                 } else {
+                  // CRITICAL: Stop any playing audio before starting mic to prevent feedback loop
+                  if (voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking') {
+                    console.log('🛑 Stopping audio before mic recording to prevent feedback')
+                    voiceChat.stopAudio()
+                    stopVoice()
+                    // Wait for audio to fully stop
+                    await new Promise((resolve) => setTimeout(resolve, 200))
+                  }
                   voiceChat.startListening()
                 }
               }}
