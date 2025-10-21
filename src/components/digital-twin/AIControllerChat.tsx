@@ -73,9 +73,31 @@ export function AIControllerChat() {
     },
   ])
 
+  const [voiceChatMessages, setVoiceChatMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: session?.user
+        ? `Hi ${session.user.name}! 🎙️ Voice Chat Mode - Just speak naturally! I'll respond with voice only. No text needed - pure voice conversation.`
+        : "Hi! 🎙️ Voice Chat Mode - Just speak naturally! I'll respond with voice only. No text needed - pure voice conversation.",
+      role: 'assistant',
+      timestamp: new Date(),
+    },
+  ])
+
   // Use the appropriate messages based on current chat mode
-  const messages = chatMode === 'ai_control' ? aiControlMessages : plainChatMessages
-  const setMessages = chatMode === 'ai_control' ? setAiControlMessages : setPlainChatMessages
+  const messages =
+    chatMode === 'ai_control'
+      ? aiControlMessages
+      : chatMode === 'plain_chat'
+        ? plainChatMessages
+        : voiceChatMessages
+
+  const setMessages =
+    chatMode === 'ai_control'
+      ? setAiControlMessages
+      : chatMode === 'plain_chat'
+        ? setPlainChatMessages
+        : setVoiceChatMessages
 
   // Voice chat integration
   const voiceChat = useVoiceChat({
@@ -189,6 +211,12 @@ export function AIControllerChat() {
     e.preventDefault()
     if (!inputValue.trim() || isLoading) return
 
+    // Prevent text input in voice chat mode
+    if (chatMode === 'voice_chat') {
+      console.log('🎙️ Voice Chat Mode: Text input disabled')
+      return
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content: inputValue,
@@ -255,8 +283,8 @@ export function AIControllerChat() {
             role: m.role,
             content: m.content,
           })),
-          enhancedMode: chatMode === 'plain_chat' ? true : false, // Force enhanced mode for Plain Chat
-          interviewType: chatMode === 'plain_chat' ? 'general' : 'brief',
+          enhancedMode: chatMode !== 'ai_control', // Force enhanced mode for Plain Chat and Voice Chat
+          interviewType: chatMode !== 'ai_control' ? 'general' : 'brief',
           user: session?.user
             ? {
                 name: session.user.name,
@@ -453,6 +481,17 @@ export function AIControllerChat() {
                 title="Plain Chat: Detailed text responses + no UI changes"
               >
                 💬 Plain Chat
+              </button>
+              <button
+                onClick={() => setChatMode('voice_chat')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  chatMode === 'voice_chat'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Voice Chat: Voice-only conversation, no text input"
+              >
+                🎙️ Voice Chat
               </button>
             </div>
 
@@ -663,189 +702,203 @@ export function AIControllerChat() {
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom">
           <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
-            {/* Mic Button */}
-            <motion.button
-              type="button"
-              onClick={async () => {
-                await unlockAudio()
-                if (voiceChat.isListening) {
-                  voiceChat.stopListening()
-                } else {
-                  // CRITICAL: Stop any playing audio before starting mic to prevent feedback loop
-                  if (voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking') {
-                    console.log('🛑 Stopping audio before mic recording to prevent feedback')
-                    voiceChat.stopAudio()
-                    stopVoice()
-                    // Stop local audio if playing
-                    if (localAudioRef.current) {
-                      localAudioRef.current.pause()
-                      localAudioRef.current.currentTime = 0
-                      localAudioRef.current = null
-                    }
-                    // Wait for audio to fully stop
-                    await new Promise((resolve) => setTimeout(resolve, 200))
-                  }
-                  voiceChat.startListening()
-                }
-              }}
-              disabled={
-                !isMounted ||
-                !voiceChat.isSupported ||
-                voiceChat.audioPlayerState.isPlaying ||
-                voiceState === 'speaking'
-              }
-              className={`p-3 sm:p-4 rounded-full transition-all ${
-                voiceChat.isListening
-                  ? 'bg-red-500 hover:bg-red-600'
-                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-              } disabled:opacity-50`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {voiceChat.isListening ? (
-                <MicOff className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              ) : (
-                <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              )}
-            </motion.button>
-
-            {/* Play/Stop Voice Button - Always visible next to Mic */}
-            <motion.button
-              type="button"
-              onClick={async () => {
-                await unlockAudio()
-
-                // CRITICAL: Check if audio is actually playing using localAudioRef
-                const isActuallyPlaying = localAudioRef.current && !localAudioRef.current.paused
-
-                if (
-                  isActuallyPlaying ||
-                  voiceChat.audioPlayerState.isPlaying ||
-                  voiceState === 'speaking'
-                ) {
-                  // Currently playing - stop it
-                  console.log('⏹️ Stopping voice playback')
-                  voiceChat.stopAudio()
-                  setVoiceState('idle') // Set to idle immediately
-                  stopVoice()
-                  // Stop local audio if playing
-                  if (localAudioRef.current) {
-                    localAudioRef.current.pause()
-                    localAudioRef.current.currentTime = 0
-                    localAudioRef.current.src = '' // Clear the source to prevent replay
-                    localAudioRef.current = null
-                  }
-                } else {
-                  // CRITICAL: Stop any existing audio before starting new playback
-                  if (localAudioRef.current) {
-                    console.log('🧹 Cleaning up existing audio before new playback')
-                    localAudioRef.current.pause()
-                    localAudioRef.current.currentTime = 0
-                    localAudioRef.current.src = ''
-                    localAudioRef.current = null
-                  }
-
-                  // Not playing - start playing last assistant message
-                  // CRITICAL: Stop mic if it's recording to prevent feedback
-                  if (voiceChat.isListening) {
-                    console.log('🛑 Stopping mic before playing voice to prevent feedback')
-                    voiceChat.stopListening()
-                    await new Promise((resolve) => setTimeout(resolve, 200))
-                  }
-
-                  // Find last assistant message and play it
-                  const lastAssistantMessage = messages
-                    .slice()
-                    .reverse()
-                    .find((m) => m.role === 'assistant')
-
-                  if (lastAssistantMessage) {
-                    console.log('▶️ Playing last assistant message')
-                    // Trigger text-to-speech for the message
-                    setVoiceState('speaking')
-                    // The voiceChat will automatically play via autoPlayResponses
-                    // Or we can manually trigger TTS via the API
-                    const playAudio = async () => {
-                      try {
-                        const response = await fetch('/api/voice/speech', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            text: lastAssistantMessage.content,
-                            voice: 'alloy',
-                            provider: 'elevenlabs',
-                            language: 'auto',
-                          }),
-                        })
-
-                        if (response.ok) {
-                          const audioBlob = await response.blob()
-                          const audioUrl = URL.createObjectURL(audioBlob)
-                          const audio = new Audio(audioUrl)
-                          localAudioRef.current = audio
-
-                          audio.onended = () => {
-                            setVoiceState('idle')
-                            URL.revokeObjectURL(audioUrl)
-                            localAudioRef.current = null
-                          }
-
-                          audio.onerror = () => {
-                            setVoiceState('idle')
-                            URL.revokeObjectURL(audioUrl)
-                            localAudioRef.current = null
-                          }
-
-                          await audio.play()
-                        } else {
-                          setVoiceState('idle')
+            {/* Voice Buttons - Only show in Voice Chat mode */}
+            {chatMode === 'voice_chat' && (
+              <>
+                {/* Mic Button */}
+                <motion.button
+                  type="button"
+                  onClick={async () => {
+                    await unlockAudio()
+                    if (voiceChat.isListening) {
+                      voiceChat.stopListening()
+                    } else {
+                      // CRITICAL: Stop any playing audio before starting mic to prevent feedback loop
+                      if (voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking') {
+                        console.log('🛑 Stopping audio before mic recording to prevent feedback')
+                        voiceChat.stopAudio()
+                        stopVoice()
+                        // Stop local audio if playing
+                        if (localAudioRef.current) {
+                          localAudioRef.current.pause()
+                          localAudioRef.current.currentTime = 0
+                          localAudioRef.current = null
                         }
-                      } catch (error) {
-                        console.error('Failed to play audio:', error)
-                        setVoiceState('idle')
+                        // Wait for audio to fully stop
+                        await new Promise((resolve) => setTimeout(resolve, 200))
+                      }
+                      voiceChat.startListening()
+                    }
+                  }}
+                  disabled={
+                    !isMounted ||
+                    !voiceChat.isSupported ||
+                    voiceChat.audioPlayerState.isPlaying ||
+                    voiceState === 'speaking'
+                  }
+                  className={`p-3 sm:p-4 rounded-full transition-all ${
+                    voiceChat.isListening
+                      ? 'bg-red-500 hover:bg-red-600'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                  } disabled:opacity-50`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {voiceChat.isListening ? (
+                    <MicOff className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  ) : (
+                    <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  )}
+                </motion.button>
+
+                {/* Play/Stop Voice Button - Always visible next to Mic */}
+                <motion.button
+                  type="button"
+                  onClick={async () => {
+                    await unlockAudio()
+
+                    // CRITICAL: Check if audio is actually playing using localAudioRef
+                    const isActuallyPlaying = localAudioRef.current && !localAudioRef.current.paused
+
+                    if (
+                      isActuallyPlaying ||
+                      voiceChat.audioPlayerState.isPlaying ||
+                      voiceState === 'speaking'
+                    ) {
+                      // Currently playing - stop it
+                      console.log('⏹️ Stopping voice playback')
+                      voiceChat.stopAudio()
+                      setVoiceState('idle') // Set to idle immediately
+                      stopVoice()
+                      // Stop local audio if playing
+                      if (localAudioRef.current) {
+                        localAudioRef.current.pause()
+                        localAudioRef.current.currentTime = 0
+                        localAudioRef.current.src = '' // Clear the source to prevent replay
+                        localAudioRef.current = null
+                      }
+                    } else {
+                      // CRITICAL: Stop any existing audio before starting new playback
+                      if (localAudioRef.current) {
+                        console.log('🧹 Cleaning up existing audio before new playback')
+                        localAudioRef.current.pause()
+                        localAudioRef.current.currentTime = 0
+                        localAudioRef.current.src = ''
+                        localAudioRef.current = null
+                      }
+
+                      // Not playing - start playing last assistant message
+                      // CRITICAL: Stop mic if it's recording to prevent feedback
+                      if (voiceChat.isListening) {
+                        console.log('🛑 Stopping mic before playing voice to prevent feedback')
+                        voiceChat.stopListening()
+                        await new Promise((resolve) => setTimeout(resolve, 200))
+                      }
+
+                      // Find last assistant message and play it
+                      const lastAssistantMessage = messages
+                        .slice()
+                        .reverse()
+                        .find((m) => m.role === 'assistant')
+
+                      if (lastAssistantMessage) {
+                        console.log('▶️ Playing last assistant message')
+                        // Trigger text-to-speech for the message
+                        setVoiceState('speaking')
+                        // The voiceChat will automatically play via autoPlayResponses
+                        // Or we can manually trigger TTS via the API
+                        const playAudio = async () => {
+                          try {
+                            const response = await fetch('/api/voice/speech', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                text: lastAssistantMessage.content,
+                                voice: 'alloy',
+                                provider: 'elevenlabs',
+                                language: 'auto',
+                              }),
+                            })
+
+                            if (response.ok) {
+                              const audioBlob = await response.blob()
+                              const audioUrl = URL.createObjectURL(audioBlob)
+                              const audio = new Audio(audioUrl)
+                              localAudioRef.current = audio
+
+                              audio.onended = () => {
+                                setVoiceState('idle')
+                                URL.revokeObjectURL(audioUrl)
+                                localAudioRef.current = null
+                              }
+
+                              audio.onerror = () => {
+                                setVoiceState('idle')
+                                URL.revokeObjectURL(audioUrl)
+                                localAudioRef.current = null
+                              }
+
+                              await audio.play()
+                            } else {
+                              setVoiceState('idle')
+                            }
+                          } catch (error) {
+                            console.error('Failed to play audio:', error)
+                            setVoiceState('idle')
+                          }
+                        }
+                        playAudio()
                       }
                     }
-                    playAudio()
+                  }}
+                  disabled={
+                    !isMounted ||
+                    messages.filter((m) => m.role === 'assistant').length === 0 ||
+                    voiceChat.isListening
                   }
-                }
-              }}
-              disabled={
-                !isMounted ||
-                messages.filter((m) => m.role === 'assistant').length === 0 ||
-                voiceChat.isListening
-              }
-              className={`p-3 sm:p-4 rounded-full transition-all ${
-                voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
-                  ? 'bg-red-500 hover:bg-red-600'
-                  : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-              } disabled:opacity-50`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title={
-                voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
-                  ? 'Stop Voice'
-                  : 'Play Last Response'
-              }
-            >
-              {voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
-                <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              ) : (
-                <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              )}
-            </motion.button>
+                  className={`p-3 sm:p-4 rounded-full transition-all ${
+                    voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
+                      ? 'bg-red-500 hover:bg-red-600'
+                      : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                  } disabled:opacity-50`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  title={
+                    voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
+                      ? 'Stop Voice'
+                      : 'Play Last Response'
+                  }
+                >
+                  {voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
+                    <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  ) : (
+                    <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  )}
+                </motion.button>
+              </>
+            )}
 
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask me anything... or use voice"
+              placeholder={
+                chatMode === 'voice_chat'
+                  ? 'Voice Chat Mode - Use microphone only'
+                  : 'Ask me anything... or use voice'
+              }
               className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
-              disabled={isLoading || voiceChat.isListening}
+              disabled={isLoading || voiceChat.isListening || chatMode === 'voice_chat'}
             />
 
             <motion.button
               type="submit"
-              disabled={!inputValue.trim() || isLoading || voiceChat.isListening}
+              disabled={
+                !inputValue.trim() ||
+                isLoading ||
+                voiceChat.isListening ||
+                chatMode === 'voice_chat'
+              }
               className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
