@@ -99,10 +99,11 @@ export function AIControllerChat() {
         ? setPlainChatMessages
         : setVoiceChatMessages
 
-  // Voice chat integration - Enhanced for voice chat mode
+  // Voice chat integration - Only active in voice chat mode for complete isolation
   const voiceChat = useVoiceChat({
     interactionType: currentInteractionType,
     autoPlayResponses: chatMode === 'voice_chat', // Only auto-play in voice chat mode
+    saveConversationHistory: chatMode === 'voice_chat', // Only save history in voice chat mode
     onError: (error) => {
       const browserAudioErrors = [
         'blocked by browser',
@@ -118,11 +119,13 @@ export function AIControllerChat() {
       }
     },
     onMessageReceived: (message) => {
-      // In voice chat mode, handle voice messages differently
-      if (chatMode === 'voice_chat') {
-        console.log('🎙️ Voice Chat Mode: Received voice message:', message)
-        // Don't add to text messages in voice chat mode - keep it pure voice
+      console.log(`📢 Voice message received in ${chatMode} mode:`, message)
+      // Only process messages in voice chat mode
+      if (chatMode !== 'voice_chat') {
+        console.log('🚫 Non-voice mode: Ignoring voice message to prevent cross-contamination')
+        return
       }
+      console.log('🎙️ Voice Chat Mode: Processing pure voice interaction')
     },
   })
 
@@ -166,7 +169,7 @@ export function AIControllerChat() {
       // Small delay after AI finishes speaking, then auto-start listening again
       const autoRestartTimeout = setTimeout(() => {
         if (chatMode === 'voice_chat' && !voiceChat.isListening && voiceChat.isSupported) {
-          console.log('🔄 Auto-restarting voice listening in voice chat mode')
+          console.log('🔄 Auto-restarting voice listening in voice chat mode only')
           voiceChat.startListening()
         }
       }, 2000) // 2 second delay
@@ -183,28 +186,19 @@ export function AIControllerChat() {
     voiceChat.isSupported,
   ])
 
-  // Sync voice messages - Skip in voice chat mode since we don't display text
+  // Sync voice messages - DISABLED for complete voice chat mode isolation
+  // Voice chat mode should be completely separate and not sync to text modes
   useEffect(() => {
-    if (voiceChat.messages.length > 0 && chatMode !== 'voice_chat') {
-      const latestVoiceMessage = voiceChat.messages[voiceChat.messages.length - 1]
-      const existingMessage = messages.find((m) => m.id === `voice_${latestVoiceMessage.id}`)
-
-      if (!existingMessage) {
-        const newMessage: Message = {
-          id: `voice_${latestVoiceMessage.id}`,
-          content: latestVoiceMessage.content,
-          role: latestVoiceMessage.role,
-          timestamp: new Date(latestVoiceMessage.timestamp),
-          isVoice: true,
-        }
-        setMessages((prev) => [...prev, newMessage])
-
-        if (newMessage.role === 'assistant') {
-          handleAIResponse(newMessage.content)
-        }
-      }
-    }
+    // Skip all voice message syncing - each mode is completely independent
+    return
   }, [voiceChat.messages, chatMode])
+
+  // Clear voice chat messages when switching between modes for isolation
+  useEffect(() => {
+    // Clear voice chat conversation when switching modes to ensure isolation
+    voiceChat.clearConversation()
+    console.log(`🔄 Switched to ${chatMode} mode - cleared voice conversation for isolation`)
+  }, [chatMode])
 
   const handleAIResponse = (content: string, isAIControl: boolean = false) => {
     setLastAIMessage(content)
@@ -801,8 +795,10 @@ export function AIControllerChat() {
                       }
                     } else {
                       // Start listening - will auto-stop when speech ends
-                      console.log('🎙️ Starting voice conversation')
-                      voiceChat.startListening()
+                      console.log('🎙️ Starting voice conversation in voice chat mode')
+                      if (chatMode === 'voice_chat') {
+                        voiceChat.startListening()
+                      }
                     }
                   }}
                   disabled={!isMounted || !voiceChat.isSupported || voiceChat.isProcessing}
