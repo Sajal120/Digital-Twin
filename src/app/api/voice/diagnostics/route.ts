@@ -5,34 +5,18 @@ export async function GET() {
     const diagnostics = {
       timestamp: new Date().toISOString(),
       environment: {
-        ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY ? '✅ Set' : '❌ Missing',
-        ELEVENLABS_VOICE_ID: process.env.ELEVENLABS_VOICE_ID ? '✅ Set' : '❌ Missing',
-        ELEVENLABS_VOICE_ID_ENGLISH: process.env.ELEVENLABS_VOICE_ID_ENGLISH
-          ? '✅ Set'
-          : '❌ Missing',
-        ELEVENLABS_VOICE_ID_NEPALI: process.env.ELEVENLABS_VOICE_ID_NEPALI
-          ? '✅ Set'
-          : '❌ Missing',
-        ELEVENLABS_VOICE_ID_SPANISH: process.env.ELEVENLABS_VOICE_ID_SPANISH
-          ? '✅ Set'
-          : '❌ Missing',
-        ELEVENLABS_VOICE_ID_CHINESE: process.env.ELEVENLABS_VOICE_ID_CHINESE
-          ? '✅ Set'
-          : '❌ Missing',
+        CARTESIA_API_KEY: process.env.CARTESIA_API_KEY ? '✅ Set' : '❌ Missing',
+        CARTESIA_VOICE_ID: process.env.CARTESIA_VOICE_ID ? '✅ Set' : '❌ Missing',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY ? '✅ Set' : '❌ Missing',
         USE_VOICE_CLONING: process.env.USE_VOICE_CLONING,
+        PREFERRED_TTS_PROVIDER: process.env.PREFERRED_TTS_PROVIDER || 'cartesia',
       },
       voiceIds: {
-        english: process.env.ELEVENLABS_VOICE_ID_ENGLISH || 'Not set',
-        nepali: process.env.ELEVENLABS_VOICE_ID_NEPALI || 'Not set',
-        spanish: process.env.ELEVENLABS_VOICE_ID_SPANISH || 'Not set',
-        chinese: process.env.ELEVENLABS_VOICE_ID_CHINESE || 'Not set',
-        default: process.env.ELEVENLABS_VOICE_ID || 'Not set',
+        cartesia: process.env.CARTESIA_VOICE_ID || 'Not set',
       },
       apis: {
         voiceSpeech: '/api/voice/speech',
         voiceConversation: '/api/voice/conversation',
-        voiceElevenlabs: '/api/voice/elevenlabs',
       },
     }
 

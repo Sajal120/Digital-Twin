@@ -96,39 +96,39 @@ async function processResponse(request: NextRequest) {
       `🌍 Using Twilio language: ${twilioLanguage} (current turn: ${currentLanguage}, previous turn: ${previousLanguage || 'none'})`,
     )
 
-    // Generate audio with ElevenLabs
-    console.log('🎤 Generating YOUR voice response...')
-    const elevenLabsStartTime = Date.now()
+    // Generate audio with Cartesia (your cloned voice)
+    console.log('🎤 Generating YOUR voice response with Cartesia...')
+    const cartesiaStartTime = Date.now()
 
-    const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-        },
-        body: JSON.stringify({
-          text: unifiedResponse.response,
-          model_id: 'eleven_turbo_v2_5',
-          voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.8,
-          },
-          output_format: 'mp3_22050_32',
-          optimize_streaming_latency: 4,
-        }),
+    const cartesiaResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.CARTESIA_API_KEY || '',
+        'Cartesia-Version': '2024-10-21',
       },
-    )
+      body: JSON.stringify({
+        model_id: 'sonic-english',
+        transcript: unifiedResponse.response,
+        voice: {
+          mode: 'id',
+          id: process.env.CARTESIA_VOICE_ID,
+        },
+        output_format: {
+          container: 'mp3',
+          encoding: 'mp3',
+          sample_rate: 22050,
+        },
+      }),
+    })
 
-    if (!elevenlabsResponse.ok) {
-      throw new Error(`ElevenLabs API error: ${elevenlabsResponse.status}`)
+    if (!cartesiaResponse.ok) {
+      throw new Error(`Cartesia API error: ${cartesiaResponse.status}`)
     }
 
-    console.log(`⚡ ElevenLabs responded in ${Date.now() - elevenLabsStartTime}ms`)
+    console.log(`⚡ Cartesia responded in ${Date.now() - cartesiaStartTime}ms`)
 
-    const audioBuffer = await elevenlabsResponse.arrayBuffer()
+    const audioBuffer = await cartesiaResponse.arrayBuffer()
     const audioBufferObj = Buffer.from(audioBuffer)
 
     // Generate unique audio ID

@@ -88,31 +88,35 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Twilio webhook error:', error)
 
-    // Generate error message with YOUR voice
+    // Generate error message with YOUR voice using Cartesia
     try {
       const errorMessage =
         "I'm sorry, there was a technical issue. Please try calling again in a moment."
 
-      const elevenlabsResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID}`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-          },
-          body: JSON.stringify({
-            text: errorMessage,
-            model_id: 'eleven_turbo_v2_5',
-            voice_settings: { stability: 0.6, similarity_boost: 0.8 },
-            output_format: 'mp3_22050_32',
-          }),
+      const cartesiaResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': process.env.CARTESIA_API_KEY || '',
+          'Cartesia-Version': '2024-10-21',
         },
-      )
+        body: JSON.stringify({
+          model_id: 'sonic-english',
+          transcript: errorMessage,
+          voice: {
+            mode: 'id',
+            id: process.env.CARTESIA_VOICE_ID,
+          },
+          output_format: {
+            container: 'mp3',
+            encoding: 'mp3',
+            sample_rate: 22050,
+          },
+        }),
+      })
 
-      if (elevenlabsResponse.ok) {
-        const audioBuffer = await elevenlabsResponse.arrayBuffer()
+      if (cartesiaResponse.ok) {
+        const audioBuffer = await cartesiaResponse.arrayBuffer()
         const audioId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
         const blob = await put(`phone-audio/${audioId}.mp3`, Buffer.from(audioBuffer), {
@@ -170,41 +174,40 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
   let twiml: string
 
   try {
-    // ULTRA-FAST ElevenLabs with 1.5s timeout for greeting
+    // ULTRA-FAST Cartesia with 1.5s timeout for greeting
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 1500) // 1.5s max
 
-    const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-      {
-        method: 'POST',
-        headers: {
-          Accept: 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-        },
-        body: JSON.stringify({
-          text: greeting,
-          model_id: 'eleven_turbo_v2_5',
-          voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.85,
-            style: 0.2,
-            use_speaker_boost: true,
-          },
-          output_format: 'mp3_44100_128', // Higher quality for better volume
-        }),
-        signal: controller.signal,
+    const cartesiaResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.CARTESIA_API_KEY || '',
+        'Cartesia-Version': '2024-10-21',
       },
-    )
+      body: JSON.stringify({
+        model_id: 'sonic-english',
+        transcript: greeting,
+        voice: {
+          mode: 'id',
+          id: process.env.CARTESIA_VOICE_ID,
+        },
+        output_format: {
+          container: 'mp3',
+          encoding: 'mp3',
+          sample_rate: 22050,
+        },
+      }),
+      signal: controller.signal,
+    })
 
     clearTimeout(timeoutId)
 
-    if (!elevenlabsResponse.ok) {
-      throw new Error(`ElevenLabs: ${elevenlabsResponse.status}`)
+    if (!cartesiaResponse.ok) {
+      throw new Error(`Cartesia: ${cartesiaResponse.status}`)
     }
 
-    const audioBuffer = await elevenlabsResponse.arrayBuffer()
+    const audioBuffer = await cartesiaResponse.arrayBuffer()
 
     if (!audioBuffer || audioBuffer.byteLength === 0) {
       throw new Error('Empty audio')
@@ -239,7 +242,7 @@ async function handleIncomingCall(callSid: string, fromNumber: string, toNumber:
     />
 </Response>`
   } catch (error: any) {
-    console.warn('⚠️ ElevenLabs failed, using Twilio:', error.message)
+    console.warn('⚠️ Cartesia failed, using Twilio:', error.message)
     twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">${greeting}</Say>

@@ -248,7 +248,7 @@ export const useAudioPlayer = (options: AudioPlayerOptions = {}) => {
           },
           body: JSON.stringify({
             text,
-            voice: voice === 'cartesia' ? 'alloy' : voice,
+            voice: 'cartesia', // Always use Cartesia voice ID for cloned voice
             provider,
             language: 'auto',
           }),

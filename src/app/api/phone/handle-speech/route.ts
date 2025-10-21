@@ -222,33 +222,33 @@ export async function POST(request: NextRequest) {
     if (!speechResult || speechResult.trim().length === 0) {
       console.log('❌ No speech detected, asking user to repeat with YOUR voice')
 
-      // Generate YOUR voice for "didn't catch that" message
+      // Generate YOUR voice for "didn't catch that" message with Cartesia
       try {
         const retryMessage = "I didn't catch that. Please speak after the beep."
-        const elevenlabsResponse = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-          {
-            method: 'POST',
-            headers: {
-              Accept: 'audio/mpeg',
-              'Content-Type': 'application/json',
-              'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-            },
-            body: JSON.stringify({
-              text: retryMessage,
-              model_id: 'eleven_turbo_v2_5',
-              voice_settings: {
-                stability: 0.6,
-                similarity_boost: 0.8,
-              },
-              output_format: 'mp3_22050_32',
-              optimize_streaming_latency: 4,
-            }),
+        const cartesiaResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': process.env.CARTESIA_API_KEY || '',
+            'Cartesia-Version': '2024-10-21',
           },
-        )
+          body: JSON.stringify({
+            model_id: 'sonic-english',
+            transcript: retryMessage,
+            voice: {
+              mode: 'id',
+              id: process.env.CARTESIA_VOICE_ID,
+            },
+            output_format: {
+              container: 'mp3',
+              encoding: 'mp3',
+              sample_rate: 22050,
+            },
+          }),
+        })
 
-        if (elevenlabsResponse.ok) {
-          const audioBuffer = await elevenlabsResponse.arrayBuffer()
+        if (cartesiaResponse.ok) {
+          const audioBuffer = await cartesiaResponse.arrayBuffer()
           const audioId = `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
           // Upload to Vercel Blob with edge caching
@@ -286,10 +286,10 @@ export async function POST(request: NextRequest) {
           })
         }
       } catch (error) {
-        console.warn('⚠️ ElevenLabs failed for retry message, using Say fallback')
+        console.warn('⚠️ Cartesia failed for retry message, using Say fallback')
       }
 
-      // Fallback to Say if ElevenLabs fails
+      // Fallback to Say if Cartesia fails
       const noSpeechTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">I didn't catch that. Please speak after the beep.</Say>
@@ -465,51 +465,48 @@ export async function POST(request: NextRequest) {
     console.log('🎤 Generating YOUR voice response...')
     const voiceStartTime = Date.now()
 
-    // Generate ElevenLabs audio with aggressive timeout (must finish before Twilio timeout)
+    // Generate Cartesia audio with aggressive timeout (must finish before Twilio timeout)
     try {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => {
-        console.log('⏱️ ElevenLabs timeout after 3s, aborting...')
+        console.log('⏱️ Cartesia timeout after 3s, aborting...')
         controller.abort()
       }, 3000) // 3s timeout - ultra aggressive for phone speed
 
-      const elevenlabsResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-          },
-          body: JSON.stringify({
-            text: aiResponse.response,
-            model_id: 'eleven_turbo_v2_5', // Fastest model
-            voice_settings: {
-              stability: 0.5, // Lower for speed
-              similarity_boost: 0.75, // Lower for speed
-              style: 0.0, // Disable for speed
-              use_speaker_boost: false, // Disable for speed
-            },
-            output_format: 'mp3_22050_32', // Lower quality for faster generation
-            optimize_streaming_latency: 4, // Maximum speed optimization
-            apply_text_normalization: 'off', // Skip normalization for speed
-          }),
-          signal: controller.signal,
+      const cartesiaResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': process.env.CARTESIA_API_KEY || '',
+          'Cartesia-Version': '2024-10-21',
         },
-      )
+        body: JSON.stringify({
+          model_id: 'sonic-english',
+          transcript: aiResponse.response,
+          voice: {
+            mode: 'id',
+            id: process.env.CARTESIA_VOICE_ID,
+          },
+          output_format: {
+            container: 'mp3',
+            encoding: 'mp3',
+            sample_rate: 22050,
+          },
+        }),
+        signal: controller.signal,
+      })
 
       clearTimeout(timeoutId)
-      console.log(`⚡ ElevenLabs responded in ${Date.now() - voiceStartTime}ms`)
+      console.log(`⚡ Cartesia responded in ${Date.now() - voiceStartTime}ms`)
 
-      if (!elevenlabsResponse.ok) {
-        throw new Error(`ElevenLabs: ${elevenlabsResponse.status}`)
+      if (!cartesiaResponse.ok) {
+        throw new Error(`Cartesia: ${cartesiaResponse.status}`)
       }
 
-      const audioBuffer = await elevenlabsResponse.arrayBuffer()
+      const audioBuffer = await cartesiaResponse.arrayBuffer()
 
       if (!audioBuffer || audioBuffer.byteLength === 0) {
-        throw new Error('Empty audio buffer from ElevenLabs')
+        throw new Error('Empty audio buffer from Cartesia')
       }
 
       // Cache audio

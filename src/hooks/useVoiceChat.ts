@@ -239,7 +239,7 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
           }
 
           try {
-            // Use Cartesia voice cloning if available, fallback to OpenAI
+            // Use Cartesia voice cloning with your cloned voice
             await audioPlayer.playText(data.response, 'cartesia')
           } catch (audioError) {
             console.warn('Audio playback failed, trying fallback:', audioError)
@@ -355,7 +355,7 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
         return await audioPlayer.playFromUrl(message.audioUrl)
       } else if (message.role === 'assistant') {
         try {
-          // Use Cartesia voice cloning for assistant messages
+          // Use Cartesia voice cloning for assistant messages with your voice
           return await audioPlayer.playText(message.content, 'cartesia')
         } catch (error) {
           console.warn('Cartesia playback failed, using fallback:', error)
