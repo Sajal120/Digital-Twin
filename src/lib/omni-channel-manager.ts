@@ -703,10 +703,10 @@ Speak in first person. Be specific and conversational. Sound human!`,
           phoneOptimized: isPhoneCall, // Enable fast mode for phone
           omniChannelContext: context,
           conversationHistory: conversationHistory,
-          model: isPhoneCall ? 'gpt-3.5-turbo' : 'gpt-4', // Use faster model for phone calls
+          model: isPhoneCall ? 'gpt-4-turbo-preview' : 'gpt-4-turbo-preview', // Use real-time model for phone calls too
           systemInstruction: isPhoneCall
-            ? 'PHONE: 10-15 words. MUST say company names. NO "I like" or "currently making". DIRECT: "I work at Kimpton", "Masters from Swinburne", "I use React".'
-            : 'Use accurate profile info. Speak naturally in first person. Show enthusiasm for AI and tech.',
+            ? 'PHONE RTL: 8-12 words max. MUST say company names. NO "I like" or "currently making". DIRECT: "I work at Kimpton", "Masters from Swinburne", "I use React". Use contractions: "I\'m", "I\'ve".'
+            : 'Real-time voice chat: Keep responses natural and conversational. Speak as Sajal in first person. Be engaging and enthusiastic about tech. Use contractions and natural speech patterns.',
         }),
       })
       clearTimeout(timeout)

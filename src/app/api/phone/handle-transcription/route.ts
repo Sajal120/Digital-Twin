@@ -111,16 +111,18 @@ Return only valid JSON.`
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4-turbo-preview',
         messages: [
           {
             role: 'system',
             content: 'You are a professional conversation analyst. Respond only with valid JSON.',
           },
-          { role: 'user', content: analysisPrompt },
+          { role: 'user', content: transcriptionText },
         ],
-        temperature: 0.3,
-        max_tokens: 1000,
+        temperature: 0.5, // Lower for more consistent phone responses
+        max_tokens: 30, // Ultra-short for real-time phone calls
+        top_p: 0.9, // More focused responses
+        presence_penalty: 0.1, // Slight variety encouragement
       }),
     })
 

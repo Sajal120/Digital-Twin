@@ -41,12 +41,14 @@ Current conversation context: ${context || 'Initial interaction'}`
       { role: 'user', content: message },
     ]
 
-    // Call OpenAI Chat API
+    // Call OpenAI Chat API with real-time optimizations
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4-turbo-preview', // Faster model for real-time voice
       messages: messages,
-      temperature: 0.7,
-      max_tokens: 800,
+      temperature: 0.6, // Slightly lower for more consistent voice responses
+      max_tokens: 400, // Shorter for quicker voice delivery
+      top_p: 0.9, // More focused responses
+      presence_penalty: 0.1, // Encourage variety
     })
 
     const aiResponse = response.choices[0]?.message?.content

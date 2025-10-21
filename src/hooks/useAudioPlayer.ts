@@ -236,8 +236,8 @@ export const useAudioPlayer = (options: AudioPlayerOptions = {}) => {
       try {
         setState((prev) => ({ ...prev, isLoading: true, error: null }))
 
-        // Choose provider based on voice parameter
-        const provider = voice === 'elevenlabs' ? 'elevenlabs' : 'auto'
+        // Use Cartesia for voice cloning - 95% cheaper than ElevenLabs with your voice
+        const provider = 'cartesia' // Cartesia: $0.025/1K chars with your cloned voice
 
         console.log('🎵 Requesting TTS:', { text: text.substring(0, 50), voice, provider })
 
@@ -248,7 +248,7 @@ export const useAudioPlayer = (options: AudioPlayerOptions = {}) => {
           },
           body: JSON.stringify({
             text,
-            voice: voice === 'elevenlabs' ? 'alloy' : voice,
+            voice: voice === 'cartesia' ? 'alloy' : voice,
             provider,
             language: 'auto',
           }),

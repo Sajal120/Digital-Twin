@@ -321,7 +321,7 @@ Respond with JSON only:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4-turbo-preview',
         messages: [
           {
             role: 'system',
@@ -329,8 +329,9 @@ Respond with JSON only:
           },
           { role: 'user', content: classificationPrompt },
         ],
-        temperature: 0.2,
-        max_tokens: 200,
+        temperature: 0.1, // Lower for more consistent classification
+        max_tokens: 150, // Reduced for faster response
+        top_p: 0.9, // More focused responses
       }),
     })
 
@@ -390,7 +391,7 @@ Respond with JSON only:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4-turbo-preview',
         messages: [
           {
             role: 'system',
@@ -398,8 +399,10 @@ Respond with JSON only:
           },
           { role: 'user', content: responsePrompt },
         ],
-        temperature: 0.3,
-        max_tokens: 500,
+        temperature: 0.2, // Lower for more consistent responses
+        max_tokens: 400, // Reduced for faster phone response
+        top_p: 0.9, // More focused responses
+        presence_penalty: 0.1, // Slight variety encouragement
       }),
     })
 
@@ -452,7 +455,7 @@ Respond with JSON only:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: 'gpt-4-turbo-preview',
         messages: [
           {
             role: 'system',
@@ -460,8 +463,9 @@ Respond with JSON only:
           },
           { role: 'user', content: escalationPrompt },
         ],
-        temperature: 0.1,
-        max_tokens: 200,
+        temperature: 0.05, // Very low for consistent escalation decisions
+        max_tokens: 150, // Reduced for faster response
+        top_p: 0.8, // More deterministic responses
       }),
     })
 

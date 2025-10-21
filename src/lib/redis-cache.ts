@@ -224,7 +224,7 @@ export async function getCachedTranscription(
 }
 
 /**
- * Cache audio URL (ElevenLabs responses)
+ * Cache audio URL (Cartesia responses)
  */
 export async function cacheAudioUrl(
   text: string,

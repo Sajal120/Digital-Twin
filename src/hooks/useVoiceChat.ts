@@ -239,11 +239,11 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
           }
 
           try {
-            // Use ElevenLabs voice cloning if available, fallback to OpenAI
-            await audioPlayer.playText(data.response, 'elevenlabs')
+            // Use Cartesia voice cloning if available, fallback to OpenAI
+            await audioPlayer.playText(data.response, 'cartesia')
           } catch (audioError) {
             console.warn('Audio playback failed, trying fallback:', audioError)
-            // Fallback to OpenAI TTS if ElevenLabs fails
+            // Fallback to OpenAI TTS if Cartesia fails
             await audioPlayer.playText(data.response, 'alloy')
           }
         }
@@ -355,10 +355,10 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
         return await audioPlayer.playFromUrl(message.audioUrl)
       } else if (message.role === 'assistant') {
         try {
-          // Use ElevenLabs voice cloning for assistant messages
-          return await audioPlayer.playText(message.content, 'elevenlabs')
+          // Use Cartesia voice cloning for assistant messages
+          return await audioPlayer.playText(message.content, 'cartesia')
         } catch (error) {
-          console.warn('ElevenLabs playback failed, using fallback:', error)
+          console.warn('Cartesia playback failed, using fallback:', error)
           // Fallback to OpenAI TTS
           return await audioPlayer.playText(message.content, 'alloy')
         }

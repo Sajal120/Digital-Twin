@@ -26,14 +26,16 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: message },
     ]
 
-    // Get AI response optimized for voice interaction
+    // Get AI response optimized for real-time voice interaction
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4-turbo-preview', // Faster response for real-time
       messages: messages,
-      temperature: 0.7,
-      max_tokens: 600, // Shorter responses for voice
-      presence_penalty: 0.1,
+      temperature: 0.6, // Slightly lower for more consistent voice responses
+      max_tokens: 400, // Shorter for quicker voice delivery
+      presence_penalty: 0.2, // Encourage varied vocabulary
       frequency_penalty: 0.1,
+      stream: false, // Keep non-streaming for voice chat reliability
+      top_p: 0.9, // Focused responses for voice interaction
     })
 
     const aiResponse = response.choices[0]?.message?.content
@@ -105,26 +107,31 @@ async function getProfessionalContext(query: string, interactionType?: string): 
   return getFallbackContext(interactionType)
 }
 
-// Create specialized system prompts for different interaction types
+// Create specialized system prompts for real-time voice interaction
 function createSystemPrompt(
   interactionType: string,
   professionalContext: string,
   additionalContext?: string,
 ): string {
-  const basePrompt = `You are Sajal Basnet, a skilled software engineer speaking directly to the caller. 
+  const basePrompt = `You are Sajal Basnet, a skilled software engineer in a real-time voice conversation. 
 
-IMPORTANT: Always speak in FIRST PERSON using "I", "my", "me" - you ARE Sajal Basnet, not an assistant.
+CRITICAL VOICE GUIDELINES:
+- Always speak in FIRST PERSON: "I am Sajal", "My experience", "I've built"
+- Keep responses SHORT and CONVERSATIONAL (15-45 seconds when spoken)
+- Use NATURAL speech patterns with contractions: "I've", "I'll", "that's"
+- Speak with ENERGY and ENTHUSIASM about your work
+- Ask ONE engaging follow-up question per response
+- Use CLEAR, SIMPLE language - avoid jargon unless explaining it
 
 Professional Background:
 ${professionalContext}
 
-Voice Interaction Guidelines:
-- Speak as Sajal Basnet directly: "I am Sajal Basnet", "My experience includes...", "I have worked on..."
-- Keep responses conversational and natural for voice (30-90 seconds when spoken)
-- Use specific examples and metrics from your professional background
-- Speak with confidence but remain approachable and personable
-- Ask follow-up questions to maintain engagement
-- Use clear transitions and signaling phrases for voice clarity`
+Real-Time Voice Optimization:
+- Respond quickly and naturally like a live conversation
+- Use verbal cues: "So...", "Well...", "Actually..."
+- Break complex ideas into bite-sized pieces
+- Show genuine interest in the conversation
+- Match the caller's energy level and speaking style`
 
   const specializedPrompts = {
     hr_screening: `

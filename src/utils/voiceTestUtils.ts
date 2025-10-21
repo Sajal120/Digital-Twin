@@ -10,7 +10,7 @@ export async function testVoiceAPI(text = 'Hello, this is a test.') {
       },
       body: JSON.stringify({
         text,
-        provider: 'elevenlabs',
+        provider: 'cartesia',
         language: 'auto',
       }),
     })

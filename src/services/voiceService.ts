@@ -1,5 +1,5 @@
 // Voice Service - Handles different TTS providers including voice cloning
-export type VoiceProvider = 'openai' | 'elevenlabs' | 'murf' | 'resemble'
+export type VoiceProvider = 'openai' | 'cartesia' | 'murf' | 'resemble'
 
 export interface VoiceConfig {
   provider: VoiceProvider
@@ -15,8 +15,8 @@ export class VoiceService {
 
   constructor() {
     this.defaultConfig = {
-      provider: 'elevenlabs', // Default to ElevenLabs for voice cloning
-      voiceId: process.env.ELEVENLABS_VOICE_ID || '', // Your cloned voice ID
+      provider: 'cartesia', // Default to Cartesia for voice cloning
+      voiceId: process.env.CARTESIA_VOICE_ID || '', // Your cloned voice ID
       stability: 0.5,
       similarityBoost: 0.8,
     }
@@ -33,8 +33,8 @@ export class VoiceService {
     const finalConfig = { ...this.defaultConfig, ...config }
 
     switch (finalConfig.provider) {
-      case 'elevenlabs':
-        return this.generateElevenLabsSpeech(text, finalConfig)
+      case 'cartesia':
+        return this.generateCartesiaSpeech(text, finalConfig)
       case 'openai':
         return this.generateOpenAISpeech(text, finalConfig)
       default:
@@ -42,22 +42,22 @@ export class VoiceService {
     }
   }
 
-  private async generateElevenLabsSpeech(text: string, config: VoiceConfig): Promise<ArrayBuffer> {
-    const response = await fetch('/api/voice/elevenlabs', {
+  private async generateCartesiaSpeech(text: string, config: VoiceConfig): Promise<ArrayBuffer> {
+    const response = await fetch('/api/voice/speech', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         text,
-        voiceId: config.voiceId,
-        stability: config.stability,
-        similarityBoost: config.similarityBoost,
+        provider: 'cartesia',
+        voice: config.voiceId,
+        language: 'auto',
       }),
     })
 
     if (!response.ok) {
-      throw new Error(`ElevenLabs TTS failed: ${response.statusText}`)
+      throw new Error(`Cartesia TTS failed: ${response.statusText}`)
     }
 
     return response.arrayBuffer()

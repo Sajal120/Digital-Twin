@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { detectLanguage } from '@/utils/languageDetection'
-import { getVoiceIdForLanguage } from '@/utils/voiceMapping'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// ElevenLabs configuration
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID // Your cloned voice ID
+// Cartesia configuration (primary voice provider)
+const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY
+const CARTESIA_VOICE_ID = process.env.CARTESIA_VOICE_ID // Your cloned voice ID
+
 const USE_VOICE_CLONING = process.env.USE_VOICE_CLONING === 'true'
 
 export async function POST(request: NextRequest) {
@@ -41,13 +41,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 })
     }
 
-    // Use voice cloning if configured and available
+    // Use Cartesia voice cloning if configured and available
     if (
-      (provider === 'elevenlabs' || (provider === 'auto' && USE_VOICE_CLONING)) &&
-      ELEVENLABS_API_KEY &&
-      ELEVENLABS_VOICE_ID
+      (provider === 'auto' || provider === 'cartesia') &&
+      USE_VOICE_CLONING &&
+      CARTESIA_API_KEY &&
+      CARTESIA_VOICE_ID
     ) {
-      return await generateElevenLabsSpeech(text, language)
+      return await generateCartesiaSpeech(text, language)
     }
 
     // Fallback to OpenAI TTS
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateElevenLabsSpeech(text: string, language = 'auto') {
+async function generateCartesiaSpeech(text: string, language = 'auto') {
   // Detect language if auto
   let detectedLanguage = language
   if (language === 'auto') {
@@ -73,34 +74,31 @@ async function generateElevenLabsSpeech(text: string, language = 'auto') {
     detectedLanguage = detection.language
   }
 
-  // Get appropriate voice ID for the language
-  const voiceId = getVoiceIdForLanguage(detectedLanguage)
-
-  // Choose model based on language
-  const modelId = detectedLanguage === 'en' ? 'eleven_monolingual_v1' : 'eleven_multilingual_v1'
-
-  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+  const response = await fetch('https://api.cartesia.ai/tts/bytes', {
     method: 'POST',
     headers: {
-      Accept: 'audio/mpeg',
       'Content-Type': 'application/json',
-      'xi-api-key': ELEVENLABS_API_KEY!,
+      'X-API-Key': CARTESIA_API_KEY!,
     },
     body: JSON.stringify({
-      text,
-      model_id: modelId,
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.8,
-        style: 0.0,
-        use_speaker_boost: true,
+      model_id: 'sonic-english',
+      transcript: text,
+      voice: {
+        mode: 'id',
+        id: CARTESIA_VOICE_ID,
       },
+      output_format: {
+        container: 'mp3',
+        encoding: 'mp3',
+        sample_rate: 22050,
+      },
+      language: detectedLanguage,
     }),
   })
 
   if (!response.ok) {
-    console.error('ElevenLabs API error:', await response.text())
-    throw new Error('ElevenLabs TTS failed')
+    console.error('Cartesia API error:', await response.text())
+    throw new Error('Cartesia TTS failed')
   }
 
   const audioBuffer = await response.arrayBuffer()
@@ -111,9 +109,9 @@ async function generateElevenLabsSpeech(text: string, language = 'auto') {
       'Content-Type': 'audio/mpeg',
       'Content-Length': buffer.length.toString(),
       'Cache-Control': 'public, max-age=3600',
-      'X-Voice-Provider': 'elevenlabs',
+      'X-Voice-Provider': 'cartesia',
       'X-Voice-Language': detectedLanguage,
-      'X-Voice-ID': voiceId,
+      'X-Voice-ID': CARTESIA_VOICE_ID!,
     },
   })
 }
