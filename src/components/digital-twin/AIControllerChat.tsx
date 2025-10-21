@@ -385,7 +385,12 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className="relative w-full max-w-4xl h-[80vh] bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden
+        h-[85vh] sm:h-[80vh] md:h-[80vh] mobile-vh-fix"
+        style={{
+          height: 'min(85vh, calc(100vh - 4rem))', // Mobile friendly height
+          maxHeight: 'calc(100vh - 2rem)', // Tighter constraints on mobile
+        }}
         initial={{ y: 50 }}
         animate={{ y: 0 }}
       >
@@ -656,8 +661,8 @@ export function AIControllerChat() {
         )}
 
         {/* Input */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent">
-          <form onSubmit={handleSubmit} className="flex items-center space-x-3">
+        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom">
+          <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
             {/* Mic Button */}
             <motion.button
               type="button"
@@ -689,7 +694,7 @@ export function AIControllerChat() {
                 voiceChat.audioPlayerState.isPlaying ||
                 voiceState === 'speaking'
               }
-              className={`p-4 rounded-full transition-all ${
+              className={`p-3 sm:p-4 rounded-full transition-all ${
                 voiceChat.isListening
                   ? 'bg-red-500 hover:bg-red-600'
                   : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
@@ -698,9 +703,9 @@ export function AIControllerChat() {
               whileTap={{ scale: 0.95 }}
             >
               {voiceChat.isListening ? (
-                <MicOff className="w-6 h-6 text-white" />
+                <MicOff className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               ) : (
-                <Mic className="w-6 h-6 text-white" />
+                <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               )}
             </motion.button>
 
@@ -809,7 +814,7 @@ export function AIControllerChat() {
                 messages.filter((m) => m.role === 'assistant').length === 0 ||
                 voiceChat.isListening
               }
-              className={`p-4 rounded-full transition-all ${
+              className={`p-3 sm:p-4 rounded-full transition-all ${
                 voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
                   ? 'bg-red-500 hover:bg-red-600'
                   : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
@@ -823,9 +828,9 @@ export function AIControllerChat() {
               }
             >
               {voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
-                <VolumeX className="w-6 h-6 text-white" />
+                <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               ) : (
-                <Volume2 className="w-6 h-6 text-white" />
+                <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               )}
             </motion.button>
 
@@ -834,18 +839,18 @@ export function AIControllerChat() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask me anything... or use voice"
-              className="flex-1 px-6 py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all"
+              className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
               disabled={isLoading || voiceChat.isListening}
             />
 
             <motion.button
               type="submit"
               disabled={!inputValue.trim() || isLoading || voiceChat.isListening}
-              className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Send className="w-6 h-6 text-white" />
+              <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </motion.button>
           </form>
         </div>
