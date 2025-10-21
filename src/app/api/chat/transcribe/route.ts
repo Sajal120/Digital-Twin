@@ -45,9 +45,27 @@ async function transcribeWithOpenAI(request: NextRequest) {
     type: audioFile.type,
   })
 
-  // Convert blob to File for OpenAI
+  // Convert blob to File for OpenAI with proper filename
   const audioBuffer = await audioFile.arrayBuffer()
-  const file = new File([audioBuffer], 'audio.webm', { type: audioFile.type })
+
+  // OpenAI Whisper supports: flac, m4a, mp3, mp4, mpeg, mpga, oga, ogg, wav, webm
+  // Use proper file extension based on MIME type
+  let fileName = 'audio.mp3' // default
+
+  if (audioFile.type.includes('webm')) {
+    fileName = 'audio.webm'
+  } else if (audioFile.type.includes('wav')) {
+    fileName = 'audio.wav'
+  } else if (audioFile.type.includes('ogg')) {
+    fileName = 'audio.ogg'
+  } else if (audioFile.type.includes('mp4')) {
+    fileName = 'audio.mp4'
+  } else if (audioFile.type.includes('m4a')) {
+    fileName = 'audio.m4a'
+  }
+
+  console.log('🎤 Creating file for OpenAI:', { fileName, originalType: audioFile.type })
+  const file = new File([audioBuffer], fileName, { type: audioFile.type })
 
   const transcription = await openai.audio.transcriptions.create({
     file: file,

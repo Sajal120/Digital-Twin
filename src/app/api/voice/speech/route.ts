@@ -79,6 +79,7 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': CARTESIA_API_KEY!,
+      'Cartesia-Version': '2024-10-21',
     },
     body: JSON.stringify({
       model_id: 'sonic-english',
@@ -92,7 +93,6 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
         encoding: 'mp3',
         sample_rate: 22050,
       },
-      language: detectedLanguage,
     }),
   })
 
