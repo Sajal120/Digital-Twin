@@ -239,7 +239,18 @@ export const useAudioPlayer = (options: AudioPlayerOptions = {}) => {
         // Use Cartesia for voice cloning - 95% cheaper than ElevenLabs with your voice
         const provider = 'cartesia' // Cartesia: $0.025/1K chars with your cloned voice
 
-        console.log('🎵 Requesting TTS:', { text: text.substring(0, 50), voice, provider })
+        console.log('🎵 Requesting TTS:', {
+          text: text.substring(0, 50),
+          voice,
+          provider,
+          requestUrl: '/api/voice/speech',
+          bodyData: {
+            text: text.substring(0, 50) + '...',
+            voice: 'cartesia',
+            provider,
+            language: 'auto',
+          },
+        })
 
         const response = await fetch('/api/voice/speech', {
           method: 'POST',

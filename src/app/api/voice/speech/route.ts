@@ -41,6 +41,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 })
     }
 
+    console.log('🔍 Voice provider selection:', {
+      provider,
+      USE_VOICE_CLONING,
+      hasCartesiaKey: !!CARTESIA_API_KEY,
+      hasCartesiaVoice: !!CARTESIA_VOICE_ID,
+      cartesiaVoiceId: CARTESIA_VOICE_ID?.substring(0, 8) + '...',
+    })
+
     // Use Cartesia voice cloning if configured and available
     if (
       (provider === 'auto' || provider === 'cartesia') &&
@@ -48,9 +56,11 @@ export async function POST(request: NextRequest) {
       CARTESIA_API_KEY &&
       CARTESIA_VOICE_ID
     ) {
+      console.log('✅ Using Cartesia with your cloned voice')
       return await generateCartesiaSpeech(text, language)
     }
 
+    console.log('⚠️ Falling back to OpenAI TTS (generic voice)')
     // Fallback to OpenAI TTS
     return await generateOpenAISpeech(text, voice)
   } catch (error) {
@@ -74,6 +84,12 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
     detectedLanguage = detection.language
   }
 
+  console.log('🎤 Calling Cartesia API with your voice:', {
+    voiceId: CARTESIA_VOICE_ID?.substring(0, 8) + '...',
+    textLength: text.length,
+    language: detectedLanguage,
+  })
+
   const response = await fetch('https://api.cartesia.ai/tts/bytes', {
     method: 'POST',
     headers: {
@@ -96,13 +112,27 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
     }),
   })
 
+  console.log('📡 Cartesia API response:', {
+    status: response.status,
+    statusText: response.statusText,
+    headers: Object.fromEntries(response.headers.entries()),
+  })
+
   if (!response.ok) {
-    console.error('Cartesia API error:', await response.text())
-    throw new Error('Cartesia TTS failed')
+    const errorText = await response.text()
+    console.error('🚨 Cartesia API error:', errorText)
+    throw new Error(`Cartesia TTS failed: ${response.status} - ${errorText}`)
   }
 
   const audioBuffer = await response.arrayBuffer()
   const buffer = Buffer.from(audioBuffer)
+
+  console.log('✅ Cartesia audio generated successfully:', {
+    audioSize: buffer.length,
+    voiceProvider: 'cartesia',
+    voiceId: CARTESIA_VOICE_ID?.substring(0, 8) + '...',
+    language: detectedLanguage,
+  })
 
   return new NextResponse(buffer as BodyInit, {
     headers: {
@@ -112,17 +142,20 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
       'X-Voice-Provider': 'cartesia',
       'X-Voice-Language': detectedLanguage,
       'X-Voice-ID': CARTESIA_VOICE_ID!,
+      'X-Voice-Speed': 'normal',
     },
   })
 }
 
 async function generateOpenAISpeech(text: string, voice: string) {
-  // Generate speech using OpenAI TTS
+  console.log('🔄 Using OpenAI TTS fallback (slower, more natural)')
+
+  // Generate speech using OpenAI TTS with slower, more natural settings
   const mp3 = await openai.audio.speech.create({
-    model: 'tts-1',
-    voice: voice as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer',
+    model: 'tts-1-hd', // Higher quality model
+    voice: 'nova' as 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer', // More natural female voice
     input: text,
-    speed: 1.0,
+    speed: 0.9, // Slightly slower for clarity
   })
 
   // Convert to buffer

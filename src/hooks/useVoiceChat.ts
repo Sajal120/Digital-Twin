@@ -240,11 +240,13 @@ export const useVoiceChat = (options: VoiceChatOptions = {}) => {
 
           try {
             // Use Cartesia voice cloning with your cloned voice
+            console.log('🎤 Playing response with Cartesia voice...')
             await audioPlayer.playText(data.response, 'cartesia')
           } catch (audioError) {
-            console.warn('Audio playback failed, trying fallback:', audioError)
+            console.error('❌ Cartesia audio playback failed:', audioError)
+            console.log('🔄 Falling back to OpenAI TTS...')
             // Fallback to OpenAI TTS if Cartesia fails
-            await audioPlayer.playText(data.response, 'alloy')
+            await audioPlayer.playText(data.response, 'nova')
           }
         }
       } catch (error) {
