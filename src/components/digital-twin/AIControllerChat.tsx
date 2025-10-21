@@ -77,8 +77,8 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! 🎙️ Voice Chat Mode - Just speak naturally! I'll respond with voice only. No text needed - pure voice conversation.`
-        : "Hi! 🎙️ Voice Chat Mode - Just speak naturally! I'll respond with voice only. No text needed - pure voice conversation.",
+        ? `Hi ${session.user.name}! 🎙️ Ready for voice chat!`
+        : 'Hi! 🎙️ Ready for voice chat!',
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -146,9 +146,9 @@ export function AIControllerChat() {
     setVoiceState,
   ])
 
-  // Sync voice messages
+  // Sync voice messages - Skip in voice chat mode since we don't display text
   useEffect(() => {
-    if (voiceChat.messages.length > 0) {
+    if (voiceChat.messages.length > 0 && chatMode !== 'voice_chat') {
       const latestVoiceMessage = voiceChat.messages[voiceChat.messages.length - 1]
       const existingMessage = messages.find((m) => m.id === `voice_${latestVoiceMessage.id}`)
 
@@ -167,7 +167,7 @@ export function AIControllerChat() {
         }
       }
     }
-  }, [voiceChat.messages])
+  }, [voiceChat.messages, chatMode])
 
   const handleAIResponse = (content: string, isAIControl: boolean = false) => {
     setLastAIMessage(content)
@@ -504,86 +504,125 @@ export function AIControllerChat() {
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
-          <AnimatePresence>
-            {messages.map((message, index) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
+        {/* Messages - Hidden in Voice Chat mode */}
+        {chatMode !== 'voice_chat' && (
+          <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
+            <AnimatePresence>
+              {messages.map((message, index) => (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.role === 'user'
-                        ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
-                        : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                    }`}
+                    className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
                   >
-                    {message.role === 'user' ? (
-                      <User className="w-5 h-5 text-white" />
-                    ) : (
-                      <Bot className="w-5 h-5 text-white" />
-                    )}
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        message.role === 'user'
+                          ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                          : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                      }`}
+                    >
+                      {message.role === 'user' ? (
+                        <User className="w-5 h-5 text-white" />
+                      ) : (
+                        <Bot className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                    <motion.div
+                      className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
+                          : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
+                      }`}
+                      animate={{
+                        boxShadow:
+                          message.role === 'assistant'
+                            ? [
+                                '0 0 0 rgba(147, 51, 234, 0)',
+                                '0 0 20px rgba(147, 51, 234, 0.3)',
+                                '0 0 0 rgba(147, 51, 234, 0)',
+                              ]
+                            : undefined,
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <p className="text-sm whitespace-pre-line">
+                        {renderMessageContent(message.content)}
+                      </p>
+                      {message.isVoice && (
+                        <span className="text-xs opacity-70 mt-1 block">🎙️ Voice</span>
+                      )}
+                    </motion.div>
                   </div>
-                  <motion.div
-                    className={`rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
-                        ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
-                        : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
-                    }`}
-                    animate={{
-                      boxShadow:
-                        message.role === 'assistant'
-                          ? [
-                              '0 0 0 rgba(147, 51, 234, 0)',
-                              '0 0 20px rgba(147, 51, 234, 0.3)',
-                              '0 0 0 rgba(147, 51, 234, 0)',
-                            ]
-                          : undefined,
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <p className="text-sm whitespace-pre-line">
-                      {renderMessageContent(message.content)}
-                    </p>
-                    {message.isVoice && (
-                      <span className="text-xs opacity-70 mt-1 block">🎙️ Voice</span>
-                    )}
-                  </motion.div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex justify-start"
+              >
+                <div className="flex space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-3 border border-white/10">
+                    <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                  </div>
                 </div>
               </motion.div>
-            ))}
-          </AnimatePresence>
+            )}
 
-          {isLoading && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex justify-start"
-            >
-              <div className="flex space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                  <Bot className="w-5 h-5 text-white" />
-                </div>
-                <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-3 border border-white/10">
-                  <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-                </div>
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+
+        {/* Voice Chat Mode - Show voice status instead of messages */}
+        {chatMode === 'voice_chat' && (
+          <div className="h-[calc(100%-180px)] flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
+                {voiceChat.isListening ? (
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  >
+                    <Mic className="w-12 h-12 text-white" />
+                  </motion.div>
+                ) : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 0.8, repeat: Infinity }}
+                  >
+                    <Volume2 className="w-12 h-12 text-white" />
+                  </motion.div>
+                ) : (
+                  <Mic className="w-12 h-12 text-white opacity-50" />
+                )}
               </div>
-            </motion.div>
-          )}
+              <h3 className="text-2xl font-bold text-white mb-2">Voice Chat Mode</h3>
+              <p className="text-white/70 mb-4">
+                {voiceChat.isListening
+                  ? '🎙️ Listening... Speak now'
+                  : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
+                    ? '🔊 AI is speaking...'
+                    : voiceChat.isProcessing
+                      ? '⚡ Processing your message...'
+                      : 'Click the microphone to start talking'}
+              </p>
+            </div>
+          </div>
+        )}
 
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Quick Action Buttons - Different for each mode - Only show when messages are few */}
-        {messages.length <= 2 && (
+        {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
+        {chatMode !== 'voice_chat' && messages.length <= 2 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -878,33 +917,44 @@ export function AIControllerChat() {
               </>
             )}
 
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={
-                chatMode === 'voice_chat'
-                  ? 'Voice Chat Mode - Use microphone only'
-                  : 'Ask me anything... or use voice'
-              }
-              className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
-              disabled={isLoading || voiceChat.isListening || chatMode === 'voice_chat'}
-            />
+            {/* Text input and submit - Hidden in Voice Chat mode */}
+            {chatMode !== 'voice_chat' && (
+              <>
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Ask me anything... or use voice"
+                  className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
+                  disabled={isLoading || voiceChat.isListening}
+                />
 
-            <motion.button
-              type="submit"
-              disabled={
-                !inputValue.trim() ||
-                isLoading ||
-                voiceChat.isListening ||
-                chatMode === 'voice_chat'
-              }
-              className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </motion.button>
+                <motion.button
+                  type="submit"
+                  disabled={!inputValue.trim() || isLoading || voiceChat.isListening}
+                  className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </motion.button>
+              </>
+            )}
+
+            {/* Voice Chat mode - Show larger voice status */}
+            {chatMode === 'voice_chat' && (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-white/70 text-sm">
+                  {voiceChat.isListening
+                    ? '🎙️ Listening...'
+                    : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
+                      ? '🔊 AI Speaking...'
+                      : voiceChat.isProcessing
+                        ? '⚡ Processing...'
+                        : 'Use microphone to speak'}
+                </p>
+              </div>
+            )}
           </form>
         </div>
       </motion.div>
