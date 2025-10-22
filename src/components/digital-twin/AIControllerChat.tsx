@@ -19,7 +19,7 @@ import {
 import { useSession } from 'next-auth/react'
 import { useVoiceChat, InteractionType } from '@/hooks/useVoiceChat'
 import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
-import { SimpleVoiceChat } from '@/components/SimpleVoiceChat'
+import { InteractiveVoiceChat } from '@/components/InteractiveVoiceChat'
 
 interface Message {
   id: string
@@ -616,10 +616,10 @@ export function AIControllerChat() {
           </div>
         )}
 
-        {/* Voice Chat Mode - Simple and Working */}
+        {/* Voice Chat Mode - Interactive like Phone System */}
         {chatMode === 'voice_chat' && (
           <div className="h-[calc(100%-120px)]">
-            <SimpleVoiceChat className="h-full" />
+            <InteractiveVoiceChat className="h-full" />
           </div>
         )}
 
