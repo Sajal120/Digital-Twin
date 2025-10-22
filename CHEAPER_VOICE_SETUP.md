@@ -44,16 +44,9 @@ PREFERRED_TTS_PROVIDER=cartesia
 - ✅ **95% cost savings** vs ElevenLabs
 
 ### 📞 **Phone Calls:**
-- ✅ **Greeting in your voice** - no more "ElevenLabs failed" errors
+- ✅ **Greeting in your voice** - no more Cartesia 400 errors
 - ✅ **All responses in your voice** - consistent throughout call
 - ✅ **Retry messages in your voice** - when speech not detected
-- ✅ **Error messages in your voice** - professional handling
-
-## 🎉 **Benefits Achieved:**
-- ✅ **Same voice quality** with your cloned voice
-- ✅ **95% cost reduction** ($0.025/1K vs $22/1M chars)
-- ✅ **No quota limits** or usage restrictions  
-- ✅ **Faster processing** and generation
 - ✅ **100% ElevenLabs-free** codebase
 - ✅ **Consistent voice** across all features
 - ✅ **Professional quality** for business calls

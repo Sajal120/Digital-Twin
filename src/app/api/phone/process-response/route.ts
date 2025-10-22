@@ -115,7 +115,6 @@ async function processResponse(request: NextRequest) {
           id: process.env.CARTESIA_VOICE_ID,
           __experimental_controls: {
             speed: 'normal',
-            emotion: ['positivity:medium', 'curiosity:medium'],
           },
         },
         output_format: {

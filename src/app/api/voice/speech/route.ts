@@ -105,7 +105,6 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
         id: CARTESIA_VOICE_ID,
         __experimental_controls: {
           speed: 'normal',
-          emotion: ['positivity:medium', 'curiosity:medium'],
         },
       },
       output_format: {

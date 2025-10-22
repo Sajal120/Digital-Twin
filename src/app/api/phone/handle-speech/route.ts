@@ -240,7 +240,6 @@ export async function POST(request: NextRequest) {
               id: process.env.CARTESIA_VOICE_ID,
               __experimental_controls: {
                 speed: 'normal',
-                emotion: ['positivity:medium', 'curiosity:medium'],
               },
             },
             output_format: {
@@ -494,7 +493,6 @@ export async function POST(request: NextRequest) {
             id: process.env.CARTESIA_VOICE_ID,
             __experimental_controls: {
               speed: 'normal',
-              emotion: ['positivity:medium', 'curiosity:medium'],
             },
           },
           output_format: {
@@ -618,7 +616,6 @@ export async function POST(request: NextRequest) {
             id: process.env.CARTESIA_VOICE_ID || '6de7b29c-12d3-480d-9738-dd1f7b640364',
             __experimental_controls: {
               speed: 'normal',
-              emotion: ['positivity:medium', 'curiosity:medium'],
             },
           },
           output_format: {

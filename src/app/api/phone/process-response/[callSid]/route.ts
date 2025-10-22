@@ -137,7 +137,6 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
             id: process.env.CARTESIA_VOICE_ID,
             __experimental_controls: {
               speed: 'normal',
-              emotion: ['positivity:medium', 'curiosity:medium'],
             },
           },
           output_format: {
@@ -244,7 +243,6 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
             id: process.env.CARTESIA_VOICE_ID,
             __experimental_controls: {
               speed: 'normal',
-              emotion: ['positivity:medium', 'curiosity:medium'],
             },
           },
           output_format: {
