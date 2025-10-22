@@ -758,6 +758,59 @@ export function AIControllerChat() {
     conversationSummary,
   ])
 
+  // Spacebar functionality for voice recording
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        chatMode === 'voice_chat' &&
+        isVoiceConversationActive &&
+        event.code === 'Space' &&
+        !event.repeat &&
+        !isLoading
+      ) {
+        event.preventDefault()
+        if (isRecording) {
+          stopRecording()
+        } else if (isPlaying) {
+          stopAISpeech()
+        } else {
+          startRecording()
+        }
+      }
+    }
+
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (
+        chatMode === 'voice_chat' &&
+        isVoiceConversationActive &&
+        event.code === 'Space' &&
+        isRecording
+      ) {
+        event.preventDefault()
+        stopRecording()
+      }
+    }
+
+    if (chatMode === 'voice_chat' && isVoiceConversationActive) {
+      document.addEventListener('keydown', handleKeyDown)
+      document.addEventListener('keyup', handleKeyUp)
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [
+    chatMode,
+    isVoiceConversationActive,
+    isRecording,
+    isPlaying,
+    isLoading,
+    startRecording,
+    stopRecording,
+    stopAISpeech,
+  ])
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -870,7 +923,7 @@ export function AIControllerChat() {
 
         {/* Messages - Hidden during active voice conversation */}
         {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
-          <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
+          <div className="h-[calc(100%-140px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent pb-20">
             <AnimatePresence>
               {messages.map((message, index) => (
                 <motion.div
@@ -1110,6 +1163,11 @@ export function AIControllerChat() {
                       Start a natural voice conversation. No text will be shown during our chat.
                       <br />
                       I'll remember everything and give you the conversation history when done.
+                      <br />
+                      <br />
+                      <span className="text-white/80 font-medium">
+                        💡 Tip: Press Space Bar or Click on Mic to talk
+                      </span>
                     </p>
                   </div>
                   <div className="flex flex-col items-center space-y-3">
@@ -1144,16 +1202,13 @@ export function AIControllerChat() {
                   <div className="text-center">
                     <p className="text-white/70 text-sm">
                       {isRecording
-                        ? '🎙️ Listening... Speak now!'
+                        ? '🎙️ Listening... Speak now! (Release Space to stop)'
                         : isLoading
                           ? '⚡ Processing with Deepgram + Cartesia...'
                           : isPlaying
-                            ? '🔊 AI is speaking... (tap to stop)'
-                            : '🎯 Tap mic to continue talking'}
+                            ? '🔊 AI is speaking... (Space/Click to stop)'
+                            : '🎯 Press Space or Click Mic to talk'}
                     </p>
-                    <div className="mt-2 text-xs text-white/50">
-                      Conversation turns: {conversationMemory.length}
-                    </div>
                   </div>
 
                   {/* Mic Button */}
