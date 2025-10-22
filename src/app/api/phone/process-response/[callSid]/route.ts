@@ -72,7 +72,10 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
       throw new Error('Missing callSid or speech result from Redis')
     }
 
-    console.log('🤖 Processing AI response for:', speechResult.substring(0, 50))
+    console.log(
+      '🤖 Processing AI response for:',
+      speechResult?.substring(0, 50) || 'No speech result',
+    )
     console.log('🌍 Detected language from transcription:', detectedLanguage)
 
     // Get unified context
