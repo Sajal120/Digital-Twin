@@ -29,11 +29,47 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const thinkingAudioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Thinking sound URL (same as phone system)
+  const THINKING_SOUND_URL =
+    'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_natural.mp3'
   const conversationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Clear error after 5 seconds
   const clearError = useCallback(() => {
     setTimeout(() => setError(null), 5000)
+  }, [])
+
+  // Play thinking sound (like phone system)
+  const playThinkingSound = useCallback(() => {
+    try {
+      // Stop any existing thinking sound
+      if (thinkingAudioRef.current) {
+        thinkingAudioRef.current.pause()
+        thinkingAudioRef.current.currentTime = 0
+      }
+
+      // Create and play new thinking sound
+      const audio = new Audio(THINKING_SOUND_URL)
+      audio.volume = 0.6 // Slightly quieter for web
+      audio.play().catch(console.error)
+      thinkingAudioRef.current = audio
+
+      console.log('🤔 Playing thinking sound...')
+    } catch (err) {
+      console.error('Failed to play thinking sound:', err)
+    }
+  }, [THINKING_SOUND_URL])
+
+  // Stop thinking sound
+  const stopThinkingSound = useCallback(() => {
+    if (thinkingAudioRef.current) {
+      thinkingAudioRef.current.pause()
+      thinkingAudioRef.current.currentTime = 0
+      thinkingAudioRef.current = null
+      console.log('⏹️ Stopped thinking sound')
+    }
   }, [])
 
   // Start conversation mode
@@ -136,6 +172,9 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
     async (audioBlob: Blob) => {
       setConversationState('processing')
 
+      // Play thinking sound immediately for natural conversation feel
+      playThinkingSound()
+
       try {
         // Transcribe
         const formData = new FormData()
@@ -226,6 +265,9 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
         }
       } catch (err) {
         console.error('Processing error:', err)
+        // Stop thinking sound on error
+        stopThinkingSound()
+
         setError(err instanceof Error ? err.message : 'Voice processing failed')
         clearError()
 
@@ -234,13 +276,16 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
         setTimeout(() => startListening(), 2000)
       }
     },
-    [clearError, startListening],
+    [clearError, startListening, playThinkingSound, stopThinkingSound],
   )
 
   // Play AI response
   const playAIResponse = useCallback(
     (audioUrl: string) => {
       try {
+        // Stop thinking sound - AI is about to speak
+        stopThinkingSound()
+
         setConversationState('speaking')
 
         // Stop any existing audio
@@ -280,7 +325,7 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
         setTimeout(() => startListening(), 1000)
       }
     },
-    [conversationState, startListening, clearError],
+    [conversationState, startListening, clearError, stopThinkingSound],
   )
 
   // Interrupt AI (user starts speaking while AI is talking)
@@ -291,12 +336,15 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
       currentAudioRef.current = null
     }
 
+    // Stop thinking sound if playing
+    stopThinkingSound()
+
     // Immediately start listening
     if (conversationState === 'speaking') {
       setConversationState('active')
       setTimeout(() => startListening(), 500) // Quick transition to listening
     }
-  }, [conversationState, startListening])
+  }, [conversationState, startListening, stopThinkingSound])
 
   // End conversation
   const endConversation = useCallback(() => {
@@ -307,6 +355,9 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
       currentAudioRef.current.pause()
       currentAudioRef.current = null
     }
+
+    // Stop thinking sound
+    stopThinkingSound()
 
     // Stop recording
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -328,7 +379,7 @@ export const useInteractiveVoiceChat = (options: InteractiveVoiceChatOptions = {
     }
 
     console.log('🛑 Conversation ended')
-  }, [])
+  }, [stopThinkingSound])
 
   // Clear conversation messages
   const clearMessages = useCallback(() => {
