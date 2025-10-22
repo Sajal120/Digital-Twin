@@ -382,18 +382,6 @@ export function AIControllerChat() {
     if (conversationMemory.length === 0) {
       setConversationMemory([])
       setConversationSummary('')
-
-      // Add starting message only for new conversations
-      setVoiceChatMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          content: "Voice conversation started. I'm listening...",
-          role: 'assistant',
-          timestamp: new Date(),
-          isVoice: true,
-        },
-      ])
     } else {
       console.log('🔄 Resuming conversation with', conversationMemory.length, 'existing turns')
     }
@@ -952,7 +940,9 @@ export function AIControllerChat() {
 
         {/* Messages - Hidden during active voice conversation */}
         {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
-          <div className="h-[calc(100%-140px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent pb-20">
+          <div
+            className={`h-[calc(100%-140px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-40' : 'pb-20'}`}
+          >
             <AnimatePresence>
               {messages.map((message, index) => (
                 <motion.div
