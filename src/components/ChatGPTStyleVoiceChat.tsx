@@ -14,8 +14,8 @@ export const ChatGPTStyleVoiceChat: React.FC<ChatGPTStyleVoiceChatProps> = ({ cl
     onError: (error) => console.error('Voice chat error:', error),
   })
 
-  // Handle click on the voice button or anywhere to interrupt
-  const handleMainClick = () => {
+  // Handle the single button click
+  const handleButtonClick = () => {
     if (!voiceChat.isActive) {
       voiceChat.startConversation()
     } else if (voiceChat.isSpeaking) {
@@ -37,132 +37,151 @@ export const ChatGPTStyleVoiceChat: React.FC<ChatGPTStyleVoiceChatProps> = ({ cl
 
   return (
     <div
-      className={cn('flex flex-col h-full max-w-xl mx-auto', className)}
-      onClick={voiceChat.isSpeaking ? handleMainClick : undefined}
-      style={{ cursor: voiceChat.isSpeaking ? 'pointer' : 'default' }}
+      className={cn(
+        'flex flex-col h-full bg-gradient-to-b from-gray-900 to-black text-white',
+        className,
+      )}
     >
-      {/* Minimal Header */}
-      <div className="text-center p-4 border-b bg-gradient-to-r from-gray-50 to-gray-100">
-        <h2 className="text-xl font-semibold text-gray-800">🎙️ Voice Chat</h2>
-        <p className="text-sm text-gray-600 mt-1">
-          {voiceChat.isActive ? 'Listening...' : 'Ready to chat'}
-        </p>
-      </div>
-
-      {/* Main Voice Interface - ChatGPT Style */}
+      {/* Main Interface - Single Button Centered */}
       <div className="flex-1 flex flex-col items-center justify-center p-8">
-        {/* Single Large Voice Button */}
-        <div className="relative mb-8">
+        {/* Status Text Above Button */}
+        <div className="text-center mb-12">
+          {!voiceChat.isActive ? (
+            <div>
+              <h2 className="text-3xl font-light text-white mb-4">
+                Say hello to advanced voice mode
+              </h2>
+              <div className="space-y-3 text-left max-w-md">
+                <div className="flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded-full bg-white/20 flex-shrink-0 mt-0.5"></div>
+                  <div>
+                    <div className="font-medium text-white">Natural conversations</div>
+                    <div className="text-gray-400 text-sm">
+                      Senses and responds to interruptions, humor, and more.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded-full bg-white/20 flex-shrink-0 mt-0.5"></div>
+                  <div>
+                    <div className="font-medium text-white">Personalized to you</div>
+                    <div className="text-gray-400 text-sm">
+                      Uses memory and responses tailored to your conversations.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-5 h-5 rounded-full bg-white/20 flex-shrink-0 mt-0.5"></div>
+                  <div>
+                    <div className="font-medium text-white">You're in control</div>
+                    <div className="text-gray-400 text-sm">
+                      Audio recordings are not saved, and you can interrupt at any time.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : voiceChat.isListening ? (
+            <div>
+              <h3 className="text-2xl font-light text-white mb-2">I'm listening...</h3>
+              <p className="text-gray-400">Go ahead and speak</p>
+            </div>
+          ) : voiceChat.isProcessing ? (
+            <div>
+              <h3 className="text-2xl font-light text-white mb-2">Thinking...</h3>
+              <p className="text-gray-400">Processing your message</p>
+            </div>
+          ) : voiceChat.isSpeaking ? (
+            <div>
+              <h3 className="text-2xl font-light text-white mb-2">Speaking...</h3>
+              <p className="text-gray-400">Tap to interrupt</p>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Single Large Button - ChatGPT Style */}
+        <div className="relative">
           <button
-            onClick={handleMainClick}
+            onClick={handleButtonClick}
             disabled={!voiceChat.isSupported}
             className={cn(
-              'w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl',
+              'w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300',
               !voiceChat.isActive
-                ? 'bg-blue-500 hover:bg-blue-600 hover:scale-105'
+                ? 'bg-white text-black hover:bg-gray-100'
                 : voiceChat.isListening
-                  ? 'bg-green-500 animate-pulse scale-110'
+                  ? 'bg-white text-black animate-pulse'
                   : voiceChat.isProcessing
-                    ? 'bg-orange-500 animate-pulse'
+                    ? 'bg-orange-500 text-white animate-pulse'
                     : voiceChat.isSpeaking
-                      ? 'bg-purple-500 animate-pulse cursor-pointer'
-                      : 'bg-gray-500',
+                      ? 'bg-white text-black animate-pulse cursor-pointer'
+                      : 'bg-white text-black',
               !voiceChat.isSupported && 'opacity-50 cursor-not-allowed',
             )}
           >
             {!voiceChat.isActive ? (
-              <Mic className="w-12 h-12 text-white" />
+              <Mic className="w-8 h-8" />
             ) : voiceChat.isListening ? (
-              <div className="w-6 h-6 bg-white rounded-full animate-bounce"></div>
+              <div className="flex space-x-1">
+                <div className="w-1 h-6 bg-black rounded-full animate-pulse"></div>
+                <div
+                  className="w-1 h-8 bg-black rounded-full animate-pulse"
+                  style={{ animationDelay: '0.2s' }}
+                ></div>
+                <div
+                  className="w-1 h-4 bg-black rounded-full animate-pulse"
+                  style={{ animationDelay: '0.4s' }}
+                ></div>
+                <div
+                  className="w-1 h-7 bg-black rounded-full animate-pulse"
+                  style={{ animationDelay: '0.6s' }}
+                ></div>
+              </div>
             ) : voiceChat.isProcessing ? (
-              <Loader2 className="w-12 h-12 text-white animate-spin" />
+              <Loader2 className="w-8 h-8 animate-spin" />
             ) : voiceChat.isSpeaking ? (
-              <Volume2 className="w-12 h-12 text-white" />
+              <Volume2 className="w-8 h-8" />
             ) : (
-              <Mic className="w-12 h-12 text-white opacity-50" />
+              <Mic className="w-8 h-8" />
             )}
           </button>
 
-          {/* Ripple effect for listening */}
-          {voiceChat.isListening && (
-            <div className="absolute inset-0 w-32 h-32 rounded-full bg-green-400 animate-ping opacity-25"></div>
+          {/* Ripple effect for active states */}
+          {(voiceChat.isListening || voiceChat.isProcessing) && (
+            <div className="absolute inset-0 w-24 h-24 rounded-full bg-white/20 animate-ping"></div>
           )}
         </div>
+      </div>
 
-        {/* Status Text */}
-        <div className="text-center mb-6">
-          {!voiceChat.isActive ? (
-            <div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-2">Voice Chat Mode</h3>
-              <p className="text-gray-600 leading-relaxed">
-                Click the microphone to start our conversation.
-                <br />
-                I'll automatically listen again after I respond!
-              </p>
-            </div>
-          ) : voiceChat.isListening ? (
-            <div>
-              <h3 className="text-xl font-semibold text-green-600 mb-1">I'm listening...</h3>
-              <p className="text-sm text-gray-600">Go ahead and speak!</p>
-            </div>
-          ) : voiceChat.isProcessing ? (
-            <div>
-              <h3 className="text-xl font-semibold text-orange-600 mb-1">Hmm...</h3>
-              <p className="text-sm text-gray-600">Let me think about that...</p>
-            </div>
-          ) : voiceChat.isSpeaking ? (
-            <div>
-              <h3 className="text-xl font-semibold text-purple-600 mb-1">I'm responding...</h3>
-              <p className="text-sm text-gray-600">Tap anywhere to interrupt me</p>
-            </div>
-          ) : (
-            <div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-1">Ready</h3>
-              <p className="text-sm text-gray-600">Speak anytime!</p>
-            </div>
-          )}
-        </div>
-
-        {/* Recent Messages - Minimal */}
-        {voiceChat.messages.length > 0 && (
-          <div className="w-full max-w-md space-y-3 max-h-48 overflow-y-auto">
-            {voiceChat.messages.slice(-2).map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  'p-3 rounded-xl text-sm border',
-                  message.role === 'user'
-                    ? 'bg-blue-50 border-blue-200 text-blue-800 ml-6'
-                    : 'bg-gray-50 border-gray-200 text-gray-800 mr-6',
-                )}
-              >
-                <p className="leading-relaxed">{message.content}</p>
-              </div>
-            ))}
+      {/* Bottom Instructions/Actions */}
+      <div className="p-6 text-center">
+        {!voiceChat.isActive ? (
+          <div className="space-y-4">
+            <p className="text-gray-400 text-sm">
+              Voice mode can make mistakes — check important info.
+            </p>
+            <button
+              onClick={handleButtonClick}
+              className="w-full bg-white text-black py-3 px-6 rounded-full font-medium hover:bg-gray-100 transition-colors"
+            >
+              Continue
+            </button>
           </div>
+        ) : (
+          <button
+            onClick={voiceChat.endConversation}
+            className="text-gray-400 hover:text-white text-sm underline hover:no-underline"
+          >
+            End conversation
+          </button>
         )}
       </div>
 
       {/* Error Display */}
       {voiceChat.error && (
-        <div className="p-3 bg-red-50 border-t border-red-200 text-red-700 text-sm text-center">
+        <div className="p-3 bg-red-900/50 border-t border-red-800 text-red-200 text-sm text-center">
           {voiceChat.error}
         </div>
       )}
-
-      {/* Simple Footer */}
-      <div className="p-4 border-t bg-gray-50 text-center">
-        {voiceChat.isActive ? (
-          <button
-            onClick={voiceChat.endConversation}
-            className="text-sm text-red-600 hover:text-red-800 underline hover:no-underline"
-          >
-            End Conversation
-          </button>
-        ) : (
-          <p className="text-xs text-gray-500">💡 One button to start, then just talk naturally</p>
-        )}
-      </div>
     </div>
   )
 }
