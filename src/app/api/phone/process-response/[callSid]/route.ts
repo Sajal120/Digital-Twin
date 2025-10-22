@@ -55,13 +55,24 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     } else if (speechData && typeof speechData === 'object') {
       // New format - object with text and detectedLanguage
       const dataObj = speechData as any // Type assertion for flexibility
-      const rawText = dataObj.text || dataObj.speechResult || ''
-      speechResult = typeof rawText === 'string' ? rawText : String(rawText)
-      detectedLanguage = dataObj.detectedLanguage || dataObj.language || 'en'
+
+      // Handle nested object structure: { text: { text: '...', detectedLanguage: 'hi' }, detectedLanguage: 'hi' }
+      let rawText = dataObj.text || dataObj.speechResult || ''
+      let rawLanguage = dataObj.detectedLanguage || dataObj.language || 'en'
+
+      // If rawText is an object (nested structure), extract the actual text
+      if (typeof rawText === 'object' && rawText !== null) {
+        console.log('🔍 Nested object detected in text field:', rawText)
+        speechResult = rawText.text || String(rawText)
+        detectedLanguage = rawText.detectedLanguage || rawLanguage
+      } else {
+        speechResult = typeof rawText === 'string' ? rawText : String(rawText)
+        detectedLanguage = rawLanguage
+      }
 
       console.log('🔍 Raw text from Redis:', typeof rawText, rawText)
-      console.log('📋 Using object format - dataObj.text:', dataObj.text)
-      console.log('📋 speechResult type:', typeof speechResult, 'value:', speechResult)
+      console.log('📋 Final speechResult:', speechResult)
+      console.log('📋 Final detectedLanguage:', detectedLanguage)
     } else {
       console.error('❌ Invalid speech data format:', speechData)
       throw new Error('Invalid speech data format from Redis')
