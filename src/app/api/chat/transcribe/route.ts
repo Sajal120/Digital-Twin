@@ -8,33 +8,41 @@ const openai = new OpenAI({
 })
 
 export async function POST(request: NextRequest) {
-  console.log('🎤 Chat voice transcription endpoint called (OpenAI Whisper with Deepgram fallback)')
+  console.log('🎤 Voice Chat Transcription - Using Deepgram (fast & reliable)')
 
   try {
-    // Try OpenAI Whisper first (more reliable with audio formats)
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        return await transcribeWithOpenAI(request)
-      } catch (openaiError) {
-        console.error('❌ OpenAI transcription failed, trying Deepgram fallback:', openaiError)
+    // Read form data once and cache it
+    const formData = await request.formData()
+    const audioFile = formData.get('audio') as Blob
 
-        // Fall back to Deepgram if OpenAI fails
-        if (process.env.DEEPGRAM_API_KEY) {
-          console.log('🔄 Falling back to Deepgram...')
-          return await transcribeWithDeepgram(request)
+    if (!audioFile) {
+      return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
+    }
+
+    // Try Deepgram first (better WebM support, faster, multilingual)
+    if (process.env.DEEPGRAM_API_KEY) {
+      try {
+        return await transcribeWithDeepgram(audioFile)
+      } catch (deepgramError) {
+        console.error('❌ Deepgram failed, trying OpenAI fallback:', deepgramError)
+
+        // Fallback to OpenAI if Deepgram fails
+        if (process.env.OPENAI_API_KEY) {
+          console.log('🔄 Falling back to OpenAI Whisper...')
+          return await transcribeWithOpenAI(audioFile)
         } else {
-          throw openaiError // Re-throw if no Deepgram key
+          throw deepgramError
         }
       }
     }
 
-    // Fallback to Deepgram if OpenAI is not available
-    return await transcribeWithDeepgram(request)
+    // Use OpenAI if Deepgram not available
+    return await transcribeWithOpenAI(audioFile)
   } catch (error) {
     console.error('❌ All transcription methods failed:', error)
     return NextResponse.json(
       {
-        error: 'Transcription failed',
+        error: 'Voice transcription failed',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },
@@ -42,15 +50,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function transcribeWithOpenAI(request: NextRequest) {
+async function transcribeWithOpenAI(audioFile: Blob) {
   console.log('🎤 Using OpenAI Whisper for transcription')
-
-  const formData = await request.formData()
-  const audioFile = formData.get('audio') as Blob
-
-  if (!audioFile) {
-    return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
-  }
 
   console.log('🎤 Received audio blob:', {
     size: audioFile.size,
@@ -89,14 +90,8 @@ async function transcribeWithOpenAI(request: NextRequest) {
     finalMimeType: mimeType,
   })
 
-  // Try multiple approaches for WebM compatibility
-  let file
-  if (audioFile.type.includes('webm')) {
-    // For WebM files, try without specifying MIME type to let OpenAI auto-detect
-    file = new File([audioBuffer], fileName)
-  } else {
-    file = new File([audioBuffer], fileName, { type: mimeType })
-  }
+  // Create file for OpenAI (simpler approach)
+  const file = new File([audioBuffer], fileName, { type: mimeType })
 
   try {
     console.log('🎯 Sending to OpenAI Whisper:', { fileName, fileSize: audioBuffer.byteLength })
@@ -120,56 +115,17 @@ async function transcribeWithOpenAI(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('❌ OpenAI Whisper error:', error)
-
-    // If WebM fails due to format issue, try creating as different format
-    if (audioFile.type.includes('webm') && error?.message?.includes('format')) {
-      console.log('🔄 WebM failed, retrying as WAV...')
-      try {
-        const wavFile = new File([audioBuffer], 'audio.wav', { type: 'audio/wav' })
-        console.log('🎯 Retrying with WAV format')
-
-        const retryTranscription = await openai.audio.transcriptions.create({
-          file: wavFile,
-          model: 'whisper-1',
-          response_format: 'json',
-          temperature: 0.2,
-          prompt:
-            'This is a voice message that may contain technical terms, names, or casual conversation.',
-        })
-
-        console.log('✅ WAV retry successful:', retryTranscription.text?.substring(0, 100))
-        return NextResponse.json({
-          transcript: retryTranscription.text || '',
-          confidence: 1.0,
-          detectedLanguage: 'en',
-          provider: 'openai-whisper-wav-retry',
-        })
-      } catch (retryError) {
-        console.error('❌ WAV retry also failed:', retryError)
-      }
-    }
-
-    // If OpenAI fails completely, fall back to Deepgram
-    console.log('🔄 OpenAI failed, falling back to Deepgram...')
-    throw error // This will trigger the Deepgram fallback in the main function
+    throw error // Let the main function handle fallback
   }
 }
 
-async function transcribeWithDeepgram(request: NextRequest) {
-  console.log('🎤 Using Deepgram for transcription')
+async function transcribeWithDeepgram(audioFile: Blob) {
+  console.log('🎤 Using Deepgram for voice chat transcription')
 
   // Check for API key
   if (!process.env.DEEPGRAM_API_KEY) {
     console.error('❌ DEEPGRAM_API_KEY not configured!')
     return NextResponse.json({ error: 'Deepgram API key not configured' }, { status: 500 })
-  }
-
-  // Get audio from form data
-  const formData = await request.formData()
-  const audioFile = formData.get('audio') as Blob
-
-  if (!audioFile) {
-    return NextResponse.json({ error: 'No audio file provided' }, { status: 400 })
   }
 
   console.log('🎤 Received audio blob:', {

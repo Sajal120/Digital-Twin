@@ -19,6 +19,7 @@ import {
 import { useSession } from 'next-auth/react'
 import { useVoiceChat, InteractionType } from '@/hooks/useVoiceChat'
 import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
+import { SimpleVoiceChat } from '@/components/SimpleVoiceChat'
 
 interface Message {
   id: string
@@ -615,40 +616,10 @@ export function AIControllerChat() {
           </div>
         )}
 
-        {/* Voice Chat Mode - Show voice status instead of messages */}
+        {/* Voice Chat Mode - Simple and Working */}
         {chatMode === 'voice_chat' && (
-          <div className="h-[calc(100%-180px)] flex items-center justify-center p-6">
-            <div className="text-center">
-              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center">
-                {voiceChat.isListening ? (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  >
-                    <Mic className="w-12 h-12 text-white" />
-                  </motion.div>
-                ) : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                  >
-                    <Volume2 className="w-12 h-12 text-white" />
-                  </motion.div>
-                ) : (
-                  <Mic className="w-12 h-12 text-white opacity-50" />
-                )}
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Voice Chat Mode</h3>
-              <p className="text-white/70 mb-4 max-w-md">
-                {voiceChat.isListening
-                  ? "🎙️ I'm listening... Go ahead and speak!"
-                  : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
-                    ? "🔊 I'm responding to you..."
-                    : voiceChat.isProcessing
-                      ? '⚡ Understanding your message...'
-                      : "Click the microphone to start our conversation. I'll automatically listen again after I respond!"}
-              </p>
-            </div>
+          <div className="h-[calc(100%-120px)]">
+            <SimpleVoiceChat className="h-full" />
           </div>
         )}
 
