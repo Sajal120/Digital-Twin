@@ -14,6 +14,7 @@ import {
   Mic,
   MicOff,
   Volume2,
+  Square,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
@@ -38,6 +39,7 @@ export function AIControllerChat() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Get context first
   const {
@@ -111,6 +113,10 @@ export function AIControllerChat() {
     return () => {
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop()
+      }
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause()
+        currentAudioRef.current = null
       }
     }
   }, [mediaRecorder])
@@ -416,12 +422,12 @@ export function AIControllerChat() {
       setIsLoading(true)
       console.log('🎤 Processing voice message...', audioBlob.size, 'bytes')
 
-      // Step 1: Transcribe audio using existing voice/transcribe API
+      // Step 1: Transcribe audio using Deepgram (faster and more accurate)
       const formData = new FormData()
       formData.append('audio', audioBlob, 'recording.webm')
 
-      console.log('📝 Transcribing audio...')
-      const transcribeResponse = await fetch('/api/voice/transcribe', {
+      console.log('🎤 Transcribing with Deepgram...')
+      const transcribeResponse = await fetch('/api/voice/deepgram-transcribe', {
         method: 'POST',
         body: formData,
       })
@@ -478,10 +484,18 @@ export function AIControllerChat() {
         const chatData = await chatResponse.json()
         if (chatData.result?.content?.[0]?.text) {
           aiResponseText = chatData.result.content[0].text
+            // Remove all MCP metadata and formatting
+            .replace(/\*\*Enhanced Interview Response\*\*[^:]*:[^\n]*\n?/gi, '')
+            .replace(/Query Enhancement:[^\n]*\n?/gi, '')
+            .replace(/Processing Mode:[^\n]*\n?/gi, '')
             .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
             .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
-            .replace(/Enhanced Interview Response[^:]*:\s*/gi, '') // Remove MCP headers
-            .replace(/---[^\n]*\n/g, '') // Remove dividers
+            .replace(/---[^\n]*\n?/g, '') // Remove dividers
+            .replace(/^\s*\n+/gm, '') // Remove empty lines at start
+            .replace(/\n\s*\n+/g, '. ') // Replace multiple newlines with periods
+            .replace(/\n/g, '. ') // Replace single newlines with periods
+            .replace(/\.\s*\./g, '.') // Remove duplicate periods
+            .replace(/\s+/g, ' ') // Normalize whitespace
             .trim()
         }
       }
@@ -518,12 +532,23 @@ export function AIControllerChat() {
     }
   }
 
+  // Function to stop AI speech
+  const stopAISpeech = () => {
+    if (currentAudioRef.current) {
+      console.log('🛑 Stopping AI speech...')
+      currentAudioRef.current.pause()
+      currentAudioRef.current.currentTime = 0
+      currentAudioRef.current = null
+      setIsPlaying(false)
+    }
+  }
+
   const generateAndPlaySpeech = async (text: string) => {
     try {
       setIsPlaying(true)
-      console.log('🎧 Generating speech for:', text.substring(0, 50) + '...')
+      console.log('� Generating speech with Cartesia cloned voice:', text.substring(0, 50) + '...')
 
-      // Use existing TTS API (following phone backend)
+      // Use Cartesia TTS API with your cloned voice
       const ttsResponse = await fetch('/api/voice/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -531,7 +556,7 @@ export function AIControllerChat() {
       })
 
       if (!ttsResponse.ok) {
-        throw new Error('TTS generation failed')
+        throw new Error('Cartesia TTS generation failed')
       }
 
       // Get audio blob and play it
@@ -539,14 +564,18 @@ export function AIControllerChat() {
       const audioUrl = URL.createObjectURL(audioBlob)
 
       const audio = new Audio(audioUrl)
+      currentAudioRef.current = audio // Store reference for stopping
+
       audio.onended = () => {
         setIsPlaying(false)
+        currentAudioRef.current = null
         URL.revokeObjectURL(audioUrl)
-        console.log('✅ Speech playback completed')
+        console.log('✅ Cartesia speech playback completed')
       }
 
       audio.onerror = () => {
         setIsPlaying(false)
+        currentAudioRef.current = null
         URL.revokeObjectURL(audioUrl)
         console.error('❌ Speech playback failed')
       }
@@ -733,7 +762,7 @@ export function AIControllerChat() {
                               onClick={() => generateAndPlaySpeech(message.content)}
                               disabled={isPlaying || isLoading}
                               className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
-                              title="Replay voice message"
+                              title="Replay with your Cartesia cloned voice"
                             >
                               {isPlaying ? '🔊 Playing...' : '🔁 Replay'}
                             </button>
@@ -915,27 +944,28 @@ export function AIControllerChat() {
                   {isRecording
                     ? '🎙️ Listening... Speak now!'
                     : isLoading
-                      ? '⚡ Processing your message...'
+                      ? '⚡ Processing with Deepgram + Cartesia...'
                       : isPlaying
-                        ? '🔊 AI is speaking...'
+                        ? '🔊 AI is speaking... (tap to stop)'
                         : '🎯 Tap mic to start talking'}
                 </p>
-              </div>
-
+              </div>{' '}
               {/* Mic Button */}
               <motion.button
                 type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isLoading || isPlaying}
+                onClick={isRecording ? stopRecording : isPlaying ? stopAISpeech : startRecording}
+                disabled={isLoading}
                 className={`p-6 rounded-full transition-all shadow-lg ${
                   isRecording
                     ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : isLoading || isPlaying
-                      ? 'bg-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                    : isPlaying
+                      ? 'bg-orange-500 hover:bg-orange-600'
+                      : isLoading
+                        ? 'bg-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
                 } disabled:opacity-50`}
-                whileHover={{ scale: isLoading || isPlaying ? 1 : 1.05 }}
-                whileTap={{ scale: isLoading || isPlaying ? 1 : 0.95 }}
+                whileHover={{ scale: isLoading ? 1 : 1.05 }}
+                whileTap={{ scale: isLoading ? 1 : 0.95 }}
               >
                 {isRecording ? (
                   <motion.div
@@ -947,7 +977,7 @@ export function AIControllerChat() {
                 ) : isLoading ? (
                   <Loader2 className="w-8 h-8 text-white animate-spin" />
                 ) : isPlaying ? (
-                  <Volume2 className="w-8 h-8 text-white" />
+                  <Square className="w-8 h-8 text-white" />
                 ) : (
                   <Mic className="w-8 h-8 text-white" />
                 )}

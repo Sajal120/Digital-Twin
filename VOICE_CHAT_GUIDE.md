@@ -1,30 +1,31 @@
 # Voice Chat Feature Guide
 
 ## Overview
-The Voice Chat mode provides a complete voice-based conversation experience, following the same backend architecture as the phone system but optimized for web and mobile browsers.
+The Voice Chat mode provides a complete voice-based conversation experience using your cloned Cartesia voice and Deepgram's advanced speech recognition, following the same backend architecture as the phone system but optimized for web and mobile browsers.
 
 ## Features
-- 🎙️ **Voice Recording**: Uses Web Audio API + MediaRecorder
-- 📝 **Transcription**: Powered by OpenAI Whisper via `/api/voice/transcribe`
+- 🎙️ **Voice Recording**: Uses Web Audio API + MediaRecorder  
+- 📝 **Transcription**: Powered by Deepgram Nova-2 via `/api/voice/deepgram-transcribe`
 - 🤖 **AI Processing**: Uses MCP Digital Twin for intelligent responses
-- 🔊 **Text-to-Speech**: Generates audio responses via `/api/voice/tts`
-- 📱 **Mobile Optimized**: Works great on mobile devices
+- 🔊 **Text-to-Speech**: Your cloned Cartesia voice via `/api/voice/tts`
+- � **Speech Control**: Stop AI speech anytime by tapping the button
+- �📱 **Mobile Optimized**: Works great on mobile devices
 
 ## How It Works
 
 ### Step-by-Step Process
 1. **User taps mic button** → Starts audio recording (WebM format)
-2. **Audio sent to backend** → `/api/voice/transcribe` (OpenAI Whisper)  
+2. **Audio sent to backend** → `/api/voice/deepgram-transcribe` (Deepgram Nova-2)  
 3. **Text processed by AI** → `/api/mcp` (Digital Twin MCP server)
-4. **AI response generated** → Clean, conversational text response
-5. **Text-to-speech** → `/api/voice/tts` (OpenAI TTS)
-6. **Audio played back** → Browser audio playback
+4. **AI response cleaned** → Removes MCP metadata and formatting
+5. **Text-to-speech** → `/api/voice/tts` (Cartesia with your cloned voice)
+6. **Audio played back** → Browser audio playback (stoppable)
 
 ### Technical Architecture
 ```
-Browser (MediaRecorder) → /api/voice/transcribe → /api/mcp → /api/voice/tts → Browser (Audio)
+Browser (MediaRecorder) → Deepgram Nova-2 → MCP Digital Twin → Cartesia Voice → Browser (Audio)
      ↑                                                                            ↓
-Voice Input                                                              Voice Output
+Voice Input                                                              Your Voice Output
 ```
 
 ## Usage
@@ -57,27 +58,29 @@ Voice Input                                                              Voice O
 - Message history preserved like other chat modes
 
 ### Smart Features
-- **Auto-cleanup**: Microphone resources automatically released
+- **Auto-cleanup**: Microphone and audio resources automatically released
+- **Speech interruption**: Stop AI speech anytime by tapping the mic button
+- **Response cleaning**: Automatically removes MCP metadata and formatting
 - **Error handling**: Graceful fallbacks for audio issues
 - **Permission handling**: Clear prompts for microphone access
 - **Format optimization**: WebM for modern browsers, fallbacks available
 
 ## API Integration
 
-### Transcription (`/api/voice/transcribe`)
+### Transcription (`/api/voice/deepgram-transcribe`)
 - Input: Audio file (WebM/WAV)
-- Output: Text transcript
-- Powered by: OpenAI Whisper
+- Output: Text transcript with confidence score
+- Powered by: Deepgram Nova-2 (faster and more accurate than Whisper)
 
 ### AI Processing (`/api/mcp`)
 - Input: User question text
-- Output: Intelligent response
+- Output: Intelligent response (automatically cleaned of metadata)
 - Powered by: Digital Twin MCP server
 
 ### Text-to-Speech (`/api/voice/tts`)
 - Input: Response text
-- Output: Audio file (MP3)
-- Powered by: OpenAI TTS
+- Output: Audio file (MP3) in your voice
+- Powered by: Cartesia with your cloned voice ID
 
 ## Browser Compatibility
 - **Chrome/Edge**: Full support (WebM + Opus)
