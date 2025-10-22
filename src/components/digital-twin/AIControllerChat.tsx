@@ -2,24 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Send,
-  Bot,
-  User,
-  Loader2,
-  Mic,
-  MicOff,
-  Volume2,
-  VolumeX,
-  X,
-  Minimize2,
-  Settings,
-  Phone,
-} from 'lucide-react'
+import { Send, Bot, User, Loader2, X, Minimize2, Settings, Phone } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import { useVoiceChat, InteractionType } from '@/hooks/useVoiceChat'
+
 import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
-import { InteractiveVoiceChat } from '@/components/InteractiveVoiceChat'
 
 interface Message {
   id: string
@@ -34,7 +20,7 @@ export function AIControllerChat() {
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [currentInteractionType, setCurrentInteractionType] = useState<InteractionType>('general')
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -74,61 +60,12 @@ export function AIControllerChat() {
     },
   ])
 
-  const [voiceChatMessages, setVoiceChatMessages] = useState<Message[]>([
-    {
-      id: '1',
-      content: session?.user
-        ? `Hi ${session.user.name}! 🎙️ Ready for voice chat!`
-        : 'Hi! 🎙️ Ready for voice chat!',
-      role: 'assistant',
-      timestamp: new Date(),
-    },
-  ])
+  // Voice chat removed - no longer needed
 
   // Use the appropriate messages based on current chat mode
-  const messages =
-    chatMode === 'ai_control'
-      ? aiControlMessages
-      : chatMode === 'plain_chat'
-        ? plainChatMessages
-        : voiceChatMessages
+  const messages = chatMode === 'ai_control' ? aiControlMessages : plainChatMessages
 
-  const setMessages =
-    chatMode === 'ai_control'
-      ? setAiControlMessages
-      : chatMode === 'plain_chat'
-        ? setPlainChatMessages
-        : setVoiceChatMessages
-
-  // Voice chat integration - Only active in voice chat mode for complete isolation
-  const voiceChat = useVoiceChat({
-    interactionType: currentInteractionType,
-    autoPlayResponses: chatMode === 'voice_chat', // Only auto-play in voice chat mode
-    saveConversationHistory: chatMode === 'voice_chat', // Only save history in voice chat mode
-    onError: (error) => {
-      const browserAudioErrors = [
-        'blocked by browser',
-        'NotAllowedError',
-        'no supported source was found',
-        'Audio source not available',
-      ]
-      const isBrowserAudioIssue = browserAudioErrors.some((err) =>
-        error.toLowerCase().includes(err.toLowerCase()),
-      )
-      if (!isBrowserAudioIssue) {
-        console.error('Voice chat error:', error)
-      }
-    },
-    onMessageReceived: (message) => {
-      console.log(`📢 Voice message received in ${chatMode} mode:`, message)
-      // Only process messages in voice chat mode
-      if (chatMode !== 'voice_chat') {
-        console.log('🚫 Non-voice mode: Ignoring voice message to prevent cross-contamination')
-        return
-      }
-      console.log('🎙️ Voice Chat Mode: Processing pure voice interaction')
-    },
-  })
+  const setMessages = chatMode === 'ai_control' ? setAiControlMessages : setPlainChatMessages
 
   useEffect(() => {
     setIsMounted(true)
@@ -137,69 +74,6 @@ export function AIControllerChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  // Sync voice state with context
-  useEffect(() => {
-    if (voiceChat.isListening) {
-      setVoiceState('listening')
-    } else if (voiceChat.isSpeaking || voiceChat.audioPlayerState.isPlaying) {
-      setVoiceState('speaking')
-    } else if (voiceChat.isProcessing) {
-      setVoiceState('processing')
-    } else {
-      setVoiceState('idle')
-    }
-  }, [
-    voiceChat.isListening,
-    voiceChat.isSpeaking,
-    voiceChat.isProcessing,
-    voiceChat.audioPlayerState.isPlaying,
-    setVoiceState,
-  ])
-
-  // Auto-restart listening in voice chat mode after AI finishes speaking
-  useEffect(() => {
-    if (
-      chatMode === 'voice_chat' &&
-      !voiceChat.isListening &&
-      !voiceChat.isSpeaking &&
-      !voiceChat.audioPlayerState.isPlaying &&
-      !voiceChat.isProcessing &&
-      voiceState === 'idle'
-    ) {
-      // Small delay after AI finishes speaking, then auto-start listening again
-      const autoRestartTimeout = setTimeout(() => {
-        if (chatMode === 'voice_chat' && !voiceChat.isListening && voiceChat.isSupported) {
-          console.log('🔄 Auto-restarting voice listening in voice chat mode only')
-          voiceChat.startListening()
-        }
-      }, 2000) // 2 second delay
-
-      return () => clearTimeout(autoRestartTimeout)
-    }
-  }, [
-    chatMode,
-    voiceChat.isListening,
-    voiceChat.isSpeaking,
-    voiceChat.audioPlayerState.isPlaying,
-    voiceChat.isProcessing,
-    voiceState,
-    voiceChat.isSupported,
-  ])
-
-  // Sync voice messages - DISABLED for complete voice chat mode isolation
-  // Voice chat mode should be completely separate and not sync to text modes
-  useEffect(() => {
-    // Skip all voice message syncing - each mode is completely independent
-    return
-  }, [voiceChat.messages, chatMode])
-
-  // Clear voice chat messages when switching between modes for isolation
-  useEffect(() => {
-    // Clear voice chat conversation when switching modes to ensure isolation
-    voiceChat.clearConversation()
-    console.log(`🔄 Switched to ${chatMode} mode - cleared voice conversation for isolation`)
-  }, [chatMode])
 
   const handleAIResponse = (content: string, isAIControl: boolean = false) => {
     setLastAIMessage(content)
@@ -242,12 +116,6 @@ export function AIControllerChat() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputValue.trim() || isLoading) return
-
-    // Prevent text input in voice chat mode
-    if (chatMode === 'voice_chat') {
-      console.log('🎙️ Voice Chat Mode: Text input disabled')
-      return
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -315,7 +183,7 @@ export function AIControllerChat() {
             role: m.role,
             content: m.content,
           })),
-          enhancedMode: chatMode !== 'ai_control', // Force enhanced mode for Plain Chat and Voice Chat
+          enhancedMode: chatMode !== 'ai_control', // Force enhanced mode for Plain Chat
           interviewType: chatMode !== 'ai_control' ? 'general' : 'brief',
           user: session?.user
             ? {
@@ -375,12 +243,6 @@ export function AIControllerChat() {
       console.log('⚠️ Audio unlock failed:', error)
       return false
     }
-  }
-
-  const stopVoice = () => {
-    voiceChat.stopListening()
-    voiceChat.stopAudio()
-    setVoiceState('idle')
   }
 
   // Helper function to render message content with clickable links
@@ -514,17 +376,6 @@ export function AIControllerChat() {
               >
                 💬 Plain Chat
               </button>
-              <button
-                onClick={() => setChatMode('voice_chat')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-                  chatMode === 'voice_chat'
-                    ? 'bg-green-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                title="Voice Chat: Voice-only conversation, no text input"
-              >
-                🎙️ Voice Chat
-              </button>
             </div>
 
             <button
@@ -537,7 +388,7 @@ export function AIControllerChat() {
         </div>
 
         {/* Messages - Hidden in Voice Chat mode */}
-        {chatMode !== 'voice_chat' && (
+        {
           <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
             <AnimatePresence>
               {messages.map((message, index) => (
@@ -614,17 +465,10 @@ export function AIControllerChat() {
 
             <div ref={messagesEndRef} />
           </div>
-        )}
-
-        {/* Voice Chat Mode - Interactive like Phone System */}
-        {chatMode === 'voice_chat' && (
-          <div className="h-[calc(100%-120px)]">
-            <InteractiveVoiceChat className="h-full" />
-          </div>
-        )}
+        }
 
         {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
-        {chatMode !== 'voice_chat' && messages.length <= 2 && (
+        {messages.length <= 2 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -743,100 +587,24 @@ export function AIControllerChat() {
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom">
           <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
-            {/* Voice Buttons - Only show in Voice Chat mode */}
-            {chatMode === 'voice_chat' && (
-              <>
-                {/* Mic Button - One-click to start voice conversation */}
-                <motion.button
-                  type="button"
-                  onClick={async () => {
-                    await unlockAudio()
-                    if (voiceChat.isListening) {
-                      // Stop listening immediately
-                      voiceChat.stopListening()
-                    } else if (voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking') {
-                      // Stop any playing audio
-                      console.log('🛑 Stopping audio playback')
-                      voiceChat.stopAudio()
-                      stopVoice()
-                      if (localAudioRef.current) {
-                        localAudioRef.current.pause()
-                        localAudioRef.current.currentTime = 0
-                        localAudioRef.current = null
-                      }
-                    } else {
-                      // Start listening - will auto-stop when speech ends
-                      console.log('🎙️ Starting voice conversation in voice chat mode')
-                      if (chatMode === 'voice_chat') {
-                        voiceChat.startListening()
-                      }
-                    }
-                  }}
-                  disabled={!isMounted || !voiceChat.isSupported || voiceChat.isProcessing}
-                  className={`p-4 sm:p-6 rounded-full transition-all shadow-lg ${
-                    voiceChat.isListening
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                      : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
-                        ? 'bg-blue-500 hover:bg-blue-600'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-                  } disabled:opacity-50`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {voiceChat.isListening ? (
-                    <motion.div
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1, repeat: Infinity }}
-                    >
-                      <Mic className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                    </motion.div>
-                  ) : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking' ? (
-                    <VolumeX className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                  ) : (
-                    <Mic className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                  )}
-                </motion.button>
-              </>
-            )}
+            <input
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Ask me anything..."
+              className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
+              disabled={isLoading}
+            />
 
-            {/* Text input and submit - Hidden in Voice Chat mode */}
-            {chatMode !== 'voice_chat' && (
-              <>
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask me anything... or use voice"
-                  className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
-                  disabled={isLoading || voiceChat.isListening}
-                />
-
-                <motion.button
-                  type="submit"
-                  disabled={!inputValue.trim() || isLoading || voiceChat.isListening}
-                  className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </motion.button>
-              </>
-            )}
-
-            {/* Voice Chat mode - Show larger voice status */}
-            {chatMode === 'voice_chat' && (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-white/70 text-sm text-center">
-                  {voiceChat.isListening
-                    ? '🎙️ Listening... Speak now!'
-                    : voiceChat.audioPlayerState.isPlaying || voiceState === 'speaking'
-                      ? '🔊 AI is responding...'
-                      : voiceChat.isProcessing
-                        ? '⚡ Processing your message...'
-                        : '🎯 Ready to listen - Click mic or wait 2 seconds'}
-                </p>
-              </div>
-            )}
+            <motion.button
+              type="submit"
+              disabled={!inputValue.trim() || isLoading}
+              className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            </motion.button>
           </form>
         </div>
       </motion.div>
