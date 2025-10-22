@@ -109,6 +109,15 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
 
     console.log(`✅ MCP response generated in ${Date.now() - aiStartTime}ms!`)
     console.log('📊 Source:', unifiedResponse.source)
+    console.log(
+      '🔍 Full unifiedResponse structure:',
+      typeof unifiedResponse,
+      Object.keys(unifiedResponse || {}),
+    )
+    console.log(
+      '📝 Response text:',
+      unifiedResponse.response?.substring?.(0, 100) || 'NO RESPONSE TEXT',
+    )
 
     const currentLanguage = (unifiedResponse as any).language || 'en'
     if (currentLanguage !== previousLanguage && previousLanguage) {
@@ -197,7 +206,7 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
       console.log('📁 Audio metadata:', {
         audioId,
         bufferSize: audioBufferObj.length,
-        textPreview: unifiedResponse.response?.substring(0, 50) || 'No response text',
+        textPreview: responseText?.substring(0, 50) || 'No response text',
       })
 
       const blob = await put(`phone-audio/${audioId}.mp3`, audioBufferObj, {
