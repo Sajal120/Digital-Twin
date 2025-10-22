@@ -810,6 +810,10 @@ export async function detectLanguageContext(
           if (keywordLower.includes(' ')) {
             return messageLower.includes(keywordLower)
           }
+          // Special handling for non-ASCII scripts (Hindi/Nepali/Chinese)
+          if (/[^\x00-\x7F]/.test(keywordLower)) {
+            return messageLower.includes(keywordLower)
+          }
           const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
           return wordBoundaryRegex.test(message)
         }).length
@@ -819,6 +823,10 @@ export async function detectLanguageContext(
         const hindiMatches = hindiKeywords.filter((keyword) => {
           const keywordLower = keyword.toLowerCase()
           if (keywordLower.includes(' ')) {
+            return messageLower.includes(keywordLower)
+          }
+          // Special handling for non-ASCII scripts (Hindi/Nepali/Chinese)
+          if (/[^\x00-\x7F]/.test(keywordLower)) {
             return messageLower.includes(keywordLower)
           }
           const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
@@ -856,6 +864,11 @@ export async function detectLanguageContext(
             return messageLower.includes(keywordLower)
           }
           // For single words, use word boundary regex
+          // Special handling for non-ASCII scripts (Hindi/Nepali/Chinese)
+          if (/[^\x00-\x7F]/.test(keywordLower)) {
+            // For Unicode characters, use simple substring match
+            return messageLower.includes(keywordLower)
+          }
           const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
           return wordBoundaryRegex.test(message)
         }).length
@@ -872,6 +885,10 @@ export async function detectLanguageContext(
               return messageLower.includes(keywordLower)
             }
             // For single words, use word boundary regex
+            // Special handling for non-ASCII scripts (Hindi/Nepali/Chinese)
+            if (/[^\x00-\x7F]/.test(keywordLower)) {
+              return messageLower.includes(keywordLower)
+            }
             const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
             return wordBoundaryRegex.test(message)
           }).length
@@ -921,6 +938,11 @@ export async function detectLanguageContext(
           return messageLower.includes(keywordLower)
         }
         // For single words, use word boundary regex to match whole words only
+        // Special handling for non-ASCII scripts (Hindi/Nepali/Chinese)
+        if (/[^\x00-\x7F]/.test(keywordLower)) {
+          // For Unicode characters, use simple substring match with space boundaries
+          return messageLower.includes(keywordLower)
+        }
         const wordBoundaryRegex = new RegExp(`\\b${keywordLower}\\b`, 'i')
         return wordBoundaryRegex.test(message)
       }).length
