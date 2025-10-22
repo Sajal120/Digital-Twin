@@ -5,11 +5,26 @@ export interface VoiceMapping {
 
 export class VoiceMapper {
   private static voiceMapping: VoiceMapping = {
-    en: process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID || '',
-    ne: process.env.ELEVENLABS_VOICE_ID_NEPALI || process.env.ELEVENLABS_VOICE_ID || '',
-    hi: process.env.ELEVENLABS_VOICE_ID_HINDI || process.env.ELEVENLABS_VOICE_ID || '',
-    es: process.env.ELEVENLABS_VOICE_ID_SPANISH || process.env.ELEVENLABS_VOICE_ID || '',
-    zh: process.env.ELEVENLABS_VOICE_ID_CHINESE || process.env.ELEVENLABS_VOICE_ID || '',
+    en:
+      process.env.CARTESIA_VOICE_ID_ENGLISH ||
+      process.env.CARTESIA_VOICE_ID ||
+      '6de7b29c-12d3-480d-9738-dd1f7b640364',
+    ne:
+      process.env.CARTESIA_VOICE_ID_NEPALI ||
+      process.env.CARTESIA_VOICE_ID ||
+      '6de7b29c-12d3-480d-9738-dd1f7b640364',
+    hi:
+      process.env.CARTESIA_VOICE_ID_HINDI ||
+      process.env.CARTESIA_VOICE_ID ||
+      '6de7b29c-12d3-480d-9738-dd1f7b640364',
+    es:
+      process.env.CARTESIA_VOICE_ID_SPANISH ||
+      process.env.CARTESIA_VOICE_ID ||
+      '6de7b29c-12d3-480d-9738-dd1f7b640364',
+    zh:
+      process.env.CARTESIA_VOICE_ID_CHINESE ||
+      process.env.CARTESIA_VOICE_ID ||
+      '6de7b29c-12d3-480d-9738-dd1f7b640364',
   }
 
   static getVoiceIdForLanguage(language: string): string {
@@ -17,8 +32,8 @@ export class VoiceMapper {
     const voiceId =
       this.voiceMapping[language] ||
       this.voiceMapping['en'] ||
-      process.env.ELEVENLABS_VOICE_ID ||
-      ''
+      process.env.CARTESIA_VOICE_ID ||
+      '6de7b29c-12d3-480d-9738-dd1f7b640364'
 
     if (!voiceId) {
       throw new Error(`No voice ID configured for language: ${language}`)

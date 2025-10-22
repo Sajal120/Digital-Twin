@@ -580,8 +580,8 @@ export async function POST(request: NextRequest) {
         },
       })
     } catch (voiceError: any) {
-      console.error('❌ ElevenLabs failed:', voiceError.message)
-      console.error('❌ ElevenLabs error stack:', voiceError.stack)
+      console.error('❌ Cartesia failed:', voiceError.message)
+      console.error('❌ Cartesia error stack:', voiceError.stack)
       // No fallback - throw error to trigger retry TwiML
       throw voiceError
     }
@@ -591,26 +591,28 @@ export async function POST(request: NextRequest) {
     // Generate error message in YOUR voice
     try {
       const errorMessage = "Sorry, I'm having trouble processing that. Please try again."
-      const errorAudioResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-          },
-          body: JSON.stringify({
-            text: errorMessage,
-            model_id: 'eleven_turbo_v2_5',
-            voice_settings: {
-              stability: 0.6,
-              similarity_boost: 0.8,
-            },
-            output_format: 'mp3_22050_32',
-          }),
+      const errorAudioResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cartesia-Version': '2024-06-10',
+          'X-API-Key': process.env.CARTESIA_API_KEY || '',
         },
-      )
+        body: JSON.stringify({
+          model_id: 'sonic-english',
+          transcript: errorMessage,
+          voice: {
+            mode: 'id',
+            id: process.env.CARTESIA_VOICE_ID || '6de7b29c-12d3-480d-9738-dd1f7b640364',
+          },
+          output_format: {
+            container: 'mp3',
+            encoding: 'mp3',
+            sample_rate: 22050,
+          },
+          language: 'en',
+        }),
+      })
 
       if (errorAudioResponse.ok) {
         const errorAudioBuffer = await errorAudioResponse.arrayBuffer()
@@ -648,11 +650,11 @@ export async function POST(request: NextRequest) {
           },
         })
       }
-    } catch (elevenLabsError) {
-      console.error('❌ ElevenLabs error fallback failed:', elevenLabsError)
+    } catch (cartesiaError) {
+      console.error('❌ Cartesia error fallback failed:', cartesiaError)
     }
 
-    // Final fallback if ElevenLabs fails
+    // Final fallback if Cartesia fails
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew-Neural" language="en-US">Sorry, something went wrong. Please call back later.</Say>

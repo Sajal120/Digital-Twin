@@ -117,40 +117,41 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
       console.warn('⚠️ Audio cache check failed:', cacheError)
     }
 
-    // Generate audio with ElevenLabs if not cached
+    // Generate audio with Cartesia if not cached
     if (!audioUrl) {
-      console.log('🎤 Generating YOUR voice response...')
-      const elevenLabsStartTime = Date.now()
+      console.log('🎤 Generating YOUR voice response with Cartesia...')
+      const cartesiaStartTime = Date.now()
 
-      const elevenlabsResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID_ENGLISH || process.env.ELEVENLABS_VOICE_ID}`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-          },
-          body: JSON.stringify({
-            text: unifiedResponse.response,
-            model_id: 'eleven_turbo_v2_5',
-            voice_settings: {
-              stability: 0.6,
-              similarity_boost: 0.8,
-            },
-            output_format: 'mp3_22050_32',
-            optimize_streaming_latency: 4,
-          }),
+      const cartesiaResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': process.env.CARTESIA_API_KEY || '',
+          'Cartesia-Version': '2024-10-21',
         },
-      )
+        body: JSON.stringify({
+          model_id: 'sonic-english',
+          transcript: unifiedResponse.response,
+          voice: {
+            mode: 'id',
+            id: process.env.CARTESIA_VOICE_ID,
+          },
+          output_format: {
+            container: 'mp3',
+            encoding: 'mp3',
+            sample_rate: 22050,
+          },
+        }),
+      })
 
-      if (!elevenlabsResponse.ok) {
-        throw new Error(`ElevenLabs API error: ${elevenlabsResponse.status}`)
+      if (!cartesiaResponse.ok) {
+        const errorText = await cartesiaResponse.text()
+        throw new Error(`Cartesia API error: ${cartesiaResponse.status} - ${errorText}`)
       }
 
-      console.log(`⚡ ElevenLabs responded in ${Date.now() - elevenLabsStartTime}ms`)
+      console.log(`⚡ Cartesia responded in ${Date.now() - cartesiaStartTime}ms`)
 
-      const audioBuffer = await elevenlabsResponse.arrayBuffer()
+      const audioBuffer = await cartesiaResponse.arrayBuffer()
       const audioBufferObj = Buffer.from(audioBuffer)
 
       // Generate unique audio ID
@@ -219,29 +220,30 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
   } catch (error) {
     console.error('❌ Error processing response:', error)
 
-    // Generate error message in YOUR voice
+    // Generate error message in YOUR voice with Cartesia
     try {
       const errorMessage = "Sorry, I'm having trouble processing that. Please try again."
-      const errorAudioResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-        {
-          method: 'POST',
-          headers: {
-            Accept: 'audio/mpeg',
-            'Content-Type': 'application/json',
-            'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
-          },
-          body: JSON.stringify({
-            text: errorMessage,
-            model_id: 'eleven_turbo_v2_5',
-            voice_settings: {
-              stability: 0.6,
-              similarity_boost: 0.8,
-            },
-            output_format: 'mp3_22050_32',
-          }),
+      const errorAudioResponse = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': process.env.CARTESIA_API_KEY || '',
+          'Cartesia-Version': '2024-10-21',
         },
-      )
+        body: JSON.stringify({
+          model_id: 'sonic-english',
+          transcript: errorMessage,
+          voice: {
+            mode: 'id',
+            id: process.env.CARTESIA_VOICE_ID,
+          },
+          output_format: {
+            container: 'mp3',
+            encoding: 'mp3',
+            sample_rate: 22050,
+          },
+        }),
+      })
 
       if (errorAudioResponse.ok) {
         const errorAudioBuffer = await errorAudioResponse.arrayBuffer()
@@ -275,11 +277,11 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
           headers: { 'Content-Type': 'text/xml' },
         })
       }
-    } catch (elevenLabsError) {
-      console.error('❌ ElevenLabs error fallback failed:', elevenLabsError)
+    } catch (cartesiaError) {
+      console.error('❌ Cartesia error fallback failed:', cartesiaError)
     }
 
-    // Final fallback if ElevenLabs fails
+    // Final fallback if Cartesia fails
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Google.en-US-Standard-D">Sorry, having trouble. Please call back.</Say>
