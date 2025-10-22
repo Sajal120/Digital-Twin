@@ -369,22 +369,34 @@ export function AIControllerChat() {
 
   const startVoiceConversation = () => {
     console.log('🎙️ Starting voice conversation...')
-    const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    setSessionId(newSessionId)
-    setIsVoiceConversationActive(true)
-    setConversationMemory([])
-    setConversationSummary('')
 
-    // Clear voice chat messages for clean slate
-    setVoiceChatMessages([
-      {
-        id: '1',
-        content: "Voice conversation started. I'm listening...",
-        role: 'assistant',
-        timestamp: new Date(),
-        isVoice: true,
-      },
-    ])
+    // Only create new session if we don't already have one (for resume functionality)
+    if (!sessionId) {
+      const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      setSessionId(newSessionId)
+    }
+
+    setIsVoiceConversationActive(true)
+
+    // Only clear memory if starting fresh (not resuming)
+    if (conversationMemory.length === 0) {
+      setConversationMemory([])
+      setConversationSummary('')
+
+      // Add starting message only for new conversations
+      setVoiceChatMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          content: "Voice conversation started. I'm listening...",
+          role: 'assistant',
+          timestamp: new Date(),
+          isVoice: true,
+        },
+      ])
+    } else {
+      console.log('🔄 Resuming conversation with', conversationMemory.length, 'existing turns')
+    }
   }
 
   const endVoiceConversation = async () => {
@@ -650,14 +662,23 @@ export function AIControllerChat() {
       // Set the session ID to resume
       setSessionId(sessionId)
 
-      // Load the conversation memory
-      await loadPreviousConversation(sessionId)
+      // Load the conversation data from memory API
+      const response = await fetch(`/api/voice/memory?sessionId=${sessionId}`, {
+        method: 'GET',
+      })
 
-      // Clear current voice chat messages to start fresh
-      setVoiceChatMessages([])
+      if (response.ok) {
+        const data = await response.json()
+        if (data.found && data.memory) {
+          // Restore the conversation memory
+          setConversationMemory(data.memory)
+          setConversationSummary(data.summary || '')
+          console.log('📦 Loaded conversation memory:', data.memory.length, 'turns')
+        }
+      }
 
-      // Start voice conversation mode immediately
-      await startVoiceConversation()
+      // Start voice conversation mode immediately without clearing messages
+      setIsVoiceConversationActive(true)
 
       console.log('✅ Conversation resumed successfully')
     } catch (error) {
@@ -685,6 +706,7 @@ export function AIControllerChat() {
             action: 'save',
             sessionId,
             summary: conversationHistory,
+            memory: conversationMemory,
             turnCount: conversationMemory.length,
           }),
         })
@@ -703,7 +725,11 @@ export function AIControllerChat() {
         isClickableHistory: true,
         resumeSessionId: sessionId,
       }
-      setVoiceChatMessages((prev) => [...prev, historyMessage])
+      setVoiceChatMessages((prev) => {
+        // Remove any existing history for this session and add the new one
+        const filtered = prev.filter((msg) => msg.resumeSessionId !== sessionId)
+        return [...filtered, historyMessage]
+      })
     } catch (error) {
       console.error('❌ Failed to generate conversation summary:', error)
     }
@@ -730,7 +756,10 @@ export function AIControllerChat() {
             isClickableHistory: true,
             resumeSessionId: sessionId,
           }
-          setVoiceChatMessages((prev) => [...prev, previousMessage])
+          setVoiceChatMessages((prev) => {
+            const hasExisting = prev.some((msg) => msg.resumeSessionId === sessionId)
+            return hasExisting ? prev : [...prev, previousMessage]
+          })
           setConversationSummary(data.summary)
           console.log('✅ Previous conversation loaded successfully')
         } else {
