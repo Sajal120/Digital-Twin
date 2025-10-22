@@ -9,7 +9,8 @@ dotenv.config({ path: '.env.local' })
 
 async function generateThinkingAudio() {
   // Just natural sounds - no words, works in all languages
-  const phrases = [{ text: 'Hmm', filename: 'thinking_hmm.mp3' }]
+  const files = [
+  { filename: 'thinking_natural.mp3', text: 'hmm... hmm' },
 
   console.log('🎤 Generating thinking sound with ElevenLabs (language-neutral)...')
 

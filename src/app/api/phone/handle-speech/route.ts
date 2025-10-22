@@ -25,9 +25,8 @@ if (!global.pendingAIPromises) {
 const VERSION = 'v2.9-thinking-ack-oct7'
 
 // Pre-generated "thinking" sound - plays immediately while AI processes
-// Natural varied pattern: "Hmmmmm... hmm, hmm" (pauses built into audio)
-const THINKING_SOUND_URL =
-  'https://brxp5nmtsramnrr1.public.blob.vercel-storage.com/phone-audio/thinking_natural.mp3'
+// Much quieter and shorter: just a brief pause instead of loud "hmm"
+const THINKING_SOUND_URL = null // Use Pause instead of audio file
 
 // In-memory deduplication store (prevents duplicate webhook processing)
 // Key: callSid + recordingUrl hash, Value: timestamp
@@ -329,13 +328,12 @@ export async function POST(request: NextRequest) {
     // Store speech in Redis (survives across serverless instances!)
     await storeSpeech(callSid, speechResult, detectedLanguage)
 
-    // Return thinking sounds IMMEDIATELY (AI will process after redirect)
-    // Natural: ONE long hmmmmmmmm... pause... shorter hmmmm (plays ONCE, ~8-10s)
-    // YOUR male voice, slow and natural
+    // Return brief pause IMMEDIATELY (AI will process after redirect)
+    // Much quieter and shorter - just a brief pause while processing
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.sajal-app.online'
     const thinkingTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${THINKING_SOUND_URL}</Play>
+  <Pause length="2"/>
   <Redirect method="POST">${baseUrl}/api/phone/process-response/${callSid}</Redirect>
 </Response>`
 

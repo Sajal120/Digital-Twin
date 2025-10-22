@@ -41,18 +41,36 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     // Retrieve speech from Redis (works across serverless instances!)
     const speechData = await retrieveSpeech(callSid)
 
-    console.log('📋 Retrieved speech from Redis:', speechData?.text?.substring(0, 50))
+    console.log('� Retrieved and deleted speech from Redis:', callSid)
+    console.log('📋 Speech data structure:', typeof speechData, Object.keys(speechData || {}))
 
-    if (!callSid || !speechData?.text) {
-      console.error('❌ Missing data from Redis:', {
-        callSid: !!callSid,
-        speech: !!speechData?.text,
-      })
-      throw new Error('Missing callSid or speech data from Redis')
+    // Handle both old format (string) and new format (object)
+    let speechResult: string
+    let detectedLanguage: string = 'en'
+
+    if (typeof speechData === 'string') {
+      // Old format - direct string
+      speechResult = speechData
+      console.log('📋 Using legacy string format:', speechResult?.substring(0, 50))
+    } else if (speechData && typeof speechData === 'object') {
+      // New format - object with text and detectedLanguage
+      const dataObj = speechData as any // Type assertion for flexibility
+      speechResult = dataObj.text || dataObj.speechResult || ''
+      detectedLanguage = dataObj.detectedLanguage || dataObj.language || 'en'
+      console.log('📋 Using object format:', speechResult?.substring(0, 50))
+    } else {
+      console.error('❌ Invalid speech data format:', speechData)
+      throw new Error('Invalid speech data format from Redis')
     }
 
-    const speechResult = speechData.text
-    const detectedLanguage = speechData.detectedLanguage || 'en'
+    if (!callSid || !speechResult) {
+      console.error('❌ Missing data from Redis:', {
+        callSid: !!callSid,
+        speechResult: !!speechResult,
+        speechDataType: typeof speechData,
+      })
+      throw new Error('Missing callSid or speech result from Redis')
+    }
 
     console.log('🤖 Processing AI response for:', speechResult.substring(0, 50))
     console.log('🌍 Detected language from transcription:', detectedLanguage)
