@@ -396,9 +396,12 @@ export function AIControllerChat() {
     if (isRecording) stopRecording()
     if (isPlaying) stopAISpeech()
 
-    // Generate conversation summary if there's memory
+    // Only generate conversation summary if there are actual conversation turns
     if (conversationMemory.length > 0) {
+      console.log('📝 Generating history for conversation with', conversationMemory.length, 'turns')
       await generateConversationSummary()
+    } else {
+      console.log('🗑️ No conversation turns - skipping history generation')
     }
   }
 
@@ -848,11 +851,11 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className="relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden
-        h-[85vh] sm:h-[80vh] md:h-[80vh] mobile-vh-fix"
+        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix ${chatMode === 'voice_chat' ? 'h-[calc(100vh-12rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
         style={{
-          height: 'min(85vh, calc(100vh - 4rem))', // Mobile friendly height
-          maxHeight: 'calc(100vh - 2rem)', // Tighter constraints on mobile
+          height:
+            chatMode === 'voice_chat' ? 'calc(100vh - 12rem)' : 'min(85vh, calc(100vh - 4rem))',
+          maxHeight: chatMode === 'voice_chat' ? 'calc(100vh - 10rem)' : 'calc(100vh - 2rem)',
         }}
         initial={{ y: 50 }}
         animate={{ y: 0 }}
@@ -942,7 +945,7 @@ export function AIControllerChat() {
         {/* Messages - Hidden during active voice conversation */}
         {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
           <div
-            className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-60' : 'pb-20'}`}
+            className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-80' : 'pb-20'}`}
           >
             <AnimatePresence>
               {messages.map((message, index) => (
@@ -1171,7 +1174,7 @@ export function AIControllerChat() {
 
         {/* Input */}
         <div
-          className={`absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'bottom-4' : ''}`}
+          className={`fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom z-50 ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
         >
           {chatMode === 'voice_chat' ? (
             // Voice Chat Mode - Pure Voice Interface
