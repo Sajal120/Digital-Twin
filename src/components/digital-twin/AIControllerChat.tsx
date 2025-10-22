@@ -26,6 +26,8 @@ interface Message {
   role: 'user' | 'assistant'
   timestamp: Date
   isVoice?: boolean
+  isClickableHistory?: boolean
+  resumeSessionId?: string
 }
 
 export function AIControllerChat() {
@@ -641,71 +643,70 @@ export function AIControllerChat() {
     }
   }
 
+  const resumeConversation = async (sessionId: string) => {
+    try {
+      console.log('🔄 Resuming conversation with session:', sessionId)
+
+      // Set the session ID to resume
+      setSessionId(sessionId)
+
+      // Load the conversation memory
+      await loadPreviousConversation(sessionId)
+
+      // Clear current voice chat messages to start fresh
+      setVoiceChatMessages([])
+
+      // Start voice conversation mode immediately
+      await startVoiceConversation()
+
+      console.log('✅ Conversation resumed successfully')
+    } catch (error) {
+      console.error('❌ Failed to resume conversation:', error)
+    }
+  }
+
   const generateConversationSummary = async () => {
     try {
       console.log('📝 Generating conversation summary...')
 
-      const conversationText = conversationMemory
-        .map((turn, index) => `Turn ${index + 1}:\nUser: ${turn.transcript}\nAI: ${turn.response}`)
+      // Use the actual conversation history instead of AI summary
+      const conversationHistory = conversationMemory
+        .map(
+          (turn, index) =>
+            `**Turn ${index + 1}:**\n👤 **You:** ${turn.transcript}\n🤖 **Me:** ${turn.response}`,
+        )
         .join('\n\n')
 
-      const summaryResponse = await fetch('/api/mcp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: `summary_${Date.now()}`,
-          method: 'tools/call',
-          params: {
-            name: 'ask_digital_twin',
-            arguments: {
-              question: `Please provide a brief summary of this voice conversation for the user to continue later:\n\n${conversationText}`,
-              interviewType: 'general',
-              enhancedMode: false,
-              maxResults: 1,
-            },
-          },
-        }),
-      })
+      setConversationSummary(conversationHistory)
 
-      if (summaryResponse.ok) {
-        const summaryData = await summaryResponse.json()
-        if (summaryData.result?.content?.[0]?.text) {
-          const summary = summaryData.result.content[0].text
-            .replace(/\*\*(.+?)\*\*/g, '$1')
-            .replace(/\*(.+?)\*/g, '$1')
-            .trim()
-
-          setConversationSummary(summary)
-
-          // Save to memory API
-          try {
-            await fetch('/api/voice/memory', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'save',
-                sessionId,
-                summary,
-                turnCount: conversationMemory.length,
-              }),
-            })
-            console.log('💾 Conversation summary saved to memory')
-          } catch (error) {
-            console.error('❌ Failed to save conversation to memory:', error)
-          }
-
-          // Add summary to voice chat messages
-          const summaryMessage: Message = {
-            id: Date.now().toString(),
-            content: `📝 **Conversation Summary:**\n\n${summary}\n\n_Session ID: ${sessionId}_\n_You can continue where we left off anytime!_`,
-            role: 'assistant',
-            timestamp: new Date(),
-            isVoice: false,
-          }
-          setVoiceChatMessages((prev) => [...prev, summaryMessage])
-        }
+      // Save to memory API
+      try {
+        await fetch('/api/voice/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save',
+            sessionId,
+            summary: conversationHistory,
+            turnCount: conversationMemory.length,
+          }),
+        })
+        console.log('💾 Conversation history saved to memory')
+      } catch (error) {
+        console.error('❌ Failed to save conversation to memory:', error)
       }
+
+      // Add conversation history to voice chat messages
+      const historyMessage: Message = {
+        id: Date.now().toString(),
+        content: `📝 **Conversation History** (${conversationMemory.length} turns)\n\n${conversationHistory}\n\n_Session ID: ${sessionId}_\n_Click to continue this conversation anytime!_`,
+        role: 'assistant',
+        timestamp: new Date(),
+        isVoice: false,
+        isClickableHistory: true,
+        resumeSessionId: sessionId,
+      }
+      setVoiceChatMessages((prev) => [...prev, historyMessage])
     } catch (error) {
       console.error('❌ Failed to generate conversation summary:', error)
     }
@@ -722,13 +723,15 @@ export function AIControllerChat() {
       if (response.ok) {
         const data = await response.json()
         if (data.found && data.summary) {
-          // Add previous conversation summary to messages
+          // Add previous conversation history to messages
           const previousMessage: Message = {
             id: 'previous_' + Date.now().toString(),
-            content: `📋 **Previous Conversation (${new Date(data.timestamp).toLocaleDateString()}):**\n\n${data.summary}\n\n_Ready to continue where we left off!_`,
+            content: `� **Previous Conversation** (${new Date(data.timestamp).toLocaleDateString()}):\n\n${data.summary}\n\n_Click here to continue this conversation!_`,
             role: 'assistant',
             timestamp: new Date(),
             isVoice: false,
+            isClickableHistory: true,
+            resumeSessionId: sessionId,
           }
           setVoiceChatMessages((prev) => [...prev, previousMessage])
           setConversationSummary(data.summary)
@@ -901,7 +904,9 @@ export function AIControllerChat() {
                       className={`rounded-2xl px-4 py-3 ${
                         message.role === 'user'
                           ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
-                          : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
+                          : message.isClickableHistory
+                            ? 'bg-gradient-to-br from-green-600/20 to-blue-600/20 backdrop-blur-lg text-white border border-green-400/30 cursor-pointer hover:from-green-600/30 hover:to-blue-600/30 transition-all'
+                            : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
                       }`}
                       animate={{
                         boxShadow:
@@ -914,6 +919,11 @@ export function AIControllerChat() {
                             : undefined,
                       }}
                       transition={{ duration: 2, repeat: Infinity }}
+                      onClick={
+                        message.isClickableHistory && message.resumeSessionId
+                          ? () => resumeConversation(message.resumeSessionId!)
+                          : undefined
+                      }
                     >
                       <p className="text-sm whitespace-pre-line">
                         {message.isVoice && (
@@ -975,7 +985,7 @@ export function AIControllerChat() {
           >
             <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10 text-center">
               <p className="text-white/70 text-sm mb-2">
-                🎙️ <strong>Pure Voice Conversation Mode</strong>
+                🎙️ <strong>Voice Chat Mode</strong>
               </p>
               <p className="text-white/60 text-xs">
                 Experience natural conversation without text distractions.
@@ -983,7 +993,7 @@ export function AIControllerChat() {
                 Uses <strong>Deepgram</strong> for transcription and your{' '}
                 <strong>Cartesia cloned voice</strong> for responses.
                 <br />
-                Get a conversation summary when you're done to continue later!
+                Get conversation history when done to continue later!
               </p>
             </div>
           </motion.div>
@@ -1115,13 +1125,11 @@ export function AIControllerChat() {
                 // Start Conversation Mode
                 <>
                   <div className="text-center mb-4">
-                    <p className="text-white/90 text-lg font-medium mb-2">
-                      🎙️ Pure Voice Conversation
-                    </p>
+                    <p className="text-white/90 text-lg font-medium mb-2">🎙️ Voice Conversation</p>
                     <p className="text-white/60 text-sm">
                       Start a natural voice conversation. No text will be shown during our chat.
                       <br />
-                      I'll remember everything and give you a summary when we're done.
+                      I'll remember everything and give you the conversation history when done.
                     </p>
                   </div>
                   <div className="flex flex-col items-center space-y-3">
