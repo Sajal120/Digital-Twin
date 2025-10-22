@@ -671,10 +671,7 @@ export function AIControllerChat() {
 
       // Use the actual conversation history instead of AI summary
       const conversationHistory = conversationMemory
-        .map(
-          (turn, index) =>
-            `**Turn ${index + 1}:**\n👤 **You:** ${turn.transcript}\n🤖 **Me:** ${turn.response}`,
-        )
+        .map((turn, index) => `👤 You: ${turn.transcript}\n🤖 Me: ${turn.response}`)
         .join('\n\n')
 
       setConversationSummary(conversationHistory)
@@ -699,7 +696,7 @@ export function AIControllerChat() {
       // Add conversation history to voice chat messages
       const historyMessage: Message = {
         id: Date.now().toString(),
-        content: `📝 **Conversation History** (${conversationMemory.length} turns)\n\n${conversationHistory}\n\n_Session ID: ${sessionId}_\n_Click to continue this conversation anytime!_`,
+        content: `📝 Conversation History\n\n${conversationHistory}\n\nSession ID: ${sessionId}\nClick to continue this conversation anytime!`,
         role: 'assistant',
         timestamp: new Date(),
         isVoice: false,
@@ -726,7 +723,7 @@ export function AIControllerChat() {
           // Add previous conversation history to messages
           const previousMessage: Message = {
             id: 'previous_' + Date.now().toString(),
-            content: `� **Previous Conversation** (${new Date(data.timestamp).toLocaleDateString()}):\n\n${data.summary}\n\n_Click here to continue this conversation!_`,
+            content: `� Previous Conversation (${new Date(data.timestamp).toLocaleDateString()}):\n\n${data.summary}\n\nClick here to continue this conversation!`,
             role: 'assistant',
             timestamp: new Date(),
             isVoice: false,
@@ -973,30 +970,6 @@ export function AIControllerChat() {
 
             <div ref={messagesEndRef} />
           </div>
-        )}
-
-        {/* Voice Chat Instructions - Only show when not in active conversation */}
-        {chatMode === 'voice_chat' && !isVoiceConversationActive && messages.length <= 2 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-32 left-0 right-0 px-6"
-          >
-            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10 text-center">
-              <p className="text-white/70 text-sm mb-2">
-                🎙️ <strong>Voice Chat Mode</strong>
-              </p>
-              <p className="text-white/60 text-xs">
-                Experience natural conversation without text distractions.
-                <br />
-                Uses <strong>Deepgram</strong> for transcription and your{' '}
-                <strong>Cartesia cloned voice</strong> for responses.
-                <br />
-                Get conversation history when done to continue later!
-              </p>
-            </div>
-          </motion.div>
         )}
 
         {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
