@@ -2,7 +2,19 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Loader2, X, Minimize2, Settings, Phone } from 'lucide-react'
+import {
+  Send,
+  Bot,
+  User,
+  Loader2,
+  X,
+  Minimize2,
+  Settings,
+  Phone,
+  Mic,
+  MicOff,
+  Volume2,
+} from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
 import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
@@ -20,6 +32,9 @@ export function AIControllerChat() {
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -53,27 +68,76 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! 💬 I'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.`
-        : "Hi! 💬 I'll answer your questions with detailed text responses. No UI changes - just pure conversation about my background, skills, projects, and experience.",
+        ? `Hi ${session.user.name}! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!`
+        : "Hi! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!",
       role: 'assistant',
       timestamp: new Date(),
+    },
+  ])
+
+  const [voiceChatMessages, setVoiceChatMessages] = useState<Message[]>([
+    {
+      id: '1',
+      content: session?.user
+        ? `Hi ${session.user.name}! 🎙️ Let's have a voice conversation! Press the mic button to start talking.`
+        : "Hi! 🎙️ Let's have a voice conversation! Press the mic button to start talking.",
+      role: 'assistant',
+      timestamp: new Date(),
+      isVoice: true,
     },
   ])
 
   // Voice chat removed - no longer needed
 
   // Use the appropriate messages based on current chat mode
-  const messages = chatMode === 'ai_control' ? aiControlMessages : plainChatMessages
+  const messages =
+    chatMode === 'ai_control'
+      ? aiControlMessages
+      : chatMode === 'plain_chat'
+        ? plainChatMessages
+        : voiceChatMessages
 
-  const setMessages = chatMode === 'ai_control' ? setAiControlMessages : setPlainChatMessages
+  const setMessages =
+    chatMode === 'ai_control'
+      ? setAiControlMessages
+      : chatMode === 'plain_chat'
+        ? setPlainChatMessages
+        : setVoiceChatMessages
 
   useEffect(() => {
     setIsMounted(true)
-  }, [])
+
+    // Cleanup on unmount
+    return () => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop()
+      }
+    }
+  }, [mediaRecorder])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Keyboard shortcuts for voice chat
+  useEffect(() => {
+    if (chatMode !== 'voice_chat') return
+
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Spacebar to toggle recording (like push-to-talk)
+      if (event.code === 'Space' && !event.repeat && !isLoading && !isPlaying) {
+        event.preventDefault()
+        if (isRecording) {
+          stopRecording()
+        } else {
+          startRecording()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [chatMode, isRecording, isLoading, isPlaying])
 
   const handleAIResponse = (content: string, isAIControl: boolean = false) => {
     setLastAIMessage(content)
@@ -285,7 +349,214 @@ export function AIControllerChat() {
   }
 
   const handlePhoneCall = () => {
-    window.location.href = 'tel:+61278044137'
+    // Australian phone number - Twilio integration
+    window.open('tel:+61278044137')
+  }
+
+  // Voice recording functions following phone backend architecture
+  const startRecording = async () => {
+    try {
+      console.log('🎙️ Starting voice recording...')
+
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 44100,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+        },
+      })
+
+      // Create MediaRecorder with WebM format (widely supported)
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000,
+      })
+
+      const audioChunks: BlobPart[] = []
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data)
+        }
+      }
+
+      recorder.onstop = async () => {
+        console.log('🔊 Processing recorded audio...')
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+        await processVoiceMessage(audioBlob)
+
+        // Stop all tracks to free up microphone
+        stream.getTracks().forEach((track: MediaStreamTrack) => track.stop())
+      }
+
+      setMediaRecorder(recorder)
+      setIsRecording(true)
+      recorder.start()
+
+      console.log('✅ Recording started successfully')
+    } catch (error) {
+      console.error('❌ Voice recording error:', error)
+      alert('Microphone access denied or not available. Please check your browser settings.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      console.log('🛑 Stopping recording...')
+      mediaRecorder.stop()
+      setIsRecording(false)
+      setMediaRecorder(null)
+    }
+  }
+
+  const processVoiceMessage = async (audioBlob: Blob) => {
+    try {
+      setIsLoading(true)
+      console.log('🎤 Processing voice message...', audioBlob.size, 'bytes')
+
+      // Step 1: Transcribe audio using existing voice/transcribe API
+      const formData = new FormData()
+      formData.append('audio', audioBlob, 'recording.webm')
+
+      console.log('📝 Transcribing audio...')
+      const transcribeResponse = await fetch('/api/voice/transcribe', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!transcribeResponse.ok) {
+        throw new Error('Transcription failed')
+      }
+
+      const transcribeData = await transcribeResponse.json()
+      const transcript =
+        transcribeData.transcription || transcribeData.transcript || transcribeData.text || ''
+
+      if (!transcript.trim()) {
+        throw new Error('No speech detected')
+      }
+
+      console.log('💬 Transcript:', transcript)
+
+      // Add user message to voice chat
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: transcript,
+        role: 'user',
+        timestamp: new Date(),
+        isVoice: true,
+      }
+
+      setVoiceChatMessages((prev) => [...prev, userMessage])
+
+      // Step 2: Get AI response using MCP (following phone architecture)
+      console.log('🤖 Getting AI response...')
+      const chatResponse = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: `voice_${Date.now()}`,
+          method: 'tools/call',
+          params: {
+            name: 'ask_digital_twin',
+            arguments: {
+              question: transcript,
+              interviewType: 'general',
+              enhancedMode: true,
+              maxResults: 3,
+            },
+          },
+        }),
+      })
+
+      let aiResponseText = "I'm sorry, I didn't understand that. Could you try again?"
+
+      if (chatResponse.ok) {
+        const chatData = await chatResponse.json()
+        if (chatData.result?.content?.[0]?.text) {
+          aiResponseText = chatData.result.content[0].text
+            .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
+            .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
+            .replace(/Enhanced Interview Response[^:]*:\s*/gi, '') // Remove MCP headers
+            .replace(/---[^\n]*\n/g, '') // Remove dividers
+            .trim()
+        }
+      }
+
+      // Add AI response to voice chat
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: aiResponseText,
+        role: 'assistant',
+        timestamp: new Date(),
+        isVoice: true,
+      }
+
+      setVoiceChatMessages((prev) => [...prev, aiMessage])
+
+      // Step 3: Generate speech using TTS API (following phone architecture)
+      console.log('🔊 Generating speech...')
+      await generateAndPlaySpeech(aiResponseText)
+    } catch (error) {
+      console.error('❌ Voice processing error:', error)
+
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Sorry, I had trouble processing your voice message. Please try again.',
+        role: 'assistant',
+        timestamp: new Date(),
+        isVoice: true,
+      }
+
+      setVoiceChatMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const generateAndPlaySpeech = async (text: string) => {
+    try {
+      setIsPlaying(true)
+      console.log('🎧 Generating speech for:', text.substring(0, 50) + '...')
+
+      // Use existing TTS API (following phone backend)
+      const ttsResponse = await fetch('/api/voice/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!ttsResponse.ok) {
+        throw new Error('TTS generation failed')
+      }
+
+      // Get audio blob and play it
+      const audioBlob = await ttsResponse.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+
+      const audio = new Audio(audioUrl)
+      audio.onended = () => {
+        setIsPlaying(false)
+        URL.revokeObjectURL(audioUrl)
+        console.log('✅ Speech playback completed')
+      }
+
+      audio.onerror = () => {
+        setIsPlaying(false)
+        URL.revokeObjectURL(audioUrl)
+        console.error('❌ Speech playback failed')
+      }
+
+      await audio.play()
+      console.log('✅ Speech playback started')
+    } catch (error) {
+      console.error('❌ Speech generation error:', error)
+      setIsPlaying(false)
+    }
   }
 
   return (
@@ -376,6 +647,17 @@ export function AIControllerChat() {
               >
                 💬 Plain Chat
               </button>
+              <button
+                onClick={() => setChatMode('voice_chat')}
+                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  chatMode === 'voice_chat'
+                    ? 'bg-green-600 text-white shadow-lg'
+                    : 'text-gray-300 hover:text-white'
+                }`}
+                title="Voice Chat: Talk and listen - mobile optimized"
+              >
+                🎙️ Voice Chat
+              </button>
             </div>
 
             <button
@@ -435,11 +717,28 @@ export function AIControllerChat() {
                       transition={{ duration: 2, repeat: Infinity }}
                     >
                       <p className="text-sm whitespace-pre-line">
+                        {message.isVoice && (
+                          <span className="inline-flex items-center gap-1 text-xs opacity-75 mb-1">
+                            {message.role === 'user' ? '🎙️' : '🔊'} Voice
+                          </span>
+                        )}
                         {renderMessageContent(message.content)}
                       </p>
-                      {message.isVoice && (
-                        <span className="text-xs opacity-70 mt-1 block">🎙️ Voice</span>
-                      )}
+                      {message.isVoice &&
+                        chatMode === 'voice_chat' &&
+                        message.role === 'assistant' && (
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs opacity-70">🔊 Voice message</span>
+                            <button
+                              onClick={() => generateAndPlaySpeech(message.content)}
+                              disabled={isPlaying || isLoading}
+                              className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
+                              title="Replay voice message"
+                            >
+                              {isPlaying ? '🔊 Playing...' : '🔁 Replay'}
+                            </button>
+                          </div>
+                        )}
                     </motion.div>
                   </div>
                 </motion.div>
@@ -467,8 +766,29 @@ export function AIControllerChat() {
           </div>
         }
 
+        {/* Voice Chat Instructions */}
+        {chatMode === 'voice_chat' && messages.length <= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="absolute bottom-32 left-0 right-0 px-6"
+          >
+            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10 text-center">
+              <p className="text-white/70 text-sm mb-2">
+                🎙️ <strong>Voice Chat Mode</strong>
+              </p>
+              <p className="text-white/60 text-xs">
+                Tap the microphone or press <strong>SPACEBAR</strong> to start talking. I'll
+                transcribe your speech, respond with text, and speak back to you. Perfect for
+                hands-free conversations on mobile!
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
-        {messages.length <= 2 && (
+        {messages.length <= 2 && chatMode !== 'voice_chat' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -586,26 +906,76 @@ export function AIControllerChat() {
 
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom">
-          <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask me anything..."
-              className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
-              disabled={isLoading}
-            />
+          {chatMode === 'voice_chat' ? (
+            // Voice Chat Mode - Mic Button Interface
+            <div className="flex flex-col items-center space-y-4">
+              {/* Voice Status */}
+              <div className="text-center">
+                <p className="text-white/70 text-sm">
+                  {isRecording
+                    ? '🎙️ Listening... Speak now!'
+                    : isLoading
+                      ? '⚡ Processing your message...'
+                      : isPlaying
+                        ? '🔊 AI is speaking...'
+                        : '🎯 Tap mic to start talking'}
+                </p>
+              </div>
 
-            <motion.button
-              type="submit"
-              disabled={!inputValue.trim() || isLoading}
-              className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </motion.button>
-          </form>
+              {/* Mic Button */}
+              <motion.button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isLoading || isPlaying}
+                className={`p-6 rounded-full transition-all shadow-lg ${
+                  isRecording
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                    : isLoading || isPlaying
+                      ? 'bg-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                } disabled:opacity-50`}
+                whileHover={{ scale: isLoading || isPlaying ? 1 : 1.05 }}
+                whileTap={{ scale: isLoading || isPlaying ? 1 : 0.95 }}
+              >
+                {isRecording ? (
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  >
+                    <MicOff className="w-8 h-8 text-white" />
+                  </motion.div>
+                ) : isLoading ? (
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                ) : isPlaying ? (
+                  <Volume2 className="w-8 h-8 text-white" />
+                ) : (
+                  <Mic className="w-8 h-8 text-white" />
+                )}
+              </motion.button>
+            </div>
+          ) : (
+            // Text Chat Mode - Standard Input
+            <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder="Ask me anything..."
+                className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
+                disabled={isLoading}
+              />
+
+              <motion.button
+                type="submit"
+                disabled={!inputValue.trim() || isLoading}
+                className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </motion.button>
+            </form>
+          )}
         </div>
       </motion.div>
     </motion.div>
