@@ -98,7 +98,7 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
       'Cartesia-Version': '2024-10-21',
     },
     body: JSON.stringify({
-      model_id: 'sonic-english',
+      model_id: detectedLanguage === 'hi' ? 'sonic-multilingual' : 'sonic-english',
       transcript: text,
       voice: {
         mode: 'id',

@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
     const recordingStatus = webhookData.RecordingStatus as string
     let speechResult = webhookData.SpeechResult as string // Fallback to Twilio if available
     const confidence = webhookData.Confidence as string
+    let detectedLanguage = 'en' // Default to English, will be updated by Deepgram
 
     // IGNORE recording-status-callback webhooks (redundant - we process action-callback already)
     // Twilio sends BOTH action-callback AND recording-status-callback for the same recording
@@ -162,6 +163,7 @@ export async function POST(request: NextRequest) {
 
           // Store Deepgram's detected language to pass to language detection
           const deepgramLanguage = deepgramResult.detectedLanguage
+          detectedLanguage = deepgramLanguage || 'en' // Update the scoped variable
 
           // Check if confidence is too low - but be more lenient for multilingual
           // Non-English languages naturally have lower confidence scores
@@ -325,7 +327,7 @@ export async function POST(request: NextRequest) {
     console.log('🎵 Storing speech in Redis and playing thinking sounds...')
 
     // Store speech in Redis (survives across serverless instances!)
-    await storeSpeech(callSid, speechResult)
+    await storeSpeech(callSid, speechResult, detectedLanguage)
 
     // Return thinking sounds IMMEDIATELY (AI will process after redirect)
     // Natural: ONE long hmmmmmmmm... pause... shorter hmmmm (plays ONCE, ~8-10s)

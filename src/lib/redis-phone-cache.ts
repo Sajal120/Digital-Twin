@@ -13,17 +13,34 @@ export const redis = new Redis({
 })
 
 // Store speech for 60 seconds (enough time for processing)
-export async function storeSpeech(callSid: string, speechResult: string) {
-  await redis.set(`phone:speech:${callSid}`, speechResult, { ex: 60 })
+export async function storeSpeech(
+  callSid: string,
+  speechResult: string,
+  detectedLanguage?: string,
+) {
+  const speechData = {
+    text: speechResult,
+    detectedLanguage: detectedLanguage || 'en',
+  }
+  await redis.set(`phone:speech:${callSid}`, JSON.stringify(speechData), { ex: 60 })
   console.log('📦 Stored speech in Redis:', callSid)
 }
 
 // Retrieve and delete speech
-export async function retrieveSpeech(callSid: string): Promise<string | null> {
-  const speech = await redis.get<string>(`phone:speech:${callSid}`)
-  if (speech) {
+export async function retrieveSpeech(
+  callSid: string,
+): Promise<{ text: string; detectedLanguage: string } | null> {
+  const speechData = await redis.get<string>(`phone:speech:${callSid}`)
+  if (speechData) {
     await redis.del(`phone:speech:${callSid}`)
     console.log('📦 Retrieved and deleted speech from Redis:', callSid)
+
+    try {
+      return JSON.parse(speechData)
+    } catch {
+      // Backward compatibility for old format (just text)
+      return { text: speechData, detectedLanguage: 'en' }
+    }
   }
-  return speech
+  return null
 }
