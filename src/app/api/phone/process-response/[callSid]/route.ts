@@ -33,7 +33,7 @@ if (!global.pendingAIPromises) {
 async function processResponse(request: NextRequest, { params }: { params: { callSid: string } }) {
   const callSid = params.callSid
 
-  console.log('🚀 [PROCESS-RESPONSE] Endpoint called!')
+  console.log('🚀 [PROCESS-RESPONSE] Endpoint called! (v2.1-fixed)')
   console.log('📍 CallSid:', callSid)
   console.log('📍 Method:', request.method)
 
@@ -51,13 +51,16 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     if (typeof speechData === 'string') {
       // Old format - direct string
       speechResult = speechData
-      console.log('📋 Using legacy string format:', speechResult?.substring(0, 50))
+      console.log('📋 Using legacy string format:', String(speechData).substring(0, 50))
     } else if (speechData && typeof speechData === 'object') {
       // New format - object with text and detectedLanguage
       const dataObj = speechData as any // Type assertion for flexibility
       speechResult = dataObj.text || dataObj.speechResult || ''
       detectedLanguage = dataObj.detectedLanguage || dataObj.language || 'en'
-      console.log('📋 Using object format:', speechResult?.substring(0, 50))
+      console.log(
+        '📋 Using object format:',
+        String(speechResult || 'No speech result').substring(0, 50),
+      )
     } else {
       console.error('❌ Invalid speech data format:', speechData)
       throw new Error('Invalid speech data format from Redis')
@@ -116,7 +119,9 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     )
     console.log(
       '📝 Response text:',
-      unifiedResponse.response?.substring?.(0, 100) || 'NO RESPONSE TEXT',
+      typeof unifiedResponse.response === 'string'
+        ? unifiedResponse.response.substring(0, 100)
+        : 'NO RESPONSE TEXT',
     )
 
     const currentLanguage = (unifiedResponse as any).language || 'en'
