@@ -36,6 +36,12 @@ export function AIControllerChat() {
   const [isRecording, setIsRecording] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null)
+  const [isVoiceConversationActive, setIsVoiceConversationActive] = useState(false)
+  const [conversationMemory, setConversationMemory] = useState<
+    Array<{ transcript: string; response: string; timestamp: Date }>
+  >([])
+  const [conversationSummary, setConversationSummary] = useState('')
+  const [sessionId, setSessionId] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -359,6 +365,40 @@ export function AIControllerChat() {
     window.open('tel:+61278044137')
   }
 
+  const startVoiceConversation = () => {
+    console.log('🎙️ Starting voice conversation...')
+    const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    setSessionId(newSessionId)
+    setIsVoiceConversationActive(true)
+    setConversationMemory([])
+    setConversationSummary('')
+
+    // Clear voice chat messages for clean slate
+    setVoiceChatMessages([
+      {
+        id: '1',
+        content: "Voice conversation started. I'm listening...",
+        role: 'assistant',
+        timestamp: new Date(),
+        isVoice: true,
+      },
+    ])
+  }
+
+  const endVoiceConversation = async () => {
+    console.log('🛑 Ending voice conversation...')
+    setIsVoiceConversationActive(false)
+
+    // Stop any ongoing recording or playback
+    if (isRecording) stopRecording()
+    if (isPlaying) stopAISpeech()
+
+    // Generate conversation summary if there's memory
+    if (conversationMemory.length > 0) {
+      await generateConversationSummary()
+    }
+  }
+
   // Voice recording functions following phone backend architecture
   const startRecording = async () => {
     try {
@@ -446,16 +486,18 @@ export function AIControllerChat() {
 
       console.log('💬 Transcript:', transcript)
 
-      // Add user message to voice chat
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        content: transcript,
-        role: 'user',
-        timestamp: new Date(),
-        isVoice: true,
+      // During active voice conversation, don't show text - just store in memory
+      if (!isVoiceConversationActive) {
+        // Add user message to voice chat only if not in active conversation
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          content: transcript,
+          role: 'user',
+          timestamp: new Date(),
+          isVoice: true,
+        }
+        setVoiceChatMessages((prev) => [...prev, userMessage])
       }
-
-      setVoiceChatMessages((prev) => [...prev, userMessage])
 
       // Step 2: Get AI response using MCP (following phone architecture)
       console.log('🤖 Getting AI response...')
@@ -500,16 +542,27 @@ export function AIControllerChat() {
         }
       }
 
-      // Add AI response to voice chat
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: aiResponseText,
-        role: 'assistant',
-        timestamp: new Date(),
-        isVoice: true,
+      // Store in conversation memory during active conversation
+      if (isVoiceConversationActive) {
+        setConversationMemory((prev) => [
+          ...prev,
+          {
+            transcript,
+            response: aiResponseText,
+            timestamp: new Date(),
+          },
+        ])
+      } else {
+        // Add AI response to voice chat only if not in active conversation
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: aiResponseText,
+          role: 'assistant',
+          timestamp: new Date(),
+          isVoice: true,
+        }
+        setVoiceChatMessages((prev) => [...prev, aiMessage])
       }
-
-      setVoiceChatMessages((prev) => [...prev, aiMessage])
 
       // Step 3: Generate speech using TTS API (following phone architecture)
       console.log('🔊 Generating speech...')
@@ -587,6 +640,123 @@ export function AIControllerChat() {
       setIsPlaying(false)
     }
   }
+
+  const generateConversationSummary = async () => {
+    try {
+      console.log('📝 Generating conversation summary...')
+
+      const conversationText = conversationMemory
+        .map((turn, index) => `Turn ${index + 1}:\nUser: ${turn.transcript}\nAI: ${turn.response}`)
+        .join('\n\n')
+
+      const summaryResponse = await fetch('/api/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: `summary_${Date.now()}`,
+          method: 'tools/call',
+          params: {
+            name: 'ask_digital_twin',
+            arguments: {
+              question: `Please provide a brief summary of this voice conversation for the user to continue later:\n\n${conversationText}`,
+              interviewType: 'general',
+              enhancedMode: false,
+              maxResults: 1,
+            },
+          },
+        }),
+      })
+
+      if (summaryResponse.ok) {
+        const summaryData = await summaryResponse.json()
+        if (summaryData.result?.content?.[0]?.text) {
+          const summary = summaryData.result.content[0].text
+            .replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/\*(.+?)\*/g, '$1')
+            .trim()
+
+          setConversationSummary(summary)
+
+          // Save to memory API
+          try {
+            await fetch('/api/voice/memory', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save',
+                sessionId,
+                summary,
+                turnCount: conversationMemory.length,
+              }),
+            })
+            console.log('💾 Conversation summary saved to memory')
+          } catch (error) {
+            console.error('❌ Failed to save conversation to memory:', error)
+          }
+
+          // Add summary to voice chat messages
+          const summaryMessage: Message = {
+            id: Date.now().toString(),
+            content: `📝 **Conversation Summary:**\n\n${summary}\n\n_Session ID: ${sessionId}_\n_You can continue where we left off anytime!_`,
+            role: 'assistant',
+            timestamp: new Date(),
+            isVoice: false,
+          }
+          setVoiceChatMessages((prev) => [...prev, summaryMessage])
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to generate conversation summary:', error)
+    }
+  }
+
+  const loadPreviousConversation = async (sessionId: string) => {
+    try {
+      console.log('📋 Loading previous conversation...', sessionId)
+
+      const response = await fetch(`/api/voice/memory?sessionId=${sessionId}`, {
+        method: 'GET',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.found && data.summary) {
+          // Add previous conversation summary to messages
+          const previousMessage: Message = {
+            id: 'previous_' + Date.now().toString(),
+            content: `📋 **Previous Conversation (${new Date(data.timestamp).toLocaleDateString()}):**\n\n${data.summary}\n\n_Ready to continue where we left off!_`,
+            role: 'assistant',
+            timestamp: new Date(),
+            isVoice: false,
+          }
+          setVoiceChatMessages((prev) => [...prev, previousMessage])
+          setConversationSummary(data.summary)
+          console.log('✅ Previous conversation loaded successfully')
+        } else {
+          console.log('🗑️ No previous conversation found for session:', sessionId)
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load previous conversation:', error)
+    }
+  }
+
+  // Load conversation history when switching to voice chat mode
+  useEffect(() => {
+    if (chatMode === 'voice_chat' && !isVoiceConversationActive && sessionId) {
+      // Only load if we have a sessionId but haven't started a new conversation
+      if (conversationMemory.length === 0 && !conversationSummary) {
+        loadPreviousConversation(sessionId)
+      }
+    }
+  }, [
+    chatMode,
+    sessionId,
+    isVoiceConversationActive,
+    conversationMemory.length,
+    conversationSummary,
+  ])
 
   return (
     <motion.div
@@ -698,8 +868,8 @@ export function AIControllerChat() {
           </div>
         </div>
 
-        {/* Messages - Hidden in Voice Chat mode */}
-        {
+        {/* Messages - Hidden during active voice conversation */}
+        {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
           <div className="h-[calc(100%-180px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
             <AnimatePresence>
               {messages.map((message, index) => (
@@ -793,10 +963,10 @@ export function AIControllerChat() {
 
             <div ref={messagesEndRef} />
           </div>
-        }
+        )}
 
-        {/* Voice Chat Instructions */}
-        {chatMode === 'voice_chat' && messages.length <= 2 && (
+        {/* Voice Chat Instructions - Only show when not in active conversation */}
+        {chatMode === 'voice_chat' && !isVoiceConversationActive && messages.length <= 2 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -805,12 +975,15 @@ export function AIControllerChat() {
           >
             <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10 text-center">
               <p className="text-white/70 text-sm mb-2">
-                🎙️ <strong>Voice Chat Mode</strong>
+                🎙️ <strong>Pure Voice Conversation Mode</strong>
               </p>
               <p className="text-white/60 text-xs">
-                Tap the microphone or press <strong>SPACEBAR</strong> to start talking. I'll
-                transcribe your speech, respond with text, and speak back to you. Perfect for
-                hands-free conversations on mobile!
+                Experience natural conversation without text distractions.
+                <br />
+                Uses <strong>Deepgram</strong> for transcription and your{' '}
+                <strong>Cartesia cloned voice</strong> for responses.
+                <br />
+                Get a conversation summary when you're done to continue later!
               </p>
             </div>
           </motion.div>
@@ -936,52 +1109,111 @@ export function AIControllerChat() {
         {/* Input */}
         <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom">
           {chatMode === 'voice_chat' ? (
-            // Voice Chat Mode - Mic Button Interface
+            // Voice Chat Mode - Pure Voice Interface
             <div className="flex flex-col items-center space-y-4">
-              {/* Voice Status */}
-              <div className="text-center">
-                <p className="text-white/70 text-sm">
-                  {isRecording
-                    ? '🎙️ Listening... Speak now!'
-                    : isLoading
-                      ? '⚡ Processing with Deepgram + Cartesia...'
-                      : isPlaying
-                        ? '🔊 AI is speaking... (tap to stop)'
-                        : '🎯 Tap mic to start talking'}
-                </p>
-              </div>{' '}
-              {/* Mic Button */}
-              <motion.button
-                type="button"
-                onClick={isRecording ? stopRecording : isPlaying ? stopAISpeech : startRecording}
-                disabled={isLoading}
-                className={`p-6 rounded-full transition-all shadow-lg ${
-                  isRecording
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                    : isPlaying
-                      ? 'bg-orange-500 hover:bg-orange-600'
-                      : isLoading
-                        ? 'bg-gray-500 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-                } disabled:opacity-50`}
-                whileHover={{ scale: isLoading ? 1 : 1.05 }}
-                whileTap={{ scale: isLoading ? 1 : 0.95 }}
-              >
-                {isRecording ? (
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1, repeat: Infinity }}
+              {!isVoiceConversationActive ? (
+                // Start Conversation Mode
+                <>
+                  <div className="text-center mb-4">
+                    <p className="text-white/90 text-lg font-medium mb-2">
+                      🎙️ Pure Voice Conversation
+                    </p>
+                    <p className="text-white/60 text-sm">
+                      Start a natural voice conversation. No text will be shown during our chat.
+                      <br />
+                      I'll remember everything and give you a summary when we're done.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center space-y-3">
+                    <motion.button
+                      onClick={startVoiceConversation}
+                      className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white font-medium transition-all shadow-lg"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      🎤 Start New Conversation
+                    </motion.button>
+
+                    {conversationSummary && (
+                      <motion.button
+                        onClick={() => {
+                          // Continue with existing context
+                          setIsVoiceConversationActive(true)
+                        }}
+                        className="px-6 py-2 bg-blue-500/80 hover:bg-blue-600 rounded-full text-white text-sm transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        🔄 Continue Previous Conversation
+                      </motion.button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                // Active Conversation Mode
+                <>
+                  {/* Voice Status */}
+                  <div className="text-center">
+                    <p className="text-white/70 text-sm">
+                      {isRecording
+                        ? '🎙️ Listening... Speak now!'
+                        : isLoading
+                          ? '⚡ Processing with Deepgram + Cartesia...'
+                          : isPlaying
+                            ? '🔊 AI is speaking... (tap to stop)'
+                            : '🎯 Tap mic to continue talking'}
+                    </p>
+                    <div className="mt-2 text-xs text-white/50">
+                      Conversation turns: {conversationMemory.length}
+                    </div>
+                  </div>
+
+                  {/* Mic Button */}
+                  <motion.button
+                    type="button"
+                    onClick={
+                      isRecording ? stopRecording : isPlaying ? stopAISpeech : startRecording
+                    }
+                    disabled={isLoading}
+                    className={`p-6 rounded-full transition-all shadow-lg ${
+                      isRecording
+                        ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                        : isPlaying
+                          ? 'bg-orange-500 hover:bg-orange-600'
+                          : isLoading
+                            ? 'bg-gray-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                    } disabled:opacity-50`}
+                    whileHover={{ scale: isLoading ? 1 : 1.05 }}
+                    whileTap={{ scale: isLoading ? 1 : 0.95 }}
                   >
-                    <MicOff className="w-8 h-8 text-white" />
-                  </motion.div>
-                ) : isLoading ? (
-                  <Loader2 className="w-8 h-8 text-white animate-spin" />
-                ) : isPlaying ? (
-                  <Square className="w-8 h-8 text-white" />
-                ) : (
-                  <Mic className="w-8 h-8 text-white" />
-                )}
-              </motion.button>
+                    {isRecording ? (
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <MicOff className="w-8 h-8 text-white" />
+                      </motion.div>
+                    ) : isLoading ? (
+                      <Loader2 className="w-8 h-8 text-white animate-spin" />
+                    ) : isPlaying ? (
+                      <Square className="w-8 h-8 text-white" />
+                    ) : (
+                      <Mic className="w-8 h-8 text-white" />
+                    )}
+                  </motion.button>
+
+                  {/* End Conversation Button */}
+                  <motion.button
+                    onClick={endVoiceConversation}
+                    className="mt-4 px-6 py-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white text-sm transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    🛑 End Conversation
+                  </motion.button>
+                </>
+              )}
             </div>
           ) : (
             // Text Chat Mode - Standard Input

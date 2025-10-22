@@ -1,44 +1,62 @@
 # Voice Chat Feature Guide
 
 ## Overview
-The Voice Chat mode provides a complete voice-based conversation experience using your cloned Cartesia voice and Deepgram's advanced speech recognition, following the same backend architecture as the phone system but optimized for web and mobile browsers.
+The Voice Chat mode provides a **pure voice conversation experience** - no text distractions during active conversations. Uses your cloned Cartesia voice and Deepgram's advanced speech recognition for natural, seamless voice-to-voice interaction.
 
-## Features
-- 🎙️ **Voice Recording**: Uses Web Audio API + MediaRecorder  
-- 📝 **Transcription**: Powered by Deepgram Nova-2 via `/api/voice/deepgram-transcribe`
-- 🤖 **AI Processing**: Uses MCP Digital Twin for intelligent responses
-- 🔊 **Text-to-Speech**: Your cloned Cartesia voice via `/api/voice/tts`
-- � **Speech Control**: Stop AI speech anytime by tapping the button
-- �📱 **Mobile Optimized**: Works great on mobile devices
+## Key Features
+- 🎙️ **Pure Voice Mode**: No text shown during active conversations
+- 📝 **Deepgram Transcription**: Ultra-fast speech recognition via Nova-2 model
+- 🤖 **Smart AI Processing**: Uses MCP Digital Twin for intelligent responses  
+- 🔊 **Your Cloned Voice**: Cartesia TTS with your personal voice
+- 🛑 **Speech Control**: Stop AI speech anytime by tapping the button
+- � **Conversation Memory**: Auto-generates summaries to continue later
+- �📱 **Mobile Optimized**: Perfect for hands-free mobile use
 
 ## How It Works
 
-### Step-by-Step Process
-1. **User taps mic button** → Starts audio recording (WebM format)
-2. **Audio sent to backend** → `/api/voice/deepgram-transcribe` (Deepgram Nova-2)  
-3. **Text processed by AI** → `/api/mcp` (Digital Twin MCP server)
-4. **AI response cleaned** → Removes MCP metadata and formatting
-5. **Text-to-speech** → `/api/voice/tts` (Cartesia with your cloned voice)
-6. **Audio played back** → Browser audio playback (stoppable)
+### Pure Voice Conversation Flow
+1. **Start Conversation** → Enters pure voice mode (no text display)
+2. **Voice Recording** → High-quality WebM audio capture  
+3. **Deepgram Processing** → Ultra-fast speech-to-text transcription
+4. **AI Intelligence** → MCP Digital Twin generates contextual response
+5. **Response Cleaning** → Removes technical metadata for natural speech
+6. **Cartesia Voice** → Your cloned voice speaks the response
+7. **Memory Storage** → Conversation stored for later continuation
+8. **End & Summary** → Auto-generates conversation summary
+
+### Pure Voice Experience
+- **No Text Distractions**: Clean voice-only interface during conversation
+- **Natural Flow**: Seamless back-and-forth like a phone call
+- **Memory Persistence**: Continue conversations across sessions
+- **Speech Control**: Stop AI anytime by tapping mic button
 
 ### Technical Architecture
 ```
-Browser (MediaRecorder) → Deepgram Nova-2 → MCP Digital Twin → Cartesia Voice → Browser (Audio)
-     ↑                                                                            ↓
-Voice Input                                                              Your Voice Output
+Start → Pure Voice Mode → Deepgram → MCP AI → Cartesia Voice → Memory → Summary
+        (No Text Display)     ↓                    ↓           ↓         ↓
+                          Store Memory    Your Voice    Session ID   Continue Later
 ```
 
 ## Usage
 
-### Desktop
-- Click the microphone button to start/stop recording
-- **Keyboard Shortcut**: Press `SPACEBAR` for push-to-talk functionality
-- Click "Replay" buttons to re-listen to AI responses
+### Starting a Conversation
+1. **Switch to Voice Chat Mode** → Click 🎙️ Voice Chat button
+2. **Start New Conversation** → Click "🎤 Start New Conversation"  
+3. **Pure Voice Interface** → No text shown during active conversation
+4. **Natural Speaking** → Talk naturally, AI responds with your voice
+5. **End Conversation** → Click "🛑 End Conversation" for summary
 
-### Mobile
-- Tap the microphone button to start talking
-- Tap again to stop and process
-- Optimized for touch interfaces
+### During Conversation
+- **Tap Mic**: Start recording your message
+- **Tap Again**: Stop recording and process
+- **Tap During AI Speech**: Stop AI and speak immediately  
+- **Turn Counter**: See conversation progress
+- **Natural Flow**: No text distractions
+
+### After Conversation
+- **Auto Summary**: Conversation summary generated automatically
+- **Session Memory**: Conversation stored with unique session ID
+- **Continue Later**: Resume conversations from previous sessions
 
 ## Voice Chat Mode Features
 
@@ -58,12 +76,14 @@ Voice Input                                                              Your Vo
 - Message history preserved like other chat modes
 
 ### Smart Features
-- **Auto-cleanup**: Microphone and audio resources automatically released
-- **Speech interruption**: Stop AI speech anytime by tapping the mic button
-- **Response cleaning**: Automatically removes MCP metadata and formatting
-- **Error handling**: Graceful fallbacks for audio issues
-- **Permission handling**: Clear prompts for microphone access
-- **Format optimization**: WebM for modern browsers, fallbacks available
+- **Pure Voice Experience**: No text shown during conversations for natural flow
+- **Conversation Memory**: Auto-saves conversation summaries with session IDs
+- **Session Continuity**: Resume conversations from where you left off
+- **Speech Interruption**: Stop AI speech anytime by tapping the mic button
+- **Response Cleaning**: Automatically removes technical metadata
+- **Resource Management**: Auto-cleanup of microphone and audio resources
+- **Error Handling**: Graceful fallbacks for audio issues
+- **Mobile Optimized**: Touch-friendly interface for mobile devices
 
 ## API Integration
 
