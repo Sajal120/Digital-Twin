@@ -55,30 +55,36 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
     } else if (speechData && typeof speechData === 'object') {
       // New format - object with text and detectedLanguage
       const dataObj = speechData as any // Type assertion for flexibility
-      speechResult = dataObj.text || dataObj.speechResult || ''
+      const rawText = dataObj.text || dataObj.speechResult || ''
+      speechResult = typeof rawText === 'string' ? rawText : String(rawText)
       detectedLanguage = dataObj.detectedLanguage || dataObj.language || 'en'
-      console.log(
-        '📋 Using object format:',
-        String(speechResult || 'No speech result').substring(0, 50),
-      )
+
+      console.log('🔍 Raw text from Redis:', typeof rawText, rawText)
+      console.log('📋 Using object format - dataObj.text:', dataObj.text)
+      console.log('📋 speechResult type:', typeof speechResult, 'value:', speechResult)
     } else {
       console.error('❌ Invalid speech data format:', speechData)
       throw new Error('Invalid speech data format from Redis')
+    }
+
+    // Ensure speechResult is always a string
+    if (typeof speechResult !== 'string') {
+      console.error('❌ speechResult is not a string:', typeof speechResult, speechResult)
+      speechResult = String(speechResult)
     }
 
     if (!callSid || !speechResult) {
       console.error('❌ Missing data from Redis:', {
         callSid: !!callSid,
         speechResult: !!speechResult,
+        speechResultType: typeof speechResult,
         speechDataType: typeof speechData,
       })
       throw new Error('Missing callSid or speech result from Redis')
     }
 
-    console.log(
-      '🤖 Processing AI response for:',
-      speechResult?.substring(0, 50) || 'No speech result',
-    )
+    const safeText = typeof speechResult === 'string' ? speechResult : JSON.stringify(speechResult)
+    console.log('🤖 Processing AI response for:', safeText.substring(0, 50) || 'No speech result')
     console.log('🌍 Detected language from transcription:', detectedLanguage)
 
     // Get unified context
