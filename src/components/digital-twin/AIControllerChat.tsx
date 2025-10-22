@@ -368,23 +368,24 @@ export function AIControllerChat() {
   }
 
   const startVoiceConversation = () => {
-    console.log('🎙️ Starting voice conversation...')
+    console.log('🎙️ Starting NEW voice conversation...')
 
-    // Only create new session if we don't already have one (for resume functionality)
-    if (!sessionId) {
-      const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      setSessionId(newSessionId)
-    }
+    // Always create new session ID for new conversations
+    const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    setSessionId(newSessionId)
 
     setIsVoiceConversationActive(true)
 
-    // Only clear memory if starting fresh (not resuming)
-    if (conversationMemory.length === 0) {
-      setConversationMemory([])
-      setConversationSummary('')
-    } else {
-      console.log('🔄 Resuming conversation with', conversationMemory.length, 'existing turns')
-    }
+    // Always clear memory and summary for new conversations
+    setConversationMemory([])
+    setConversationSummary('')
+
+    console.log('✨ New voice conversation started with session:', newSessionId)
+  }
+
+  const continueVoiceConversation = () => {
+    console.log('🔄 Continuing existing voice conversation...')
+    setIsVoiceConversationActive(true)
   }
 
   const endVoiceConversation = async () => {
@@ -941,7 +942,7 @@ export function AIControllerChat() {
         {/* Messages - Hidden during active voice conversation */}
         {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
           <div
-            className={`h-[calc(100%-140px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-40' : 'pb-20'}`}
+            className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-60' : 'pb-20'}`}
           >
             <AnimatePresence>
               {messages.map((message, index) => (
@@ -1169,7 +1170,9 @@ export function AIControllerChat() {
         )}
 
         {/* Input */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom">
+        <div
+          className={`absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'bottom-4' : ''}`}
+        >
           {chatMode === 'voice_chat' ? (
             // Voice Chat Mode - Pure Voice Interface
             <div className="flex flex-col items-center space-y-4">
@@ -1201,10 +1204,7 @@ export function AIControllerChat() {
 
                     {conversationSummary && (
                       <motion.button
-                        onClick={() => {
-                          // Continue with existing context
-                          setIsVoiceConversationActive(true)
-                        }}
+                        onClick={continueVoiceConversation}
                         className="px-6 py-2 bg-blue-500/80 hover:bg-blue-600 rounded-full text-white text-sm transition-colors"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
