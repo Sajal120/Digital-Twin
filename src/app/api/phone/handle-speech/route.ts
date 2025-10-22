@@ -238,12 +238,18 @@ export async function POST(request: NextRequest) {
             voice: {
               mode: 'id',
               id: process.env.CARTESIA_VOICE_ID,
+              __experimental_controls: {
+                speed: 'normal',
+                emotion: ['positivity:medium', 'curiosity:medium'],
+              },
             },
             output_format: {
               container: 'mp3',
               encoding: 'mp3',
-              sample_rate: 22050,
+              sample_rate: 44100,
+              bit_rate: 128000,
             },
+            language: 'en',
           }),
         })
 
@@ -486,12 +492,18 @@ export async function POST(request: NextRequest) {
           voice: {
             mode: 'id',
             id: process.env.CARTESIA_VOICE_ID,
+            __experimental_controls: {
+              speed: 'normal',
+              emotion: ['positivity:medium', 'curiosity:medium'],
+            },
           },
           output_format: {
             container: 'mp3',
             encoding: 'mp3',
-            sample_rate: 22050,
+            sample_rate: 44100,
+            bit_rate: 128000,
           },
+          language: 'en',
         }),
         signal: controller.signal,
       })
@@ -604,11 +616,16 @@ export async function POST(request: NextRequest) {
           voice: {
             mode: 'id',
             id: process.env.CARTESIA_VOICE_ID || '6de7b29c-12d3-480d-9738-dd1f7b640364',
+            __experimental_controls: {
+              speed: 'normal',
+              emotion: ['positivity:medium', 'curiosity:medium'],
+            },
           },
           output_format: {
             container: 'mp3',
             encoding: 'mp3',
-            sample_rate: 22050,
+            sample_rate: 44100,
+            bit_rate: 128000,
           },
           language: 'en',
         }),
