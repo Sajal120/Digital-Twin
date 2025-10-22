@@ -132,14 +132,18 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
 
     // Check for cached audio first
     let audioUrl: string | null = null
-    try {
-      const { getCachedAudioUrl, cacheAudioUrl } = await import('@/lib/redis-cache')
-      audioUrl = await getCachedAudioUrl(unifiedResponse.response, currentLanguage)
-      if (audioUrl) {
-        console.log('⚡ Using cached audio URL (instant)')
+    const responseText = unifiedResponse.response || ''
+
+    if (responseText) {
+      try {
+        const { getCachedAudioUrl, cacheAudioUrl } = await import('@/lib/redis-cache')
+        audioUrl = await getCachedAudioUrl(responseText, currentLanguage)
+        if (audioUrl) {
+          console.log('⚡ Using cached audio URL (instant)')
+        }
+      } catch (cacheError) {
+        console.warn('⚠️ Audio cache check failed:', cacheError)
       }
-    } catch (cacheError) {
-      console.warn('⚠️ Audio cache check failed:', cacheError)
     }
 
     // Generate audio with Cartesia if not cached
@@ -156,7 +160,7 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
         },
         body: JSON.stringify({
           model_id: detectedLanguage === 'hi' ? 'sonic-multilingual' : 'sonic-english',
-          transcript: unifiedResponse.response,
+          transcript: responseText || 'Sorry, no response available.',
           voice: {
             mode: 'id',
             id: process.env.CARTESIA_VOICE_ID,
@@ -193,7 +197,7 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
       console.log('📁 Audio metadata:', {
         audioId,
         bufferSize: audioBufferObj.length,
-        textPreview: unifiedResponse.response.substring(0, 50),
+        textPreview: unifiedResponse.response?.substring(0, 50) || 'No response text',
       })
 
       const blob = await put(`phone-audio/${audioId}.mp3`, audioBufferObj, {
@@ -209,11 +213,13 @@ async function processResponse(request: NextRequest, { params }: { params: { cal
       audioUrl = blob.url
 
       // Cache the audio URL for future reuse
-      try {
-        const { cacheAudioUrl } = await import('@/lib/redis-cache')
-        await cacheAudioUrl(unifiedResponse.response, audioUrl, currentLanguage)
-      } catch (cacheError) {
-        console.warn('⚠️ Audio caching failed:', cacheError)
+      if (responseText) {
+        try {
+          const { cacheAudioUrl } = await import('@/lib/redis-cache')
+          await cacheAudioUrl(responseText, audioUrl, currentLanguage)
+        } catch (cacheError) {
+          console.warn('⚠️ Audio caching failed:', cacheError)
+        }
       }
     }
 
