@@ -696,7 +696,7 @@ export function AIControllerChat() {
       // Add conversation history to voice chat messages
       const historyMessage: Message = {
         id: Date.now().toString(),
-        content: `📝 Conversation History\n\n${conversationHistory}\n\nSession ID: ${sessionId}\nClick to continue this conversation anytime!`,
+        content: `📝 ${conversationHistory}`,
         role: 'assistant',
         timestamp: new Date(),
         isVoice: false,
@@ -723,7 +723,7 @@ export function AIControllerChat() {
           // Add previous conversation history to messages
           const previousMessage: Message = {
             id: 'previous_' + Date.now().toString(),
-            content: `� Previous Conversation (${new Date(data.timestamp).toLocaleDateString()}):\n\n${data.summary}\n\nClick here to continue this conversation!`,
+            content: `� Previous Conversation (${new Date(data.timestamp).toLocaleDateString()}):\n\n${data.summary}\n\n`,
             role: 'assistant',
             timestamp: new Date(),
             isVoice: false,
@@ -922,14 +922,21 @@ export function AIControllerChat() {
                           : undefined
                       }
                     >
-                      <p className="text-sm whitespace-pre-line">
+                      <div
+                        className={`text-sm whitespace-pre-line ${message.isClickableHistory ? 'max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/50 scrollbar-track-transparent' : ''}`}
+                      >
                         {message.isVoice && (
                           <span className="inline-flex items-center gap-1 text-xs opacity-75 mb-1">
                             {message.role === 'user' ? '🎙️' : '🔊'} Voice
                           </span>
                         )}
                         {renderMessageContent(message.content)}
-                      </p>
+                        {message.isClickableHistory && (
+                          <div className="mt-2 text-xs opacity-70 italic">
+                            👆 Click to continue this conversation
+                          </div>
+                        )}
+                      </div>
                       {message.isVoice &&
                         chatMode === 'voice_chat' &&
                         message.role === 'assistant' && (
