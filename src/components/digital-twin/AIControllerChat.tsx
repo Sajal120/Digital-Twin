@@ -381,6 +381,9 @@ export function AIControllerChat() {
     setConversationMemory([])
     setConversationSummary('')
 
+    // Clear any non-history messages from voice chat (keep only clickable histories)
+    setVoiceChatMessages((prev) => prev.filter((msg) => msg.isClickableHistory))
+
     console.log('✨ BRAND NEW voice conversation started with unique session:', newSessionId)
     console.log('🚀 This will create a separate history when completed')
   }
@@ -727,10 +730,10 @@ export function AIControllerChat() {
             sessionId,
           )
 
-          // Add a continuation marker to show context
+          // Add a continuation marker to show context and previous conversation
           const continuationMessage: Message = {
             id: 'continuation_' + Date.now().toString(),
-            content: `🔄 Continuing previous conversation (${data.memory.length} exchanges)...`,
+            content: `🔄 Continuing previous conversation (${data.memory.length} exchanges)...\n\n📋 Previous Context:\n${data.summary?.substring(0, 200)}${data.summary?.length > 200 ? '...' : ''}`,
             role: 'assistant',
             timestamp: new Date(),
             isVoice: false,
@@ -784,8 +787,9 @@ export function AIControllerChat() {
       }
 
       // Add conversation history to voice chat messages
+      const historyId = `history_${sessionId}_${Date.now()}`
       const historyMessage: Message = {
-        id: Date.now().toString(),
+        id: historyId,
         content: `📝 ${conversationHistory}`,
         role: 'assistant',
         timestamp: new Date(),
@@ -794,15 +798,27 @@ export function AIControllerChat() {
         resumeSessionId: sessionId,
       }
       setVoiceChatMessages((prev) => {
-        // Always add new history entries - each conversation end creates a separate history
-        // Remove any existing history for this exact session first to prevent duplicates
+        // More aggressive duplicate prevention
         const filtered = prev.filter((msg) => {
-          // Keep all non-history messages and history messages from different sessions
-          return !msg.isClickableHistory || msg.resumeSessionId !== sessionId
+          if (!msg.isClickableHistory) return true // Keep non-history messages
+          if (msg.resumeSessionId !== sessionId) return true // Keep different sessions
+
+          // Remove any existing history for this session (prevent duplicates)
+          console.log(`🗑️ Removing duplicate history for session: ${sessionId}`)
+          return false
         })
-        console.log(
-          `📝 Adding new history for session ${sessionId}, filtered ${prev.length - filtered.length} duplicates`,
+
+        // Check if this exact content already exists
+        const contentExists = prev.some(
+          (msg) => msg.isClickableHistory && msg.content === historyMessage.content,
         )
+
+        if (contentExists) {
+          console.log(`⚠️ Identical content exists, skipping duplicate history`)
+          return prev
+        }
+
+        console.log(`✅ Adding unique history for session ${sessionId}`)
         return [...filtered, historyMessage]
       })
     } catch (error) {
