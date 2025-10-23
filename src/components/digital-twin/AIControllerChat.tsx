@@ -506,31 +506,35 @@ export function AIControllerChat() {
         setVoiceChatMessages((prev) => [...prev, userMessage])
       }
 
-      // Step 2: Get AI response using MCP (following phone architecture)
-      console.log('🤖 Getting AI response...')
-      const chatResponse = await fetch('/api/mcp', {
+      // Step 2: Process with AI (following phone architecture)
+      console.log('🤖 Processing with AI...')
+
+      // Build conversation context for AI
+      let contextualQuestion = transcript
+      if (conversationMemory.length > 0) {
+        const recentContext = conversationMemory
+          .slice(-3) // Last 3 exchanges for context
+          .map(
+            (turn) => `Previous: You said "${turn.transcript}" and I responded "${turn.response}"`,
+          )
+          .join('. ')
+        contextualQuestion = `${recentContext}. Current question: ${transcript}`
+      }
+
+      const response = await fetch('/api/mcp-client', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: `voice_${Date.now()}`,
-          method: 'tools/call',
-          params: {
-            name: 'ask_digital_twin',
-            arguments: {
-              question: transcript,
-              interviewType: 'general',
-              enhancedMode: true,
-              maxResults: 3,
-            },
-          },
+          question: contextualQuestion,
+          interviewType: 'general',
+          enhancedMode: true,
         }),
       })
 
       let aiResponseText = "I'm sorry, I didn't understand that. Could you try again?"
 
-      if (chatResponse.ok) {
-        const chatData = await chatResponse.json()
+      if (response.ok) {
+        const chatData = await response.json()
         if (chatData.result?.content?.[0]?.text) {
           aiResponseText = chatData.result.content[0].text
             // Remove all MCP metadata and formatting
@@ -549,7 +553,7 @@ export function AIControllerChat() {
         } else {
           aiResponseText = "I'm having trouble processing your request right now. Please try again."
         }
-      } else if (chatResponse.status === 429) {
+      } else if (response.status === 429) {
         aiResponseText = "I'm experiencing high usage right now. Please try again in a moment."
       } else {
         aiResponseText = 'Sorry, I had trouble processing your voice message. Please try again.'
@@ -686,9 +690,6 @@ export function AIControllerChat() {
     try {
       console.log('🔄 Resuming conversation with session:', sessionId)
 
-      // Don't clear existing memory - we want to continue the conversation
-      console.log('🔄 Preserving existing conversation memory for continuation')
-
       // Set the session ID to resume
       setSessionId(sessionId)
 
@@ -700,15 +701,29 @@ export function AIControllerChat() {
       if (response.ok) {
         const data = await response.json()
         if (data.found && data.memory) {
-          // Restore the conversation memory
+          // Restore the conversation memory for continuation
           setConversationMemory(data.memory)
           setConversationSummary(data.summary || '')
+
+          // Remove the clickable history for this session from UI since we're continuing it
+          setVoiceChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
+
           console.log(
-            '📦 Loaded conversation memory:',
+            '📦 Continuing conversation with',
             data.memory.length,
-            'turns for session:',
+            'previous turns for session:',
             sessionId,
           )
+
+          // Add a continuation marker to show context
+          const continuationMessage: Message = {
+            id: 'continuation_' + Date.now().toString(),
+            content: `🔄 Continuing previous conversation (${data.memory.length} exchanges)...`,
+            role: 'assistant',
+            timestamp: new Date(),
+            isVoice: false,
+          }
+          setVoiceChatMessages((prev) => [...prev, continuationMessage])
         } else {
           console.log('⚠️ No memory found for session:', sessionId)
         }
