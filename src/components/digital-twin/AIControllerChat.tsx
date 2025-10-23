@@ -521,13 +521,21 @@ export function AIControllerChat() {
         contextualQuestion = `${recentContext}. Current question: ${transcript}`
       }
 
-      const response = await fetch('/api/mcp-client', {
+      const response = await fetch('/api/mcp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: contextualQuestion,
-          interviewType: 'general',
-          enhancedMode: true,
+          jsonrpc: '2.0',
+          id: Date.now(),
+          method: 'tools/call',
+          params: {
+            name: 'ask_digital_twin',
+            arguments: {
+              question: contextualQuestion,
+              interviewType: 'general',
+              enhancedMode: true,
+            },
+          },
         }),
       })
 
