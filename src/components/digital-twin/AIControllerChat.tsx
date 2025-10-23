@@ -545,7 +545,13 @@ export function AIControllerChat() {
             .replace(/\.\s*\./g, '.') // Remove duplicate periods
             .replace(/\s+/g, ' ') // Normalize whitespace
             .trim()
+        } else {
+          aiResponseText = "I'm having trouble processing your request right now. Please try again."
         }
+      } else if (chatResponse.status === 429) {
+        aiResponseText = "I'm experiencing high usage right now. Please try again in a moment."
+      } else {
+        aiResponseText = 'Sorry, I had trouble processing your voice message. Please try again.'
       }
 
       // Store in conversation memory during active conversation
@@ -651,6 +657,10 @@ export function AIControllerChat() {
     try {
       console.log('🔄 Resuming conversation with session:', sessionId)
 
+      // First, clear any existing state to prevent mixing
+      setConversationMemory([])
+      setConversationSummary('')
+
       // Set the session ID to resume
       setSessionId(sessionId)
 
@@ -665,16 +675,27 @@ export function AIControllerChat() {
           // Restore the conversation memory
           setConversationMemory(data.memory)
           setConversationSummary(data.summary || '')
-          console.log('📦 Loaded conversation memory:', data.memory.length, 'turns')
+          console.log(
+            '📦 Loaded conversation memory:',
+            data.memory.length,
+            'turns for session:',
+            sessionId,
+          )
+        } else {
+          console.log('⚠️ No memory found for session:', sessionId)
         }
+      } else {
+        console.error('❌ Failed to load conversation from API')
       }
 
-      // Start voice conversation mode immediately without clearing messages
+      // Start voice conversation mode immediately
       setIsVoiceConversationActive(true)
 
-      console.log('✅ Conversation resumed successfully')
+      console.log('✅ Conversation resumed successfully with session:', sessionId)
     } catch (error) {
       console.error('❌ Failed to resume conversation:', error)
+      // Fallback: still activate voice mode even if loading fails
+      setIsVoiceConversationActive(true)
     }
   }
 
@@ -945,7 +966,7 @@ export function AIControllerChat() {
         {/* Messages - Hidden during active voice conversation */}
         {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
           <div
-            className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-80' : 'pb-20'}`}
+            className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96' : 'pb-20'}`}
           >
             <AnimatePresence>
               {messages.map((message, index) => (
