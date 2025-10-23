@@ -368,19 +368,20 @@ export function AIControllerChat() {
   }
 
   const startVoiceConversation = () => {
-    console.log('🎙️ Starting NEW voice conversation...')
+    console.log('🎙️ Starting COMPLETELY NEW voice conversation...')
 
-    // Always create new session ID for new conversations
+    // Always create new unique session ID for new conversations
     const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     setSessionId(newSessionId)
 
     setIsVoiceConversationActive(true)
 
-    // Always clear memory and summary for new conversations
+    // Always clear memory and summary for completely new conversations
     setConversationMemory([])
     setConversationSummary('')
 
-    console.log('✨ New voice conversation started with session:', newSessionId)
+    console.log('✨ BRAND NEW voice conversation started with unique session:', newSessionId)
+    console.log('🚀 This will create a separate history when completed')
   }
 
   const continueVoiceConversation = () => {
@@ -653,6 +654,34 @@ export function AIControllerChat() {
     }
   }
 
+  const deleteConversationHistory = async (sessionId: string) => {
+    try {
+      console.log('🗑️ Deleting conversation history for session:', sessionId)
+
+      // Remove from voice chat messages (UI)
+      setVoiceChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
+
+      // Delete from memory API
+      try {
+        await fetch('/api/voice/memory', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            sessionId,
+          }),
+        })
+        console.log('✅ Conversation history deleted from memory API')
+      } catch (error) {
+        console.error('❌ Failed to delete from memory API:', error)
+      }
+
+      console.log('✅ Conversation history deleted successfully')
+    } catch (error) {
+      console.error('❌ Failed to delete conversation history:', error)
+    }
+  }
+
   const resumeConversation = async (sessionId: string) => {
     try {
       console.log('🔄 Resuming conversation with session:', sessionId)
@@ -738,17 +767,10 @@ export function AIControllerChat() {
         resumeSessionId: sessionId,
       }
       setVoiceChatMessages((prev) => {
-        // For continued conversations, update existing history. For new conversations, add new history.
-        const existingIndex = prev.findIndex((msg) => msg.resumeSessionId === sessionId)
-        if (existingIndex >= 0) {
-          // Update existing history for this session
-          const updated = [...prev]
-          updated[existingIndex] = historyMessage
-          return updated
-        } else {
-          // Add new history for new session
-          return [...prev, historyMessage]
-        }
+        // Always add new history entries - each conversation end creates a separate history
+        // Remove any existing history for this exact session first to prevent duplicates
+        const filtered = prev.filter((msg) => msg.resumeSessionId !== sessionId)
+        return [...filtered, historyMessage]
       })
     } catch (error) {
       console.error('❌ Failed to generate conversation summary:', error)
@@ -777,8 +799,14 @@ export function AIControllerChat() {
             resumeSessionId: sessionId,
           }
           setVoiceChatMessages((prev) => {
+            // Only add if this specific session history doesn't already exist
             const hasExisting = prev.some((msg) => msg.resumeSessionId === sessionId)
-            return hasExisting ? prev : [...prev, previousMessage]
+            if (hasExisting) {
+              console.log('🗑️ History already exists for session:', sessionId)
+              return prev
+            }
+            console.log('➕ Adding new history entry for session:', sessionId)
+            return [...prev, previousMessage]
           })
           setConversationSummary(data.summary)
           console.log('✅ Previous conversation loaded successfully')
@@ -1036,8 +1064,22 @@ export function AIControllerChat() {
                         )}
                         {renderMessageContent(message.content)}
                         {message.isClickableHistory && (
-                          <div className="mt-2 text-xs opacity-70 italic">
-                            👆 Click to continue this conversation
+                          <div className="mt-2 flex items-center justify-between">
+                            <div className="text-xs opacity-70 italic">
+                              👆 Click to continue this conversation
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (message.resumeSessionId) {
+                                  deleteConversationHistory(message.resumeSessionId)
+                                }
+                              }}
+                              className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded transition-all duration-200 ml-2"
+                              title="Delete this conversation history"
+                            >
+                              🗑️ Delete
+                            </button>
                           </div>
                         )}
                       </div>
