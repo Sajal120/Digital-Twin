@@ -657,9 +657,8 @@ export function AIControllerChat() {
     try {
       console.log('🔄 Resuming conversation with session:', sessionId)
 
-      // First, clear any existing state to prevent mixing
-      setConversationMemory([])
-      setConversationSummary('')
+      // Don't clear existing memory - we want to continue the conversation
+      console.log('🔄 Preserving existing conversation memory for continuation')
 
       // Set the session ID to resume
       setSessionId(sessionId)
@@ -739,9 +738,17 @@ export function AIControllerChat() {
         resumeSessionId: sessionId,
       }
       setVoiceChatMessages((prev) => {
-        // Remove any existing history for this session and add the new one
-        const filtered = prev.filter((msg) => msg.resumeSessionId !== sessionId)
-        return [...filtered, historyMessage]
+        // For continued conversations, update existing history. For new conversations, add new history.
+        const existingIndex = prev.findIndex((msg) => msg.resumeSessionId === sessionId)
+        if (existingIndex >= 0) {
+          // Update existing history for this session
+          const updated = [...prev]
+          updated[existingIndex] = historyMessage
+          return updated
+        } else {
+          // Add new history for new session
+          return [...prev, historyMessage]
+        }
       })
     } catch (error) {
       console.error('❌ Failed to generate conversation summary:', error)
@@ -872,7 +879,7 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix ${chatMode === 'voice_chat' ? 'h-[calc(100vh-12rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
+        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
         style={{
           height:
             chatMode === 'voice_chat' ? 'calc(100vh - 12rem)' : 'min(85vh, calc(100vh - 4rem))',
@@ -1195,7 +1202,8 @@ export function AIControllerChat() {
 
         {/* Input */}
         <div
-          className={`fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent safe-area-inset-bottom z-50 ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
+          className={`fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
+          style={{ zIndex: 9999 }}
         >
           {chatMode === 'voice_chat' ? (
             // Voice Chat Mode - Pure Voice Interface
