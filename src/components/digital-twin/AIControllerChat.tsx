@@ -371,8 +371,9 @@ export function AIControllerChat() {
     console.log('🎙️ Starting COMPLETELY NEW voice conversation...')
 
     // Always create new unique session ID for new conversations
-    const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const newSessionId = `voice_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${performance.now()}`
     setSessionId(newSessionId)
+    console.log(`🆔 Created new session ID: ${newSessionId}`)
 
     setIsVoiceConversationActive(true)
 
@@ -549,6 +550,9 @@ export function AIControllerChat() {
             .replace(/\*\*Enhanced Interview Response\*\*[^:]*:[^\n]*\n?/gi, '')
             .replace(/Query Enhancement:[^\n]*\n?/gi, '')
             .replace(/Processing Mode:[^\n]*\n?/gi, '')
+            .replace(/\*\*Processing Mode\*\*:[^\n]*\n?/gi, '') // Additional Processing Mode removal
+            .replace(/LLM-Enhanced RAG[^\n]*\n?/gi, '') // Remove LLM-Enhanced RAG text
+            .replace(/Enhanced RAG[^\n]*\n?/gi, '') // Remove Enhanced RAG text
             .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
             .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
             .replace(/---[^\n]*\n?/g, '') // Remove dividers
@@ -792,7 +796,13 @@ export function AIControllerChat() {
       setVoiceChatMessages((prev) => {
         // Always add new history entries - each conversation end creates a separate history
         // Remove any existing history for this exact session first to prevent duplicates
-        const filtered = prev.filter((msg) => msg.resumeSessionId !== sessionId)
+        const filtered = prev.filter((msg) => {
+          // Keep all non-history messages and history messages from different sessions
+          return !msg.isClickableHistory || msg.resumeSessionId !== sessionId
+        })
+        console.log(
+          `📝 Adding new history for session ${sessionId}, filtered ${prev.length - filtered.length} duplicates`,
+        )
         return [...filtered, historyMessage]
       })
     } catch (error) {
