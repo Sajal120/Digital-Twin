@@ -534,7 +534,7 @@ export function AIControllerChat() {
           params: {
             name: 'ask_digital_twin',
             arguments: {
-              question: contextualQuestion,
+              question: `${contextualQuestion} [RESPOND IN ENGLISH ONLY - NO HINDI, NEPALI, OR OTHER LANGUAGES]`,
               interviewType: 'general',
               enhancedMode: true,
             },
@@ -550,8 +550,9 @@ export function AIControllerChat() {
           aiResponseText = chatData.result.content[0].text
             // Remove all MCP metadata and formatting
             .replace(/\*\*Enhanced Interview Response\*\*[^:]*:[^\n]*\n?/gi, '')
-            .replace(/Query Enhancement:[^"]*"[^"]*"[^\n]*/gi, '') // Remove Query Enhancement with full sentence
-            .replace(/Query Enhancement:[^\n]*\n?/gi, '')
+            .replace(/Query Enhancement:[^"]*"[^"]*"[^\.\n]*/gi, '') // Remove Query Enhancement with quoted text
+            .replace(/Query Enhancement:[^\.\n]*\.{3,}/gi, '') // Remove Query Enhancement with ellipsis
+            .replace(/Query Enhancement:[^\n]*\n?/gi, '') // Catch any remaining Query Enhancement
             .replace(/Processing Mode:[^\n]*\n?/gi, '')
             .replace(/\*\*Processing Mode\*\*:[^\n]*\n?/gi, '') // Additional Processing Mode removal
             .replace(/LLM-Enhanced RAG[^\n]*\n?/gi, '') // Remove LLM-Enhanced RAG text
@@ -743,16 +744,6 @@ export function AIControllerChat() {
           // NOW set the session ID (after memory is loaded)
           setSessionId(sessionId)
 
-          // Add a continuation marker to show context
-          const continuationMessage: Message = {
-            id: 'continuation_' + Date.now().toString(),
-            content: `🔄 Continuing previous conversation (${data.memory.length} exchanges)...\n\n📋 Previous Context:\n${data.summary?.substring(0, 200)}${data.summary?.length > 200 ? '...' : ''}`,
-            role: 'assistant',
-            timestamp: new Date(),
-            isVoice: false,
-          }
-          setVoiceChatMessages((prev) => [...prev, continuationMessage])
-
           console.log('✅ Conversation context loaded, will create UPDATED history when ended')
         } else {
           console.error('⚠️ No memory found for session:', sessionId)
@@ -840,16 +831,17 @@ export function AIControllerChat() {
       console.log(`📋 History message sessionId: ${currentSessionId}`)
       console.log(`📋 Current voiceChatMessages count: ${voiceChatMessages.length}`)
 
+      // Check OUTSIDE setVoiceChatMessages if history already exists
+      const existingHistoryIndex = voiceChatMessages.findIndex(
+        (msg) => msg.isClickableHistory && msg.resumeSessionId === currentSessionId,
+      )
+      const hasExisting = existingHistoryIndex !== -1
+
+      console.log(`📋 Checking for existing history with sessionId: ${currentSessionId}`)
+      console.log(`📋 Has existing history? ${hasExisting} (index: ${existingHistoryIndex})`)
+
       setVoiceChatMessages((prev) => {
         console.log(`📋 Inside setVoiceChatMessages - prev count: ${prev.length}`)
-        console.log(`📋 Checking for existing history with sessionId: ${currentSessionId}`)
-
-        // Check if this session already has a history entry
-        const hasExisting = prev.some(
-          (msg) => msg.isClickableHistory && msg.resumeSessionId === currentSessionId,
-        )
-
-        console.log(`📋 Has existing history? ${hasExisting}`)
 
         if (hasExisting) {
           console.log(
