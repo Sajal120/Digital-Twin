@@ -396,6 +396,10 @@ export function AIControllerChat() {
 
   const endVoiceConversation = async () => {
     console.log('🛑 Ending voice conversation...')
+    console.log(`🛑 Current sessionId: ${sessionId}`)
+    console.log(`🛑 Conversation memory length: ${conversationMemory.length}`)
+    console.log(`🛑 Current voiceChatMessages count: ${voiceChatMessages.length}`)
+
     setIsVoiceConversationActive(false)
 
     // Stop any ongoing recording or playback
@@ -405,7 +409,9 @@ export function AIControllerChat() {
     // Only generate conversation summary if there are actual conversation turns
     if (conversationMemory.length > 0) {
       console.log('📝 Generating history for conversation with', conversationMemory.length, 'turns')
+      console.log('📝 Calling generateConversationSummary...')
       await generateConversationSummary()
+      console.log('📝 generateConversationSummary completed')
     } else {
       console.log('🗑️ No conversation turns - skipping history generation')
     }
@@ -514,17 +520,9 @@ export function AIControllerChat() {
       // Step 2: Process with AI (following phone architecture)
       console.log('🤖 Processing with AI...')
 
-      // Build conversation context for AI
-      let contextualQuestion = transcript
-      if (conversationMemory.length > 0) {
-        const recentContext = conversationMemory
-          .slice(-3) // Last 3 exchanges for context
-          .map(
-            (turn) => `Previous: You said "${turn.transcript}" and I responded "${turn.response}"`,
-          )
-          .join('. ')
-        contextualQuestion = `${recentContext}. Current question: ${transcript}`
-      }
+      // Send ONLY the transcript - the backend will handle conversation context
+      // through the chat history API, avoiding false language detection
+      const contextualQuestion = transcript
 
       const response = await fetch('/api/mcp', {
         method: 'POST',
@@ -710,11 +708,9 @@ export function AIControllerChat() {
   const resumeConversation = async (sessionId: string) => {
     try {
       console.log('🔄 Resuming conversation with session:', sessionId)
+      console.log('🔄 Current voiceChatMessages before resume:', voiceChatMessages.length)
 
-      // Set the session ID to resume
-      setSessionId(sessionId)
-
-      // Load the conversation data from memory API
+      // Load the conversation data from memory API FIRST
       const response = await fetch(`/api/voice/memory?sessionId=${sessionId}`, {
         method: 'GET',
       })
@@ -722,27 +718,23 @@ export function AIControllerChat() {
       if (response.ok) {
         const data = await response.json()
         if (data.found && data.memory) {
+          console.log('📦 Loaded conversation with', data.memory.length, 'previous turns')
+
+          // Remove the old history for this session from UI (it will be replaced with updated one when ended)
+          setVoiceChatMessages((prev) => {
+            const filtered = prev.filter((msg) => msg.resumeSessionId !== sessionId)
+            console.log(`🗑️ Removed old history, messages: ${prev.length} -> ${filtered.length}`)
+            return filtered
+          })
+
           // Restore the conversation memory for continuation
           setConversationMemory(data.memory)
           setConversationSummary(data.summary || '')
 
-          // Remove the clickable history for this session from UI since we're continuing it
-          setVoiceChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
+          // NOW set the session ID (after memory is loaded)
+          setSessionId(sessionId)
 
-          // Mark this session as resumed by adding a flag
-          console.log(
-            `🔄 Session ${sessionId} will be continued, NOT generating new history on end`,
-          )
-
-          console.log(
-            '📦 Continuing conversation with',
-            data.memory.length,
-            'previous turns for session:',
-            sessionId,
-          )
-          console.log('🔄 Continuation mode ENABLED - will skip history generation on end')
-
-          // Add a continuation marker to show context and previous conversation
+          // Add a continuation marker to show context
           const continuationMessage: Message = {
             id: 'continuation_' + Date.now().toString(),
             content: `🔄 Continuing previous conversation (${data.memory.length} exchanges)...\n\n📋 Previous Context:\n${data.summary?.substring(0, 200)}${data.summary?.length > 200 ? '...' : ''}`,
@@ -751,20 +743,27 @@ export function AIControllerChat() {
             isVoice: false,
           }
           setVoiceChatMessages((prev) => [...prev, continuationMessage])
+
+          console.log('✅ Conversation context loaded, will create UPDATED history when ended')
         } else {
           console.log('⚠️ No memory found for session:', sessionId)
+          // Still set the sessionId even if no memory found
+          setSessionId(sessionId)
         }
       } else {
         console.error('❌ Failed to load conversation from API')
+        // Still set the sessionId even if API fails
+        setSessionId(sessionId)
       }
 
-      // Start voice conversation mode immediately
+      // Start voice conversation mode
       setIsVoiceConversationActive(true)
 
-      console.log('✅ Conversation resumed successfully with session:', sessionId)
+      console.log('✅ Conversation resumed with session:', sessionId)
     } catch (error) {
       console.error('❌ Failed to resume conversation:', error)
-      // Fallback: still activate voice mode even if loading fails
+      // Fallback: still set session and activate voice mode
+      setSessionId(sessionId)
       setIsVoiceConversationActive(true)
     }
   }
