@@ -43,7 +43,7 @@ export function AIControllerChat() {
     Array<{ transcript: string; response: string; timestamp: Date }>
   >([])
   const [conversationSummary, setConversationSummary] = useState('')
-  const [sessionId, setSessionId] = useState('')
+  const [sessionId, setSessionId] = useState<string>('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -576,6 +576,9 @@ export function AIControllerChat() {
 
       // Store in conversation memory during active conversation
       if (isVoiceConversationActive) {
+        console.log(`💾 Adding to conversation memory for session: ${sessionId}`)
+        console.log(`📊 Current memory size before add: ${conversationMemory.length}`)
+
         setConversationMemory((prev) => [
           ...prev,
           {
@@ -584,6 +587,8 @@ export function AIControllerChat() {
             timestamp: new Date(),
           },
         ])
+
+        console.log(`📊 Memory should now have: ${conversationMemory.length + 1} items`)
       } else {
         // Add AI response to voice chat only if not in active conversation
         const aiMessage: Message = {
@@ -761,6 +766,16 @@ export function AIControllerChat() {
     try {
       console.log('📝 Generating conversation summary...')
 
+      // Ensure we have a session ID - create one if missing
+      let currentSessionId = sessionId
+      if (!currentSessionId || currentSessionId === '') {
+        currentSessionId = `emergency_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        setSessionId(currentSessionId)
+        console.log(`🆘 Emergency session ID created: ${currentSessionId}`)
+      }
+
+      console.log(`🔍 Using session ID: ${currentSessionId} for ${conversationMemory.length} turns`)
+
       // Use the actual conversation history instead of AI summary
       const conversationHistory = conversationMemory
         .map((turn, index) => `👤 You: ${turn.transcript}\n🤖 Me: ${turn.response}`)
@@ -775,7 +790,7 @@ export function AIControllerChat() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'save',
-            sessionId,
+            sessionId: currentSessionId,
             summary: conversationHistory,
             memory: conversationMemory,
             turnCount: conversationMemory.length,
@@ -787,7 +802,7 @@ export function AIControllerChat() {
       }
 
       // Add conversation history to voice chat messages
-      const historyId = `history_${sessionId}_${Date.now()}`
+      const historyId = `history_${currentSessionId}_${Date.now()}`
       const historyMessage: Message = {
         id: historyId,
         content: `📝 ${conversationHistory}`,
@@ -795,20 +810,18 @@ export function AIControllerChat() {
         timestamp: new Date(),
         isVoice: false,
         isClickableHistory: true,
-        resumeSessionId: sessionId,
+        resumeSessionId: currentSessionId,
       }
       setVoiceChatMessages((prev) => {
         // More aggressive duplicate prevention
         const filtered = prev.filter((msg) => {
           if (!msg.isClickableHistory) return true // Keep non-history messages
-          if (msg.resumeSessionId !== sessionId) return true // Keep different sessions
+          if (msg.resumeSessionId !== currentSessionId) return true // Keep different sessions
 
           // Remove any existing history for this session (prevent duplicates)
-          console.log(`🗑️ Removing duplicate history for session: ${sessionId}`)
+          console.log(`🗑️ Removing duplicate history for session: ${currentSessionId}`)
           return false
-        })
-
-        // Check if this exact content already exists
+        }) // Check if this exact content already exists
         const contentExists = prev.some(
           (msg) => msg.isClickableHistory && msg.content === historyMessage.content,
         )
@@ -818,7 +831,9 @@ export function AIControllerChat() {
           return prev
         }
 
-        console.log(`✅ Adding unique history for session ${sessionId}`)
+        console.log(
+          `✅ Adding unique history for session ${currentSessionId} with ${conversationMemory.length} turns`,
+        )
         return [...filtered, historyMessage]
       })
     } catch (error) {
