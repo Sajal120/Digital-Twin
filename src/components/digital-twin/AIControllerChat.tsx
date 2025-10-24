@@ -44,6 +44,7 @@ export function AIControllerChat() {
   >([])
   const [conversationSummary, setConversationSummary] = useState('')
   const [sessionId, setSessionId] = useState<string>('')
+  const [isContinuationMode, setIsContinuationMode] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -380,6 +381,7 @@ export function AIControllerChat() {
     // Always clear memory and summary for completely new conversations
     setConversationMemory([])
     setConversationSummary('')
+    setIsContinuationMode(false) // Reset continuation mode for new conversations
 
     // Clear any non-history messages from voice chat (keep only clickable histories)
     setVoiceChatMessages((prev) => prev.filter((msg) => msg.isClickableHistory))
@@ -728,12 +730,16 @@ export function AIControllerChat() {
           // Remove the clickable history for this session from UI since we're continuing it
           setVoiceChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
 
+          // Mark as continuation mode to prevent new history creation
+          setIsContinuationMode(true)
+
           console.log(
             '📦 Continuing conversation with',
             data.memory.length,
             'previous turns for session:',
             sessionId,
           )
+          console.log('🔄 Continuation mode ENABLED - will skip history generation on end')
 
           // Add a continuation marker to show context and previous conversation
           const continuationMessage: Message = {
@@ -765,6 +771,13 @@ export function AIControllerChat() {
   const generateConversationSummary = async () => {
     try {
       console.log('📝 Generating conversation summary...')
+
+      // Skip history generation if in continuation mode
+      if (isContinuationMode) {
+        console.log('⏭️ Skipping history generation - conversation was continued, not new')
+        setIsContinuationMode(false) // Reset for next time
+        return
+      }
 
       // Ensure we have a session ID - create one if missing
       let currentSessionId = sessionId
