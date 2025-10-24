@@ -1391,15 +1391,9 @@ export function AIControllerChat() {
                   <div className="flex flex-col items-center space-y-3">
                     <motion.button
                       onClick={() => {
-                        // NUCLEAR RESET: Force complete state isolation
-                        console.log(
-                          '🔥 NUCLEAR RESET: Forcing complete state reset for new conversation',
-                        )
-                        setConversationMemory([])
-                        setConversationSummary('')
-                        setIsContinuationMode(false)
-                        setWasResumedSession(false)
-                        startVoiceConversation()
+                        // Force page reload to completely reset state
+                        console.log('� Reloading page to ensure complete state reset')
+                        window.location.reload()
                       }}
                       className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white font-medium transition-all shadow-lg"
                       whileHover={{ scale: 1.05 }}
