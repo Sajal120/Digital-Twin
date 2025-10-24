@@ -44,8 +44,6 @@ export function AIControllerChat() {
   >([])
   const [conversationSummary, setConversationSummary] = useState('')
   const [sessionId, setSessionId] = useState<string>('')
-  const [isContinuationMode, setIsContinuationMode] = useState(false)
-  const [wasResumedSession, setWasResumedSession] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -383,8 +381,6 @@ export function AIControllerChat() {
     console.log('🧠 CLEARING ALL MEMORY for new conversation')
     setConversationMemory([])
     setConversationSummary('')
-    setIsContinuationMode(false) // Reset continuation mode for new conversations
-    setWasResumedSession(false) // Reset resumed session flag
 
     // Clear any non-history messages from voice chat (keep only clickable histories)
     setVoiceChatMessages((prev) => prev.filter((msg) => msg.isClickableHistory))
@@ -733,11 +729,10 @@ export function AIControllerChat() {
           // Remove the clickable history for this session from UI since we're continuing it
           setVoiceChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
 
-          // Mark as continuation mode to prevent new history creation
-          setIsContinuationMode(true)
-          setWasResumedSession(true)
-          console.log(`🔄 CONTINUATION MODE SET TO TRUE for session: ${sessionId}`)
-          console.log(`🔄 isContinuationMode state will be: true`)
+          // Mark this session as resumed by adding a flag
+          console.log(
+            `🔄 Session ${sessionId} will be continued, NOT generating new history on end`,
+          )
 
           console.log(
             '📦 Continuing conversation with',
@@ -777,19 +772,22 @@ export function AIControllerChat() {
   const generateConversationSummary = async () => {
     try {
       console.log('📝 Generating conversation summary...')
-      console.log(`🔍 Current isContinuationMode state: ${isContinuationMode}`)
 
-      // Skip history generation if in continuation mode (do this FIRST)
-      if (isContinuationMode || wasResumedSession) {
-        console.log('⏭️ SKIPPING ENTIRE HISTORY GENERATION - conversation was continued, not new')
-        console.log(`🔄 Resetting continuation mode from true to false`)
-        setIsContinuationMode(false) // Reset for next time
-        setWasResumedSession(false) // Reset resumed flag        // Save conversation to memory but don't create UI history
+      // Check if this session already has a history entry in the UI
+      const hasExistingHistory = voiceChatMessages.some(
+        (msg) => msg.isClickableHistory && msg.resumeSessionId === sessionId,
+      )
+
+      if (hasExistingHistory) {
+        console.log(
+          '⏭️ Session already has history entry - updating memory only, not creating duplicate UI history',
+        )
+        // Save conversation to memory but don't create UI history
         try {
-          let currentSessionId = sessionId
-          if (!currentSessionId || currentSessionId === '') {
-            currentSessionId = `emergency_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            setSessionId(currentSessionId)
+          let finalSessionId = sessionId
+          if (!finalSessionId || finalSessionId === '') {
+            finalSessionId = `emergency_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            setSessionId(finalSessionId)
           }
 
           const conversationHistory = conversationMemory
@@ -801,7 +799,7 @@ export function AIControllerChat() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'save',
-              sessionId: currentSessionId,
+              sessionId: finalSessionId,
               summary: conversationHistory,
               memory: conversationMemory,
               turnCount: conversationMemory.length,
@@ -813,15 +811,6 @@ export function AIControllerChat() {
         }
 
         return // EXIT EARLY - no UI history creation
-      }
-
-      // NUCLEAR FIX: If conversation has many exchanges AND no clear new session, it's likely a continuation
-      // Only skip for conversations with 3+ exchanges (clearly resumed conversations)
-      if (conversationMemory.length >= 3) {
-        console.log(
-          `🚫 NUCLEAR FIX: Conversation has ${conversationMemory.length} exchanges - definitely resumed, skipping history`,
-        )
-        return
       }
 
       // Ensure we have a session ID - create one if missing
@@ -1393,7 +1382,7 @@ export function AIControllerChat() {
                       onClick={() => {
                         // Force page reload to completely reset state
                         console.log('� Reloading page to ensure complete state reset')
-                        window.location.reload()
+                        startVoiceConversation()
                       }}
                       className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white font-medium transition-all shadow-lg"
                       whileHover={{ scale: 1.05 }}
