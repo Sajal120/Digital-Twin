@@ -732,6 +732,8 @@ export function AIControllerChat() {
 
           // Mark as continuation mode to prevent new history creation
           setIsContinuationMode(true)
+          console.log(`🔄 CONTINUATION MODE SET TO TRUE for session: ${sessionId}`)
+          console.log(`🔄 isContinuationMode state will be: true`)
 
           console.log(
             '📦 Continuing conversation with',
@@ -771,13 +773,13 @@ export function AIControllerChat() {
   const generateConversationSummary = async () => {
     try {
       console.log('📝 Generating conversation summary...')
+      console.log(`🔍 Current isContinuationMode state: ${isContinuationMode}`)
 
       // Skip history generation if in continuation mode (do this FIRST)
       if (isContinuationMode) {
         console.log('⏭️ SKIPPING ENTIRE HISTORY GENERATION - conversation was continued, not new')
-        setIsContinuationMode(false) // Reset for next time
-
-        // Save conversation to memory but don't create UI history
+        console.log(`🔄 Resetting continuation mode from true to false`)
+        setIsContinuationMode(false) // Reset for next time        // Save conversation to memory but don't create UI history
         try {
           let currentSessionId = sessionId
           if (!currentSessionId || currentSessionId === '') {
