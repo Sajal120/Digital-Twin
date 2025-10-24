@@ -8,12 +8,13 @@ const conversationSummaries = new Map<
     summary: string
     timestamp: Date
     turnCount: number
+    memory: Array<{ transcript: string; response: string }>
   }
 >()
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, sessionId, summary, turnCount } = await request.json()
+    const { action, sessionId, summary, turnCount, memory } = await request.json()
 
     if (!sessionId) {
       return NextResponse.json({ error: 'Session ID is required' }, { status: 400 })
@@ -24,14 +25,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Summary is required for save action' }, { status: 400 })
       }
 
-      // Save conversation summary
+      // Save conversation summary AND memory array
       conversationSummaries.set(sessionId, {
         summary,
         timestamp: new Date(),
         turnCount: turnCount || 0,
+        memory: memory || [], // Store the actual conversation turns
       })
 
-      console.log(`💾 Saved conversation summary for session: ${sessionId}`)
+      console.log(
+        `💾 Saved conversation summary for session: ${sessionId} with ${memory?.length || 0} turns`,
+      )
 
       return NextResponse.json({
         success: true,
@@ -62,6 +66,7 @@ export async function POST(request: NextRequest) {
         summary: data.summary,
         timestamp: data.timestamp.toISOString(),
         turnCount: data.turnCount,
+        memory: data.memory || [], // Return the conversation turns array
       })
     }
 
@@ -121,6 +126,7 @@ export async function GET(request: NextRequest) {
       summary: data.summary,
       timestamp: data.timestamp.toISOString(),
       turnCount: data.turnCount,
+      memory: data.memory || [], // Return the conversation turns array
     })
   } catch (error) {
     console.error('❌ Voice memory GET error:', error)

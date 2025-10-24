@@ -717,13 +717,21 @@ export function AIControllerChat() {
 
       if (response.ok) {
         const data = await response.json()
-        if (data.found && data.memory) {
-          console.log('📦 Loaded conversation with', data.memory.length, 'previous turns')
+        console.log('📦 Memory API response:', {
+          found: data.found,
+          hasMemory: !!data.memory,
+          memoryLength: data.memory?.length,
+        })
+
+        if (data.found && data.memory && data.memory.length > 0) {
+          console.log('✅ Loaded conversation with', data.memory.length, 'previous turns')
 
           // Remove the old history for this session from UI (it will be replaced with updated one when ended)
           setVoiceChatMessages((prev) => {
             const filtered = prev.filter((msg) => msg.resumeSessionId !== sessionId)
-            console.log(`🗑️ Removed old history, messages: ${prev.length} -> ${filtered.length}`)
+            console.log(
+              `🗑️ Removed old history for session ${sessionId}, messages: ${prev.length} -> ${filtered.length}`,
+            )
             return filtered
           })
 
@@ -746,17 +754,19 @@ export function AIControllerChat() {
 
           console.log('✅ Conversation context loaded, will create UPDATED history when ended')
         } else {
-          console.log('⚠️ No memory found for session:', sessionId)
-          // Still set the sessionId even if no memory found
-          setSessionId(sessionId)
+          console.error('⚠️ No memory found for session:', sessionId)
+          console.error('⚠️ This session may have been cleared or never saved')
+          alert(
+            '⚠️ Could not load conversation history. This conversation may have been cleared. Starting fresh conversation instead.',
+          )
+          // Don't set the sessionId - let them start a new conversation
+          return
         }
       } else {
-        console.error('❌ Failed to load conversation from API')
-        // Still set the sessionId even if API fails
-        setSessionId(sessionId)
-      }
-
-      // Start voice conversation mode
+        console.error('❌ Failed to load conversation from API, status:', response.status)
+        alert('❌ Failed to load conversation. Please try starting a new conversation.')
+        return
+      } // Start voice conversation mode
       setIsVoiceConversationActive(true)
 
       console.log('✅ Conversation resumed with session:', sessionId)
@@ -1353,6 +1363,7 @@ export function AIControllerChat() {
                       onClick={() => {
                         // Force page reload to completely reset state
                         console.log('� Reloading page to ensure complete state reset')
+                        // Just call the function directly - no page reload needed
                         startVoiceConversation()
                       }}
                       className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white font-medium transition-all shadow-lg"
