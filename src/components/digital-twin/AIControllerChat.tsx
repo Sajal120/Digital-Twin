@@ -810,6 +810,14 @@ export function AIControllerChat() {
         return // EXIT EARLY - no UI history creation
       }
 
+      // NUCLEAR FIX: If conversation has multiple exchanges, it's likely a continuation
+      if (conversationMemory.length > 1) {
+        console.log(
+          `🚫 NUCLEAR FIX: Conversation has ${conversationMemory.length} exchanges - likely resumed, skipping history`,
+        )
+        return
+      }
+
       // Ensure we have a session ID - create one if missing
       let currentSessionId = sessionId
       if (!currentSessionId || currentSessionId === '') {
