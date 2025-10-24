@@ -550,6 +550,7 @@ export function AIControllerChat() {
           aiResponseText = chatData.result.content[0].text
             // Remove all MCP metadata and formatting
             .replace(/\*\*Enhanced Interview Response\*\*[^:]*:[^\n]*\n?/gi, '')
+            .replace(/Query Enhancement:[^"]*"[^"]*"[^\n]*/gi, '') // Remove Query Enhancement with full sentence
             .replace(/Query Enhancement:[^\n]*\n?/gi, '')
             .replace(/Processing Mode:[^\n]*\n?/gi, '')
             .replace(/\*\*Processing Mode\*\*:[^\n]*\n?/gi, '') // Additional Processing Mode removal
@@ -852,13 +853,20 @@ export function AIControllerChat() {
 
         if (hasExisting) {
           console.log(
-            `⚠️ Session ${currentSessionId} already has history entry, skipping duplicate`,
+            `🔄 Session ${currentSessionId} already has history - UPDATING it with ${conversationMemory.length} turns`,
           )
-          return prev
+          // UPDATE the existing history instead of skipping
+          const updated = prev.map((msg) =>
+            msg.resumeSessionId === currentSessionId && msg.isClickableHistory === true
+              ? historyMessage
+              : msg,
+          )
+          console.log(`📋 Updated messages count: ${updated.length}`)
+          return updated
         }
 
         console.log(
-          `✅ Adding new history for session ${currentSessionId} with ${conversationMemory.length} turns`,
+          `✅ Adding NEW history for session ${currentSessionId} with ${conversationMemory.length} turns`,
         )
         const newMessages = [...prev, historyMessage]
         console.log(`📋 New messages count: ${newMessages.length}`)
@@ -1343,34 +1351,31 @@ export function AIControllerChat() {
             // Voice Chat Mode - Pure Voice Interface
             <div className="flex flex-col items-center space-y-4">
               {!isVoiceConversationActive ? (
-                // Start Conversation Mode
+                // Start Conversation Mode - Compact
                 <>
-                  <div className="text-center mb-4">
-                    <p className="text-white/90 text-lg font-medium mb-2">🎙️ Voice Conversation</p>
-                    <p className="text-white/60 text-sm">
-                      Start a natural voice conversation. No text will be shown during our chat.
-                      <br />
-                      I'll remember everything and give you the conversation history when done.
-                      <br />
-                      <br />
-                      <span className="text-white/80 font-medium">
-                        💡 Tip: Press Space Bar or Click on Mic to talk
-                      </span>
-                    </p>
+                  <div className="flex items-center justify-between gap-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Mic className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-white font-medium text-sm">🎙️ Voice Conversation</p>
+                        <p className="text-white/60 text-xs">💡 Press Space or Click Mic</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center space-y-3">
+                  <div className="flex items-center justify-center gap-3">
                     <motion.button
                       onClick={() => {
                         // Force page reload to completely reset state
                         console.log('� Reloading page to ensure complete state reset')
-                        // Just call the function directly - no page reload needed
                         startVoiceConversation()
                       }}
-                      className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white font-medium transition-all shadow-lg"
+                      className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white text-sm font-medium transition-all shadow-lg"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      🎤 Start New Conversation
+                      🎤 Start New
                     </motion.button>
 
                     {conversationSummary && (
