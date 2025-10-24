@@ -825,11 +825,21 @@ export function AIControllerChat() {
         isClickableHistory: true,
         resumeSessionId: currentSessionId,
       }
+
+      console.log(`📋 Creating history message with ID: ${historyId}`)
+      console.log(`📋 History message sessionId: ${currentSessionId}`)
+      console.log(`📋 Current voiceChatMessages count: ${voiceChatMessages.length}`)
+
       setVoiceChatMessages((prev) => {
+        console.log(`📋 Inside setVoiceChatMessages - prev count: ${prev.length}`)
+        console.log(`📋 Checking for existing history with sessionId: ${currentSessionId}`)
+
         // Check if this session already has a history entry
         const hasExisting = prev.some(
           (msg) => msg.isClickableHistory && msg.resumeSessionId === currentSessionId,
         )
+
+        console.log(`📋 Has existing history? ${hasExisting}`)
 
         if (hasExisting) {
           console.log(
@@ -841,7 +851,9 @@ export function AIControllerChat() {
         console.log(
           `✅ Adding new history for session ${currentSessionId} with ${conversationMemory.length} turns`,
         )
-        return [...prev, historyMessage]
+        const newMessages = [...prev, historyMessage]
+        console.log(`📋 New messages count: ${newMessages.length}`)
+        return newMessages
       })
     } catch (error) {
       console.error('❌ Failed to generate conversation summary:', error)
