@@ -379,7 +379,8 @@ export function AIControllerChat() {
 
     setIsVoiceConversationActive(true)
 
-    // Always clear memory and summary for completely new conversations
+    // CRITICAL: Always clear memory and summary for completely new conversations
+    console.log('🧠 CLEARING ALL MEMORY for new conversation')
     setConversationMemory([])
     setConversationSummary('')
     setIsContinuationMode(false) // Reset continuation mode for new conversations
