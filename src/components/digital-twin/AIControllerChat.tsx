@@ -773,44 +773,10 @@ export function AIControllerChat() {
     try {
       console.log('📝 Generating conversation summary...')
 
-      // Check if this session already has a history entry in the UI
-      const hasExistingHistory = voiceChatMessages.some(
-        (msg) => msg.isClickableHistory && msg.resumeSessionId === sessionId,
-      )
-
-      if (hasExistingHistory) {
-        console.log(
-          '⏭️ Session already has history entry - updating memory only, not creating duplicate UI history',
-        )
-        // Save conversation to memory but don't create UI history
-        try {
-          let finalSessionId = sessionId
-          if (!finalSessionId || finalSessionId === '') {
-            finalSessionId = `emergency_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            setSessionId(finalSessionId)
-          }
-
-          const conversationHistory = conversationMemory
-            .map((turn, index) => `👤 You: ${turn.transcript}\n🤖 Me: ${turn.response}`)
-            .join('\n\n')
-
-          await fetch('/api/voice/memory', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'save',
-              sessionId: finalSessionId,
-              summary: conversationHistory,
-              memory: conversationMemory,
-              turnCount: conversationMemory.length,
-            }),
-          })
-          console.log('💾 Continued conversation saved to memory WITHOUT UI history')
-        } catch (error) {
-          console.error('❌ Failed to save continued conversation:', error)
-        }
-
-        return // EXIT EARLY - no UI history creation
+      // Skip history generation if conversation is too short (less than 1 exchange)
+      if (conversationMemory.length < 1) {
+        console.log('⏭️ Conversation too short (no exchanges), skipping history')
+        return
       }
 
       // Ensure we have a session ID - create one if missing
@@ -860,28 +826,22 @@ export function AIControllerChat() {
         resumeSessionId: currentSessionId,
       }
       setVoiceChatMessages((prev) => {
-        // More aggressive duplicate prevention
-        const filtered = prev.filter((msg) => {
-          if (!msg.isClickableHistory) return true // Keep non-history messages
-          if (msg.resumeSessionId !== currentSessionId) return true // Keep different sessions
-
-          // Remove any existing history for this session (prevent duplicates)
-          console.log(`🗑️ Removing duplicate history for session: ${currentSessionId}`)
-          return false
-        }) // Check if this exact content already exists
-        const contentExists = prev.some(
-          (msg) => msg.isClickableHistory && msg.content === historyMessage.content,
+        // Check if this session already has a history entry
+        const hasExisting = prev.some(
+          (msg) => msg.isClickableHistory && msg.resumeSessionId === currentSessionId,
         )
 
-        if (contentExists) {
-          console.log(`⚠️ Identical content exists, skipping duplicate history`)
+        if (hasExisting) {
+          console.log(
+            `⚠️ Session ${currentSessionId} already has history entry, skipping duplicate`,
+          )
           return prev
         }
 
         console.log(
-          `✅ Adding unique history for session ${currentSessionId} with ${conversationMemory.length} turns`,
+          `✅ Adding new history for session ${currentSessionId} with ${conversationMemory.length} turns`,
         )
-        return [...filtered, historyMessage]
+        return [...prev, historyMessage]
       })
     } catch (error) {
       console.error('❌ Failed to generate conversation summary:', error)
