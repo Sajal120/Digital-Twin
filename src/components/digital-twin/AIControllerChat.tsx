@@ -1428,11 +1428,12 @@ export function AIControllerChat() {
                   {/* End Conversation Button */}
                   <motion.button
                     onClick={endVoiceConversation}
-                    className="mt-4 px-6 py-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white text-sm transition-colors"
+                    className="mt-4 px-6 py-3 bg-red-500/90 hover:bg-red-600 rounded-full text-white font-medium transition-colors shadow-lg"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    title="Click to save conversation history"
                   >
-                    🛑 End Conversation
+                    🛑 End & Save Conversation
                   </motion.button>
                 </>
               )}
