@@ -772,11 +772,40 @@ export function AIControllerChat() {
     try {
       console.log('📝 Generating conversation summary...')
 
-      // Skip history generation if in continuation mode
+      // Skip history generation if in continuation mode (do this FIRST)
       if (isContinuationMode) {
-        console.log('⏭️ Skipping history generation - conversation was continued, not new')
+        console.log('⏭️ SKIPPING ENTIRE HISTORY GENERATION - conversation was continued, not new')
         setIsContinuationMode(false) // Reset for next time
-        return
+
+        // Save conversation to memory but don't create UI history
+        try {
+          let currentSessionId = sessionId
+          if (!currentSessionId || currentSessionId === '') {
+            currentSessionId = `emergency_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            setSessionId(currentSessionId)
+          }
+
+          const conversationHistory = conversationMemory
+            .map((turn, index) => `👤 You: ${turn.transcript}\n🤖 Me: ${turn.response}`)
+            .join('\n\n')
+
+          await fetch('/api/voice/memory', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'save',
+              sessionId: currentSessionId,
+              summary: conversationHistory,
+              memory: conversationMemory,
+              turnCount: conversationMemory.length,
+            }),
+          })
+          console.log('💾 Continued conversation saved to memory WITHOUT UI history')
+        } catch (error) {
+          console.error('❌ Failed to save continued conversation:', error)
+        }
+
+        return // EXIT EARLY - no UI history creation
       }
 
       // Ensure we have a session ID - create one if missing
