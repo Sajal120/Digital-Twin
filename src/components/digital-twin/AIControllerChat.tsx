@@ -817,9 +817,19 @@ export function AIControllerChat() {
 
       console.log(`🔍 Using session ID: ${currentSessionId} for ${conversationMemory.length} turns`)
 
+      // Clean response text before displaying in history
+      const cleanResponse = (text: string) => {
+        return text
+          .replace(/Query Enhancement:[^\n]+/gi, '') // Remove Query Enhancement line
+          .replace(/\[respond in the same language[^\]]*\]/gi, '') // Remove language instruction
+          .replace(/\[Respond in the same language[^\]]*\]/gi, '') // Capital R version
+          .replace(/^\s+|\s+$/g, '') // Trim whitespace
+          .replace(/\s\s+/g, ' ') // Normalize multiple spaces
+      }
+
       // Use the actual conversation history instead of AI summary
       const conversationHistory = conversationMemory
-        .map((turn, index) => `👤 You: ${turn.transcript}\n🤖 Me: ${turn.response}`)
+        .map((turn, index) => `👤 You: ${turn.transcript}\n🤖 Me: ${cleanResponse(turn.response)}`)
         .join('\n\n')
 
       setConversationSummary(conversationHistory)

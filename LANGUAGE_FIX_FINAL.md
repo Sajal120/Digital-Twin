@@ -6,18 +6,42 @@
 ## Issues Fixed
 
 ### 1. ✅ Query Enhancement Text Completely Removed
-**Problem**: Text like `Query Enhancement: "tell me about the skills. [respond in the same language as this question]"` was showing in UI
+**Problem**: Text like `Query Enhancement: "tell me about the skills. [respond in the same language as this question]"` was showing in UI and history
 
 **Root Cause**: 
-- Previous removal patterns didn't catch the full text with brackets
-- The instruction itself was being echoed back by the AI
+- Response text was being cleaned before speech generation
+- BUT history was built from uncleaned `conversationMemory`
+- So Query Enhancement text appeared in history messages
 
-**Solution**:
+**Solution Applied in 2 Places**:
+
+**A) Response Processing** (Line ~565):
 ```typescript
 .replace(/Query Enhancement:[^\n]+/gi, '') // Remove entire Query Enhancement line
-.replace(/\[respond in the same language[^\]]*\]/gi, '') // Remove instruction brackets (lowercase)
-.replace(/\[Respond in the same language[^\]]*\]/gi, '') // Remove instruction brackets (uppercase)
+.replace(/\[respond in the same language[^\]]*\]/gi, '') // Remove instruction brackets
 ```
+
+**B) History Generation** (Line ~820):
+```typescript
+// NEW: Clean response text before displaying in history
+const cleanResponse = (text: string) => {
+  return text
+    .replace(/Query Enhancement:[^\n]+/gi, '')
+    .replace(/\[respond in the same language[^\]]*\]/gi, '')
+    .replace(/\[Respond in the same language[^\]]*\]/gi, '')
+    .replace(/^\s+|\s+$/g, '') // Trim
+    .replace(/\s\s+/g, ' ') // Normalize spaces
+}
+
+// Use cleaned responses in history
+const conversationHistory = conversationMemory
+  .map((turn) => `👤 You: ${turn.transcript}\n🤖 Me: ${cleanResponse(turn.response)}`)
+```
+
+**Result**: Query Enhancement text now removed from:
+- ✅ Live voice responses
+- ✅ History entries in UI
+- ✅ Resumed conversation displays
 
 ### 2. ✅ Language Instruction Removed
 **Problem**: Adding `[Respond in the same language as this question]` was causing:
