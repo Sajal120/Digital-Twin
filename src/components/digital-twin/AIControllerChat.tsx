@@ -527,14 +527,12 @@ export function AIControllerChat() {
           .slice(-2) // Last 2 exchanges for context
           .map((turn) => `Previous: "${turn.transcript}" - Response: "${turn.response}"`)
           .join('. ')
-        contextualQuestion = `Context: ${recentContext}. Current question: ${transcript}. [Respond in the same language as the current question]`
+        contextualQuestion = `Context: ${recentContext}. Current question: ${transcript}`
         console.log(
           '📝 Adding conversation context from',
           conversationMemory.length,
           'previous turns',
         )
-      } else {
-        contextualQuestion = `${transcript} [Respond in the same language as this question]`
       }
 
       const response = await fetch('/api/mcp', {
@@ -563,21 +561,37 @@ export function AIControllerChat() {
           aiResponseText = chatData.result.content[0].text
             // Remove all MCP metadata and formatting
             .replace(/\*\*Enhanced Interview Response\*\*[^:]*:[^\n]*\n?/gi, '')
-            .replace(/Query Enhancement:[^"]*"[^"]*"[^\.\n]*/gi, '') // Remove Query Enhancement with quoted text
-            .replace(/Query Enhancement:[^\.\n]*\.{3,}/gi, '') // Remove Query Enhancement with ellipsis
-            .replace(/Query Enhancement:[^\n]*\n?/gi, '') // Catch any remaining Query Enhancement
+            // Remove Query Enhancement in all forms
+            .replace(/Query Enhancement:[^\n]+/gi, '') // Remove entire Query Enhancement line
+            .replace(/\[respond in the same language[^\]]*\]/gi, '') // Remove language instruction brackets
+            .replace(/\[Respond in the same language[^\]]*\]/gi, '') // Capital R version
             .replace(/Processing Mode:[^\n]*\n?/gi, '')
-            .replace(/\*\*Processing Mode\*\*:[^\n]*\n?/gi, '') // Additional Processing Mode removal
-            .replace(/LLM-Enhanced RAG[^\n]*\n?/gi, '') // Remove LLM-Enhanced RAG text
-            .replace(/Enhanced RAG[^\n]*\n?/gi, '') // Remove Enhanced RAG text
-            .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold formatting
-            .replace(/\*(.+?)\*/g, '$1') // Remove italic formatting
+            .replace(/\*\*Processing Mode\*\*:[^\n]*\n?/gi, '')
+            .replace(/LLM-Enhanced RAG[^\n]*\n?/gi, '')
+            .replace(/Enhanced RAG[^\n]*\n?/gi, '')
+            // Aggressively filter Nepali/Hindi words that appear frequently
+            .replace(/\bMa timro\b/gi, 'I')
+            .replace(/\btimi\b/gi, 'you')
+            .replace(/\bkhelne\b/gi, 'play')
+            .replace(/\bvanch?an\b/gi, '')
+            .replace(/\bgareko\b/gi, '')
+            .replace(/\bpanchas\b/gi, '')
+            .replace(/\bbahiro\b/gi, '')
+            .replace(/\bkhelchhu\b/gi, 'play')
+            .replace(/\bcha\b(?!ir|t|nge|llenge)/gi, '') // Remove 'cha' but keep 'chair', 'chat', 'change', 'challenge'
+            .replace(/\bho\?/gi, '?') // Remove 'ho' at end of questions
+            .replace(/\blekin\b/gi, 'but')
+            .replace(/\bma\b(?!ke|n|in|x|y|nage|chine)/gi, 'I') // Remove standalone 'ma' but keep 'make', 'man', 'main', 'max', 'may', 'manage', 'machine'
+            // Remove formatting
+            .replace(/\*\*(.+?)\*\*/g, '$1') // Remove bold
+            .replace(/\*(.+?)\*/g, '$1') // Remove italic
             .replace(/---[^\n]*\n?/g, '') // Remove dividers
             .replace(/^\s*\n+/gm, '') // Remove empty lines at start
             .replace(/\n\s*\n+/g, '. ') // Replace multiple newlines with periods
             .replace(/\n/g, '. ') // Replace single newlines with periods
             .replace(/\.\s*\./g, '.') // Remove duplicate periods
             .replace(/\s+/g, ' ') // Normalize whitespace
+            .replace(/^[.,;:\s]+/, '') // Remove leading punctuation
             .trim()
         } else {
           aiResponseText = "I'm having trouble processing your request right now. Please try again."
