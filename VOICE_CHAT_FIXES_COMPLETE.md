@@ -47,12 +47,26 @@ setVoiceChatMessages((prev) => {
 2. Catches ellipsis: `/Query Enhancement:[^\.\\n]*\.{3,}/gi`
 3. Catches remaining: `/Query Enhancement:[^\\n]*\\n?/gi`
 
-### 4. ✅ Hindi/Nepali Words Fixed
-**Problem**: AI responding with "Ma" (I), "timro" (your), "cha" (is) in Nepali/Hindi  
-**Root Cause**: Vector database contains multilingual content  
-**Solution**: Added explicit instruction to MCP call:
+### 4. ✅ Language Detection Fixed
+**Problem**: AI responding in Spanish/other languages even when asked in English  
+**Root Cause**: Too strict English-only instruction, no language matching  
+**Solution**: Changed to match user's language dynamically:
 ```typescript
-question: `${contextualQuestion} [RESPOND IN ENGLISH ONLY - NO HINDI, NEPALI, OR OTHER LANGUAGES]`
+question: `${transcript} [Respond in the same language as this question]`
+```
+
+### 5. ✅ Conversation Context Added
+**Problem**: When resuming, AI couldn't reference previous topics (e.g., football question → skills answer had no context)  
+**Root Cause**: Only sending current transcript, not conversation history  
+**Solution**: Now passes last 2 exchanges as context:
+```typescript
+if (conversationMemory.length > 0) {
+  const recentContext = conversationMemory
+    .slice(-2) // Last 2 exchanges
+    .map((turn) => `Previous: "${turn.transcript}" - Response: "${turn.response}"`)
+    .join('. ')
+  contextualQuestion = `Context: ${recentContext}. Current question: ${transcript}`
+}
 ```
 
 ## Behavior After Fixes
@@ -140,6 +154,7 @@ All critical bugs fixed:
 3. ✅ Each "Start New" creates independent history
 4. ✅ Resume updates existing history (no duplicates)
 5. ✅ No "Query Enhancement" text in responses
-6. ✅ All responses in English only
+6. ✅ AI responds in same language as user's question
+7. ✅ Conversation context maintained - can reference previous topics
 
 **Status**: Ready for production testing 🚀

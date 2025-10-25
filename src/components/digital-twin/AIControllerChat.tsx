@@ -520,9 +520,22 @@ export function AIControllerChat() {
       // Step 2: Process with AI (following phone architecture)
       console.log('🤖 Processing with AI...')
 
-      // Send ONLY the transcript - the backend will handle conversation context
-      // through the chat history API, avoiding false language detection
-      const contextualQuestion = transcript
+      // Build context from conversation memory for continuity
+      let contextualQuestion = transcript
+      if (conversationMemory.length > 0) {
+        const recentContext = conversationMemory
+          .slice(-2) // Last 2 exchanges for context
+          .map((turn) => `Previous: "${turn.transcript}" - Response: "${turn.response}"`)
+          .join('. ')
+        contextualQuestion = `Context: ${recentContext}. Current question: ${transcript}. [Respond in the same language as the current question]`
+        console.log(
+          '📝 Adding conversation context from',
+          conversationMemory.length,
+          'previous turns',
+        )
+      } else {
+        contextualQuestion = `${transcript} [Respond in the same language as this question]`
+      }
 
       const response = await fetch('/api/mcp', {
         method: 'POST',
@@ -534,7 +547,7 @@ export function AIControllerChat() {
           params: {
             name: 'ask_digital_twin',
             arguments: {
-              question: `${contextualQuestion} [RESPOND IN ENGLISH ONLY - NO HINDI, NEPALI, OR OTHER LANGUAGES]`,
+              question: contextualQuestion,
               interviewType: 'general',
               enhancedMode: true,
             },
