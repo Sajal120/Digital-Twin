@@ -497,12 +497,15 @@ export function AIControllerChat() {
       const transcribeData = await transcribeResponse.json()
       const transcript =
         transcribeData.transcription || transcribeData.transcript || transcribeData.text || ''
+      const detectedLanguage = transcribeData.detectedLanguage || 'en'
+      const languageConfidence = transcribeData.languageConfidence || 0
 
       if (!transcript.trim()) {
         throw new Error('No speech detected')
       }
 
       console.log('💬 Transcript:', transcript)
+      console.log('🌐 Detected language:', detectedLanguage, 'with confidence:', languageConfidence)
 
       // During active voice conversation, don't show text - just store in memory
       if (!isVoiceConversationActive) {
@@ -520,6 +523,52 @@ export function AIControllerChat() {
       // Step 2: Process with AI (following phone architecture)
       console.log('🤖 Processing with AI...')
 
+      // Map Deepgram language codes to full names for better AI understanding
+      const languageMap: { [key: string]: string } = {
+        en: 'English',
+        'en-US': 'English',
+        'en-GB': 'English',
+        es: 'Spanish',
+        'es-ES': 'Spanish',
+        'es-419': 'Spanish',
+        fr: 'French',
+        'fr-FR': 'French',
+        'fr-CA': 'French',
+        hi: 'Hindi',
+        'hi-IN': 'Hindi',
+        ne: 'Nepali',
+        de: 'German',
+        'de-DE': 'German',
+        it: 'Italian',
+        'it-IT': 'Italian',
+        pt: 'Portuguese',
+        'pt-BR': 'Portuguese',
+        'pt-PT': 'Portuguese',
+        ja: 'Japanese',
+        'ja-JP': 'Japanese',
+        ko: 'Korean',
+        'ko-KR': 'Korean',
+        zh: 'Chinese',
+        'zh-CN': 'Chinese',
+        'zh-TW': 'Chinese',
+        ar: 'Arabic',
+        ru: 'Russian',
+        nl: 'Dutch',
+        sv: 'Swedish',
+        no: 'Norwegian',
+        da: 'Danish',
+        fi: 'Finnish',
+        pl: 'Polish',
+        tr: 'Turkish',
+        th: 'Thai',
+        vi: 'Vietnamese',
+        id: 'Indonesian',
+        ms: 'Malay',
+      }
+
+      const languageName = languageMap[detectedLanguage] || 'English'
+      console.log(`🌐 Using language: ${languageName} (${detectedLanguage})`)
+
       // Build context from conversation memory for continuity
       let contextualQuestion = transcript
       if (conversationMemory.length > 0) {
@@ -535,6 +584,9 @@ export function AIControllerChat() {
         )
       }
 
+      // Add language instruction AFTER the question (so it doesn't get echoed)
+      const fullQuestion = `${contextualQuestion}\n\nIMPORTANT: Respond in ${languageName} language only.`
+
       const response = await fetch('/api/mcp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -545,7 +597,7 @@ export function AIControllerChat() {
           params: {
             name: 'ask_digital_twin',
             arguments: {
-              question: contextualQuestion,
+              question: fullQuestion,
               interviewType: 'general',
               enhancedMode: true,
             },
@@ -563,6 +615,7 @@ export function AIControllerChat() {
             .replace(/\*\*Enhanced Interview Response\*\*[^:]*:[^\n]*\n?/gi, '')
             // Remove Query Enhancement in all forms
             .replace(/Query Enhancement:[^\n]+/gi, '') // Remove entire Query Enhancement line
+            .replace(/IMPORTANT:[^\n]+/gi, '') // Remove IMPORTANT language instruction
             .replace(/\[respond in the same language[^\]]*\]/gi, '') // Remove language instruction brackets
             .replace(/\[Respond in the same language[^\]]*\]/gi, '') // Capital R version
             .replace(/Processing Mode:[^\n]*\n?/gi, '')
@@ -821,6 +874,7 @@ export function AIControllerChat() {
       const cleanResponse = (text: string) => {
         return text
           .replace(/Query Enhancement:[^\n]+/gi, '') // Remove Query Enhancement line
+          .replace(/IMPORTANT:[^\n]+/gi, '') // Remove IMPORTANT instruction
           .replace(/\[respond in the same language[^\]]*\]/gi, '') // Remove language instruction
           .replace(/\[Respond in the same language[^\]]*\]/gi, '') // Capital R version
           .replace(/^\s+|\s+$/g, '') // Trim whitespace
