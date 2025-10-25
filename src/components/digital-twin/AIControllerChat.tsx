@@ -570,22 +570,39 @@ export function AIControllerChat() {
       console.log(`🌐 Using language: ${languageName} (${detectedLanguage})`)
 
       // Build context from conversation memory for continuity
+      // BUT: Only use context from turns in the SAME language (prevent language contamination)
       let contextualQuestion = transcript
       if (conversationMemory.length > 0) {
-        const recentContext = conversationMemory
-          .slice(-2) // Last 2 exchanges for context
-          .map((turn) => `Previous: "${turn.transcript}" - Response: "${turn.response}"`)
-          .join('. ')
-        contextualQuestion = `Context: ${recentContext}. Current question: ${transcript}`
-        console.log(
-          '📝 Adding conversation context from',
-          conversationMemory.length,
-          'previous turns',
-        )
+        // Check if previous turn was in the same language family
+        const prevTurnText = conversationMemory[conversationMemory.length - 1]?.transcript || ''
+        const prevHasEnglish = /[a-zA-Z]/.test(prevTurnText)
+        const prevHasDevanagari = /[\u0900-\u097F]/.test(prevTurnText)
+        const currentHasEnglish = /[a-zA-Z]/.test(transcript)
+        const currentHasDevanagari = /[\u0900-\u097F]/.test(transcript)
+
+        const sameLanguageFamily =
+          (prevHasEnglish && currentHasEnglish) ||
+          (prevHasDevanagari && currentHasDevanagari) ||
+          (detectedLanguage === 'es' && prevTurnText.includes('¿')) // Spanish question marks
+
+        if (sameLanguageFamily) {
+          const recentContext = conversationMemory
+            .slice(-2) // Last 2 exchanges for context
+            .map((turn) => `Previous: "${turn.transcript}" - Response: "${turn.response}"`)
+            .join('. ')
+          contextualQuestion = `Context: ${recentContext}. Current question: ${transcript}`
+          console.log(
+            '📝 Adding conversation context from',
+            conversationMemory.length,
+            'previous turns (same language)',
+          )
+        } else {
+          console.log('🚫 Skipping context - language changed, starting fresh')
+        }
       }
 
       // Add language instruction AFTER the question (so it doesn't get echoed)
-      const fullQuestion = `${contextualQuestion}\n\nIMPORTANT: Respond in ${languageName} language only.`
+      const fullQuestion = `${contextualQuestion}\n\nIMPORTANT: Respond in ${languageName} language only. Do not mix languages.`
 
       const response = await fetch('/api/mcp', {
         method: 'POST',
@@ -684,7 +701,7 @@ export function AIControllerChat() {
 
       // Step 3: Generate speech using TTS API (following phone architecture)
       console.log('🔊 Generating speech...')
-      await generateAndPlaySpeech(aiResponseText)
+      await generateAndPlaySpeech(aiResponseText, detectedLanguage)
     } catch (error) {
       console.error('❌ Voice processing error:', error)
 
@@ -714,7 +731,7 @@ export function AIControllerChat() {
     }
   }
 
-  const generateAndPlaySpeech = async (text: string) => {
+  const generateAndPlaySpeech = async (text: string, language: string = 'en') => {
     try {
       setIsPlaying(true)
       console.log('� Generating speech with Cartesia cloned voice:', text.substring(0, 50) + '...')
@@ -723,7 +740,7 @@ export function AIControllerChat() {
       const ttsResponse = await fetch('/api/voice/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, language }),
       })
 
       if (!ttsResponse.ok) {
