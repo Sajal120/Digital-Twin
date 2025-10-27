@@ -45,6 +45,13 @@ export function AIControllerChat() {
   const [conversationSummary, setConversationSummary] = useState('')
   const [sessionId, setSessionId] = useState<string>('')
 
+  // Plain chat session management (similar to voice chat)
+  const [plainChatSessionId, setPlainChatSessionId] = useState<string>('')
+  const [plainChatHistory, setPlainChatHistory] = useState<
+    Array<{ question: string; answer: string; timestamp: Date }>
+  >([])
+  const [isPlainChatActive, setIsPlainChatActive] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -203,8 +210,18 @@ export function AIControllerChat() {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentQuestion = inputValue
     setInputValue('')
     setIsLoading(true)
+
+    // For Plain Chat: Initialize session if not active
+    if (chatMode === 'plain_chat' && !isPlainChatActive) {
+      const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      setPlainChatSessionId(newSessionId)
+      setIsPlainChatActive(true)
+      setPlainChatHistory([])
+      console.log('🆕 Started new plain chat session:', newSessionId)
+    }
 
     // Detect intent in AI Control mode and provide brief response
     if (chatMode === 'ai_control') {
@@ -284,6 +301,20 @@ export function AIControllerChat() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+
+      // Track history for Plain Chat
+      if (chatMode === 'plain_chat' && isPlainChatActive) {
+        setPlainChatHistory((prev) => [
+          ...prev,
+          {
+            question: currentQuestion,
+            answer: data.response,
+            timestamp: new Date(),
+          },
+        ])
+        console.log('📝 Added to plain chat history, total turns:', plainChatHistory.length + 1)
+      }
+
       // Only process intents and auto-hide in AI Control mode
       if (chatMode === 'ai_control') {
         handleAIResponse(data.response, true)
@@ -365,6 +396,191 @@ export function AIControllerChat() {
   const handlePhoneCall = () => {
     // Australian phone number - Twilio integration
     window.open('tel:+61278044137')
+  }
+
+  // Plain Chat session management functions (similar to voice chat)
+  const startNewPlainChat = async () => {
+    console.log('💬 Starting NEW plain chat conversation...')
+
+    // If there's an active chat with history, save it first
+    if (isPlainChatActive && plainChatHistory.length > 0) {
+      await generatePlainChatHistory()
+    }
+
+    // Create new session
+    const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    setPlainChatSessionId(newSessionId)
+    setIsPlainChatActive(true)
+    setPlainChatHistory([])
+
+    // Clear current chat messages (keep only clickable histories)
+    setPlainChatMessages((prev) => prev.filter((msg) => msg.isClickableHistory))
+
+    console.log('✨ NEW plain chat session started:', newSessionId)
+  }
+
+  const generatePlainChatHistory = async () => {
+    try {
+      console.log('📝 Generating plain chat history...')
+
+      if (plainChatHistory.length < 1) {
+        console.log('⏭️ Chat too short, skipping history')
+        return
+      }
+
+      let currentSessionId = plainChatSessionId
+      if (!currentSessionId || currentSessionId === '') {
+        currentSessionId = `chat_emergency_${Date.now()}`
+        setPlainChatSessionId(currentSessionId)
+        console.log('🆘 Emergency session ID created:', currentSessionId)
+      }
+
+      console.log(`🔍 Saving ${plainChatHistory.length} turns for session: ${currentSessionId}`)
+
+      // Clean response text
+      const cleanResponse = (text: string) => {
+        return text
+          .replace(/Query Enhancement:[^\\n]+/gi, '')
+          .replace(/IMPORTANT:[^\\n]+/gi, '')
+          .replace(/\\[respond in[^\\]]*\\]/gi, '')
+          .replace(/\\[Respond in[^\\]]*\\]/gi, '')
+          .replace(/^\\s+|\\s+$/g, '')
+          .replace(/\\s\\s+/g, ' ')
+      }
+
+      // Generate title from first question (first 50 chars)
+      const title =
+        plainChatHistory[0].question.substring(0, 50) +
+        (plainChatHistory[0].question.length > 50 ? '...' : '')
+
+      // Build conversation history
+      const conversationText = plainChatHistory
+        .map((turn) => `👤 You: ${turn.question}\\n🤖 Me: ${cleanResponse(turn.answer)}`)
+        .join('\\n\\n')
+
+      // Save to memory API
+      try {
+        await fetch('/api/voice/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'save',
+            sessionId: currentSessionId,
+            summary: conversationText,
+            memory: plainChatHistory,
+            turnCount: plainChatHistory.length,
+            title: title,
+            chatType: 'plain_chat',
+          }),
+        })
+        console.log('💾 Plain chat history saved to memory')
+      } catch (error) {
+        console.error('❌ Failed to save to memory:', error)
+      }
+
+      // Add to chat messages as clickable history
+      const historyId = `history_${currentSessionId}_${Date.now()}`
+      const historyMessage: Message = {
+        id: historyId,
+        content: `📝 ${title}`,
+        role: 'assistant',
+        timestamp: new Date(),
+        isVoice: false,
+        isClickableHistory: true,
+        resumeSessionId: currentSessionId,
+      }
+
+      console.log(`📋 Creating history with ID: ${historyId}`)
+
+      // Check if history already exists
+      const existingIndex = plainChatMessages.findIndex(
+        (msg) => msg.isClickableHistory && msg.resumeSessionId === currentSessionId,
+      )
+
+      setPlainChatMessages((prev) => {
+        if (existingIndex !== -1) {
+          console.log('🔄 Updating existing history')
+          return prev.map((msg) =>
+            msg.resumeSessionId === currentSessionId && msg.isClickableHistory
+              ? historyMessage
+              : msg,
+          )
+        }
+        console.log('✅ Adding NEW history')
+        return [...prev, historyMessage]
+      })
+    } catch (error) {
+      console.error('❌ Failed to generate plain chat history:', error)
+    }
+  }
+
+  const resumePlainChat = async (sessionId: string) => {
+    try {
+      console.log('🔄 Resuming plain chat session:', sessionId)
+
+      const response = await fetch(`/api/voice/memory?sessionId=${sessionId}`, {
+        method: 'GET',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+
+        if (data.memory && data.memory.length > 0) {
+          console.log('✅ Loaded chat history:', data.memory.length, 'turns')
+
+          // Restore the conversation
+          setPlainChatHistory(data.memory)
+          setPlainChatSessionId(sessionId)
+          setIsPlainChatActive(true)
+
+          // Clear current messages and rebuild from history
+          const restoredMessages: Message[] = []
+          data.memory.forEach((turn: any) => {
+            restoredMessages.push({
+              id: `user_${Date.now()}_${Math.random()}`,
+              content: turn.question || turn.transcript,
+              role: 'user',
+              timestamp: new Date(turn.timestamp),
+            })
+            restoredMessages.push({
+              id: `ai_${Date.now()}_${Math.random()}`,
+              content: turn.answer || turn.response,
+              role: 'assistant',
+              timestamp: new Date(turn.timestamp),
+            })
+          })
+
+          setPlainChatMessages((prev) => [
+            ...prev.filter((msg) => msg.isClickableHistory),
+            ...restoredMessages,
+          ])
+
+          console.log('✅ Chat resumed successfully')
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to resume chat:', error)
+    }
+  }
+
+  const deletePlainChatHistory = async (sessionId: string) => {
+    try {
+      console.log('🗑️ Deleting plain chat history:', sessionId)
+
+      // Remove from memory API
+      await fetch('/api/voice/memory', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      // Remove from UI
+      setPlainChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
+
+      console.log('✅ History deleted')
+    } catch (error) {
+      console.error('❌ Failed to delete history:', error)
+    }
   }
 
   const startVoiceConversation = () => {
@@ -1262,7 +1478,13 @@ export function AIControllerChat() {
                       transition={{ duration: 2, repeat: Infinity }}
                       onClick={
                         message.isClickableHistory && message.resumeSessionId
-                          ? () => resumeConversation(message.resumeSessionId!)
+                          ? () => {
+                              if (chatMode === 'voice_chat') {
+                                resumeConversation(message.resumeSessionId!)
+                              } else if (chatMode === 'plain_chat') {
+                                resumePlainChat(message.resumeSessionId!)
+                              }
+                            }
                           : undefined
                       }
                     >
@@ -1284,7 +1506,17 @@ export function AIControllerChat() {
                               onClick={(e) => {
                                 e.stopPropagation()
                                 if (message.resumeSessionId) {
-                                  deleteConversationHistory(message.resumeSessionId)
+                                  if (
+                                    window.confirm(
+                                      'Are you sure you want to delete this conversation history?',
+                                    )
+                                  ) {
+                                    if (chatMode === 'voice_chat') {
+                                      deleteConversationHistory(message.resumeSessionId)
+                                    } else if (chatMode === 'plain_chat') {
+                                      deletePlainChatHistory(message.resumeSessionId)
+                                    }
+                                  }
                                 }
                               }}
                               className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded transition-all duration-200 ml-2"
@@ -1568,26 +1800,43 @@ export function AIControllerChat() {
             </div>
           ) : (
             // Text Chat Mode - Standard Input
-            <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask me anything..."
-                className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
-                disabled={isLoading}
-              />
+            <div className="space-y-3">
+              {/* New Chat Button for Plain Chat */}
+              {chatMode === 'plain_chat' && isPlainChatActive && (
+                <div className="flex justify-end">
+                  <motion.button
+                    type="button"
+                    onClick={startNewPlainChat}
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white text-sm font-medium transition-all shadow-lg flex items-center gap-2"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    ✨ New Chat
+                  </motion.button>
+                </div>
+              )}
 
-              <motion.button
-                type="submit"
-                disabled={!inputValue.trim() || isLoading}
-                className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </motion.button>
-            </form>
+              <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Ask me anything..."
+                  className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 transition-all text-sm sm:text-base"
+                  disabled={isLoading}
+                />
+
+                <motion.button
+                  type="submit"
+                  disabled={!inputValue.trim() || isLoading}
+                  className="p-3 sm:p-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </motion.button>
+              </form>
+            </div>
           )}
         </div>
       </motion.div>
