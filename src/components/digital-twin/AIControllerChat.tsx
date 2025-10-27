@@ -15,6 +15,7 @@ import {
   MicOff,
   Volume2,
   Square,
+  Menu,
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
@@ -61,6 +62,7 @@ export function AIControllerChat() {
       turnCount: number
     }>
   >([])
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -1699,73 +1701,109 @@ export function AIControllerChat() {
       >
         {/* ChatGPT-style Sidebar for Plain Chat */}
         {chatMode === 'plain_chat' && (
-          <div className="hidden lg:flex absolute left-0 top-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-r border-white/10 flex-col">
-            {/* Sidebar Header */}
-            <div className="p-4 border-b border-white/10">
-              <motion.button
-                onClick={startNewPlainChat}
-                className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg text-white text-sm font-medium transition-all shadow-lg flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <span className="text-lg">+</span> New Chat
-              </motion.button>
-            </div>
+          <>
+            {/* Mobile Overlay */}
+            {isMobileSidebarOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                onClick={() => setIsMobileSidebarOpen(false)}
+              />
+            )}
 
-            {/* History List */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent p-2">
-              <AnimatePresence>
-                {plainChatMessages
-                  .filter((msg) => msg.isClickableHistory)
-                  .map((historyMsg) => (
-                    <motion.div
-                      key={historyMsg.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className={`group mb-2 p-3 rounded-lg cursor-pointer transition-all ${
-                        historyMsg.resumeSessionId === plainChatSessionId && isPlainChatActive
-                          ? 'bg-purple-600/30 border border-purple-500/50'
-                          : 'bg-white/5 hover:bg-white/10 border border-transparent'
-                      }`}
-                      onClick={() => resumePlainChat(historyMsg.resumeSessionId!)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">
-                            {historyMsg.content}
-                          </p>
-                          <p className="text-white/50 text-xs mt-1">
-                            {new Date(historyMsg.timestamp).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (
-                              window.confirm('Are you sure you want to delete this conversation?')
-                            ) {
-                              deletePlainChatHistory(historyMsg.resumeSessionId!)
-                            }
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
-                          title="Delete conversation"
-                        >
-                          <X className="w-4 h-4 text-red-400" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-              </AnimatePresence>
-
-              {plainChatMessages.filter((msg) => msg.isClickableHistory).length === 0 && (
-                <div className="text-center text-white/40 text-sm mt-8 px-4">
-                  <p>No chat history yet.</p>
-                  <p className="mt-2">Start a new conversation!</p>
+            {/* Sidebar - Mobile Drawer + Desktop Fixed */}
+            <motion.div
+              initial={false}
+              animate={{
+                x: isMobileSidebarOpen ? 0 : '-100%',
+              }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="flex absolute left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex-col z-50 lg:static lg:translate-x-0"
+            >
+              {/* Sidebar Header */}
+              <div className="p-4 border-b border-white/10">
+                <div className="flex items-center justify-between mb-3 lg:hidden">
+                  <h3 className="text-white font-semibold text-sm">Chat History</h3>
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="p-1 hover:bg-white/10 rounded transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white/70" />
+                  </button>
                 </div>
-              )}
-            </div>
-          </div>
+                <motion.button
+                  onClick={() => {
+                    startNewPlainChat()
+                    setIsMobileSidebarOpen(false)
+                  }}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg text-white text-sm font-medium transition-all shadow-lg flex items-center justify-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="text-lg">+</span> New Chat
+                </motion.button>
+              </div>
+
+              {/* History List */}
+              <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent p-2">
+                <AnimatePresence>
+                  {plainChatMessages
+                    .filter((msg) => msg.isClickableHistory)
+                    .map((historyMsg) => (
+                      <motion.div
+                        key={historyMsg.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className={`group mb-2 p-3 rounded-lg cursor-pointer transition-all ${
+                          historyMsg.resumeSessionId === plainChatSessionId && isPlainChatActive
+                            ? 'bg-purple-600/30 border border-purple-500/50'
+                            : 'bg-white/5 hover:bg-white/10 border border-transparent'
+                        }`}
+                        onClick={() => {
+                          resumePlainChat(historyMsg.resumeSessionId!)
+                          setIsMobileSidebarOpen(false)
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium truncate">
+                              {historyMsg.content}
+                            </p>
+                            <p className="text-white/50 text-xs mt-1">
+                              {new Date(historyMsg.timestamp).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (
+                                window.confirm('Are you sure you want to delete this conversation?')
+                              ) {
+                                deletePlainChatHistory(historyMsg.resumeSessionId!)
+                              }
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
+                            title="Delete conversation"
+                          >
+                            <X className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                </AnimatePresence>
+
+                {plainChatMessages.filter((msg) => msg.isClickableHistory).length === 0 && (
+                  <div className="text-center text-white/40 text-sm mt-8 px-4">
+                    <p>No chat history yet.</p>
+                    <p className="mt-2">Start a new conversation!</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
         )}
 
         {/* Main Content Area - Adjusted for sidebar */}
@@ -1773,6 +1811,16 @@ export function AIControllerChat() {
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Hamburger Menu for Mobile - Only in Plain Chat */}
+              {chatMode === 'plain_chat' && (
+                <button
+                  onClick={() => setIsMobileSidebarOpen(true)}
+                  className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu className="w-5 h-5 text-white" />
+                </button>
+              )}
               <motion.div
                 className="w-10 h-10 sm:w-14 sm:h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
                 animate={{
