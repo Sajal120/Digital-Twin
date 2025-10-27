@@ -637,37 +637,51 @@ export function AIControllerChat() {
         }
       } catch (error) {
         console.error('❌ Failed to generate AI title, using fallback:', error)
-        // Fallback: Extract keywords from question
-        const firstQuestion = plainChatHistory[0].question
-        const keywords = firstQuestion
-          .toLowerCase()
-          .match(
-            /\\b(football|soccer|sport|skill|experience|project|background|education|work|develop|build|create|design|play|game|professional)\\w*/gi,
-          )
+        // Fallback: Extract English words from question
+        const firstQuestion = plainChatHistory[0].question.toLowerCase()
 
-        if (keywords && keywords.length > 0) {
+        // First try: Look for specific keywords
+        const keywords = firstQuestion.match(
+          /\\b(football|soccer|sport|skill|experience|project|background|education|work|develop|build|create|design|play|game|professional|tell|about|your|my)\\w*/gi,
+        )
+
+        if (keywords && keywords.length >= 2) {
+          // Use keywords, capitalize first letter
           title = keywords
             .slice(0, 3)
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
             .join(' ')
+          console.log('📌 Title from keywords:', title)
         } else {
-          // Last resort: use first few English words only
-          const words = firstQuestion.split(' ').filter((word) => {
-            const w = word.toLowerCase()
-            return (
-              !/[\\u0900-\\u097F\\u0600-\\u06FF]/.test(w) &&
-              !['timro', 'timi', 'ma', 'cha', 'ho'].includes(w)
-            )
-          })
-          title = words.slice(0, 4).join(' ')
-          title = title.length > 40 ? title.substring(0, 40).trim() + '...' : title
+          // Second try: Extract pure English words (filter out non-English)
+          const words = firstQuestion
+            .split(/\\s+/)
+            .map((w) => w.replace(/[^a-z]/gi, '')) // Remove punctuation
+            .filter((word) => {
+              return (
+                word.length > 2 && // At least 3 chars
+                /^[a-z]+$/i.test(word) && // Only English letters
+                !['timro', 'timi', 'cha', 'ho', 'the', 'and', 'or', 'but'].includes(
+                  word.toLowerCase(),
+                )
+              )
+            })
 
-          // If still empty or too short, use generic title
-          if (!title || title.length < 3) {
-            title = 'Chat Conversation'
+          if (words.length >= 2) {
+            title = words
+              .slice(0, 3)
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+              .join(' ')
+            console.log('📌 Title from words:', title)
+          } else {
+            // Last resort: use timestamp-based title
+            title = `Chat ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+            console.log('📌 Using date-based title:', title)
           }
         }
       }
+
+      console.log('🏷️ Final title:', title)
 
       // Build conversation history
       const conversationText = plainChatHistory
@@ -771,7 +785,11 @@ export function AIControllerChat() {
             })
           })
 
-          setPlainChatMessages(restoredMessages)
+          // CRITICAL: Preserve history items from sidebar when resuming
+          setPlainChatMessages((prev) => {
+            const historyItems = prev.filter((msg) => msg.isClickableHistory)
+            return [...historyItems, ...restoredMessages]
+          })
 
           console.log('✅ Chat resumed successfully - ready to continue')
         }
@@ -1880,121 +1898,124 @@ export function AIControllerChat() {
           )}
 
           {/* Quick Action Buttons - Different for each mode - Only show when no conversation yet */}
-          {messages.length <= 1 && chatMode !== 'voice_chat' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className={`absolute bottom-32 right-0 px-6 ${chatMode === 'plain_chat' ? 'left-64' : 'left-0'}`}
-            >
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
-                <p className="text-white/70 text-sm mb-3 text-center">
-                  {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                  {chatMode === 'ai_control' ? (
-                    // AI Control Mode: Visual action buttons
-                    <>
-                      <button
-                        onClick={() => {
-                          setInputValue('show me about section')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        About
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('show me your experience')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        Experience
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('show me your skills')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        Skills
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('show me your projects')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        Projects
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('show me your contact')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        Contact
-                      </button>
-                    </>
-                  ) : (
-                    // Plain Chat Mode: Question buttons
-                    <>
-                      <button
-                        onClick={() => {
-                          setInputValue('What are your key skills and technical expertise?')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        💡 Skills
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('Tell me about your professional experience and background')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        💼 Experience
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('What projects have you worked on recently?')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        🚀 Projects
-                      </button>
-                      <button
-                        onClick={() => {
-                          setInputValue('How can I get in touch with you?')
-                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                          handleSubmit(fakeEvent)
-                        }}
-                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                      >
-                        📧 Contact
-                      </button>
-                    </>
-                  )}
+          {messages.filter((m) => !m.isClickableHistory).length <= 1 &&
+            chatMode !== 'voice_chat' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className={`absolute bottom-32 right-0 px-6 ${chatMode === 'plain_chat' ? 'left-64' : 'left-0'}`}
+              >
+                <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+                  <p className="text-white/70 text-sm mb-3 text-center">
+                    {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    {chatMode === 'ai_control' ? (
+                      // AI Control Mode: Visual action buttons
+                      <>
+                        <button
+                          onClick={() => {
+                            setInputValue('show me about section')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          About
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue('show me your experience')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          Experience
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue('show me your skills')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          Skills
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue('show me your projects')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          Projects
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue('show me your contact')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          Contact
+                        </button>
+                      </>
+                    ) : (
+                      // Plain Chat Mode: Question buttons
+                      <>
+                        <button
+                          onClick={() => {
+                            setInputValue('What are your key skills and technical expertise?')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          💡 Skills
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue(
+                              'Tell me about your professional experience and background',
+                            )
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          💼 Experience
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue('What projects have you worked on recently?')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          🚀 Projects
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInputValue('How can I get in touch with you?')
+                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                            handleSubmit(fakeEvent)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                        >
+                          📧 Contact
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
+              </motion.div>
+            )}
 
           {/* Input */}
           <div
