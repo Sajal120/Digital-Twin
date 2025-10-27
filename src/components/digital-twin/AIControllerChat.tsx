@@ -151,13 +151,13 @@ export function AIControllerChat() {
     ) {
       // Debounce the save (wait 2 seconds after last message)
       const saveTimer = setTimeout(() => {
-        console.log('💾 Auto-saving plain chat history...')
+        console.log('💾 Auto-saving plain chat history after', plainChatHistory.length, 'turns')
         generatePlainChatHistory()
       }, 2000)
 
       return () => clearTimeout(saveTimer)
     }
-  }, [plainChatHistory, isPlainChatActive, plainChatSessionId, chatMode])
+  }, [plainChatHistory.length, isPlainChatActive, plainChatSessionId, chatMode])
 
   // Keyboard shortcuts for voice chat
   useEffect(() => {
@@ -233,12 +233,11 @@ export function AIControllerChat() {
     setInputValue('')
     setIsLoading(true)
 
-    // For Plain Chat: Initialize session if not active
-    if (chatMode === 'plain_chat' && !isPlainChatActive) {
+    // For Plain Chat: Initialize session if not active (only once per conversation)
+    if (chatMode === 'plain_chat' && !isPlainChatActive && plainChatHistory.length === 0) {
       const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       setPlainChatSessionId(newSessionId)
       setIsPlainChatActive(true)
-      setPlainChatHistory([])
       console.log('🆕 Started new plain chat session:', newSessionId)
     }
 
@@ -1585,7 +1584,8 @@ export function AIControllerChat() {
           {/* Messages - Hidden during active voice conversation */}
           {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
             <div
-              className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96' : 'pb-20'}`}
+              className={`overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96 h-[calc(100%-240px)]' : 'pb-32 h-[calc(100%-180px)]'}`}
+              style={{ maxHeight: 'calc(100vh - 300px)' }}
             >
               <AnimatePresence>
                 {messages.map((message, index) => (
@@ -1725,8 +1725,8 @@ export function AIControllerChat() {
             </div>
           )}
 
-          {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
-          {messages.length <= 2 && chatMode !== 'voice_chat' && (
+          {/* Quick Action Buttons - Different for each mode - Only show when no conversation yet */}
+          {messages.length <= 1 && chatMode !== 'voice_chat' && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
