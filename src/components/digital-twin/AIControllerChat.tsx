@@ -223,6 +223,29 @@ export function AIControllerChat() {
       console.log('🆕 Started new plain chat session:', newSessionId)
     }
 
+    // Detect language in plain chat (like voice chat)
+    let detectedLanguage = 'en'
+    if (chatMode === 'plain_chat') {
+      // Simple language detection based on character sets
+      const hasDevanagari = /[\u0900-\u097F]/.test(currentQuestion)
+      const hasSpanish = /[¿¡áéíóúñ]/.test(currentQuestion)
+      const hasArabic = /[\u0600-\u06FF]/.test(currentQuestion)
+
+      if (hasDevanagari) {
+        detectedLanguage = 'hi' // Hindi/Nepali
+        console.log('🌐 Detected Devanagari script (Hindi/Nepali)')
+      } else if (hasSpanish) {
+        detectedLanguage = 'es'
+        console.log('🌐 Detected Spanish')
+      } else if (hasArabic) {
+        detectedLanguage = 'ar'
+        console.log('🌐 Detected Arabic')
+      } else {
+        detectedLanguage = 'en'
+        console.log('🌐 Detected English (default)')
+      }
+    }
+
     // Detect intent in AI Control mode and provide brief response
     if (chatMode === 'ai_control') {
       const intent = detectIntent(inputValue)
@@ -269,11 +292,17 @@ export function AIControllerChat() {
 
     // For Plain Chat mode OR AI Control mode without intent, get detailed response from API
     try {
+      // Build message with language instruction for Plain Chat
+      const messageWithLanguage =
+        chatMode === 'plain_chat' && detectedLanguage !== 'en'
+          ? `${currentQuestion}\n\nIMPORTANT: Respond ONLY in ${detectedLanguage === 'hi' ? 'Hindi' : detectedLanguage === 'es' ? 'Spanish' : 'English'} language. Do not mix languages. Keep the response in a single language.`
+          : currentQuestion
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: inputValue,
+          message: messageWithLanguage,
           conversationHistory: messages.map((m) => ({
             role: m.role,
             content: m.content,
@@ -404,19 +433,27 @@ export function AIControllerChat() {
 
     // If there's an active chat with history, save it first
     if (isPlainChatActive && plainChatHistory.length > 0) {
+      console.log('💾 Saving current conversation before starting new...')
       await generatePlainChatHistory()
     }
 
-    // Create new session
+    // Create UNIQUE new session with timestamp
     const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    console.log('🆔 Creating unique session:', newSessionId)
+
+    // Reset all plain chat state
     setPlainChatSessionId(newSessionId)
-    setIsPlainChatActive(true)
+    setIsPlainChatActive(false) // Set to false so first message creates new session
     setPlainChatHistory([])
 
     // Clear current chat messages (keep only clickable histories)
-    setPlainChatMessages((prev) => prev.filter((msg) => msg.isClickableHistory))
+    setPlainChatMessages((prev) => {
+      const histories = prev.filter((msg) => msg.isClickableHistory)
+      console.log('📋 Keeping', histories.length, 'history items')
+      return histories
+    })
 
-    console.log('✨ NEW plain chat session started:', newSessionId)
+    console.log('✨ Ready for NEW plain chat session')
   }
 
   const generatePlainChatHistory = async () => {
@@ -1675,7 +1712,7 @@ export function AIControllerChat() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-32 left-0 right-0 px-6"
+              className={`absolute bottom-32 right-0 px-6 ${chatMode === 'plain_chat' ? 'left-64' : 'left-0'}`}
             >
               <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
                 <p className="text-white/70 text-sm mb-3 text-center">
