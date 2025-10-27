@@ -448,10 +448,40 @@ export function AIControllerChat() {
           .replace(/\\s\\s+/g, ' ')
       }
 
-      // Generate title from first question (first 50 chars)
-      const title =
-        plainChatHistory[0].question.substring(0, 50) +
-        (plainChatHistory[0].question.length > 50 ? '...' : '')
+      // Generate meaningful title using AI (like ChatGPT)
+      let title = ''
+      try {
+        console.log('🏷️ Generating meaningful title for conversation...')
+        const titleResponse = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: `Generate a short 2-4 word title for this conversation. Just return the title, nothing else. First question: "${plainChatHistory[0].question}"`,
+            conversationHistory: [],
+            enhancedMode: false,
+            interviewType: 'brief',
+          }),
+        })
+
+        if (titleResponse.ok) {
+          const titleData = await titleResponse.json()
+          title = titleData.response
+            .replace(/['"]/g, '') // Remove quotes
+            .replace(/^Title:\\s*/i, '') // Remove "Title:" prefix
+            .replace(/\\.$/, '') // Remove trailing period
+            .trim()
+            .substring(0, 50) // Max 50 chars
+          console.log('✅ Generated title:', title)
+        } else {
+          throw new Error('Title generation failed')
+        }
+      } catch (error) {
+        console.error('❌ Failed to generate AI title, using fallback:', error)
+        // Fallback: Use first question (first 40 chars)
+        const firstQuestion = plainChatHistory[0].question
+        title =
+          firstQuestion.length > 40 ? firstQuestion.substring(0, 40).trim() + '...' : firstQuestion
+      }
 
       // Build conversation history
       const conversationText = plainChatHistory
@@ -1331,7 +1361,7 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
+        className={`relative w-full ${chatMode === 'plain_chat' ? 'max-w-7xl' : 'max-w-4xl'} bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
         style={{
           height:
             chatMode === 'voice_chat' ? 'calc(100vh - 12rem)' : 'min(85vh, calc(100vh - 4rem))',
@@ -1340,478 +1370,536 @@ export function AIControllerChat() {
         initial={{ y: 50 }}
         animate={{ y: 0 }}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <motion.div
-              className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
-              animate={{
-                boxShadow:
-                  voiceState === 'speaking'
-                    ? ['0 0 0 0 rgba(255,255,255,0.4)', '0 0 0 20px rgba(255,255,255,0)']
-                    : '0 0 0 0 rgba(255,255,255,0)',
-              }}
-              transition={{ duration: 1.5, repeat: voiceState === 'speaking' ? Infinity : 0 }}
-            >
-              <Bot className="w-8 h-8 text-white" />
-            </motion.div>
-            <div>
-              <h3 className="font-bold text-white text-xl">Sajal's Digital Twin</h3>
-              <p className="text-blue-100 text-sm">
-                {voiceState === 'listening' && '🎙️ Listening...'}
-                {voiceState === 'speaking' && '🔊 Speaking...'}
-                {voiceState === 'processing' && '⚡ Processing...'}
-                {voiceState === 'idle' && '💬 Ready to chat'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            {/* Phone Call Button */}
-            <button
-              onClick={handlePhoneCall}
-              className="p-2 bg-green-500/80 hover:bg-green-600 rounded-lg transition-colors"
-              title="Call +61 2 7804 4137"
-            >
-              <Phone className="w-5 h-5 text-white" />
-            </button>
-
-            {/* Chat Mode Toggle */}
-            <div className="flex items-center space-x-1 bg-white/10 rounded-lg p-1">
-              <button
-                onClick={() => setChatMode('ai_control')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-                  chatMode === 'ai_control'
-                    ? 'bg-purple-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                title="AI Control: Brief responses + instant UI visualization"
+        {/* ChatGPT-style Sidebar for Plain Chat */}
+        {chatMode === 'plain_chat' && (
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-r border-white/10 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-white/10">
+              <motion.button
+                onClick={startNewPlainChat}
+                className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg text-white text-sm font-medium transition-all shadow-lg flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                🤖 AI Control
-              </button>
-              <button
-                onClick={() => setChatMode('plain_chat')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-                  chatMode === 'plain_chat'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                title="Plain Chat: Detailed text responses + no UI changes"
-              >
-                💬 Plain Chat
-              </button>
-              <button
-                onClick={() => setChatMode('voice_chat')}
-                className={`px-3 py-1 rounded text-xs font-medium transition-all ${
-                  chatMode === 'voice_chat'
-                    ? 'bg-green-600 text-white shadow-lg'
-                    : 'text-gray-300 hover:text-white'
-                }`}
-                title="Voice Chat: Talk and listen - mobile optimized"
-              >
-                🎙️ Voice Chat
-              </button>
+                <span className="text-lg">+</span> New Chat
+              </motion.button>
             </div>
 
-            <button
-              onClick={() => setMode('landing')}
-              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-white" />
-            </button>
-          </div>
-        </div>
-
-        {/* Messages - Hidden during active voice conversation */}
-        {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
-          <div
-            className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96' : 'pb-20'}`}
-          >
-            <AnimatePresence>
-              {messages.map((message, index) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        message.role === 'user'
-                          ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
-                          : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                      }`}
-                    >
-                      {message.role === 'user' ? (
-                        <User className="w-5 h-5 text-white" />
-                      ) : (
-                        <Bot className="w-5 h-5 text-white" />
-                      )}
-                    </div>
+            {/* History List */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent p-2">
+              <AnimatePresence>
+                {plainChatMessages
+                  .filter((msg) => msg.isClickableHistory)
+                  .reverse()
+                  .map((historyMsg) => (
                     <motion.div
-                      className={`rounded-2xl px-4 py-3 ${
-                        message.role === 'user'
-                          ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
-                          : message.isClickableHistory
-                            ? 'bg-gradient-to-br from-green-600/20 to-blue-600/20 backdrop-blur-lg text-white border border-green-400/30 cursor-pointer hover:from-green-600/30 hover:to-blue-600/30 transition-all'
-                            : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
+                      key={historyMsg.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className={`group mb-2 p-3 rounded-lg cursor-pointer transition-all ${
+                        historyMsg.resumeSessionId === plainChatSessionId
+                          ? 'bg-purple-600/30 border border-purple-500/50'
+                          : 'bg-white/5 hover:bg-white/10 border border-transparent'
                       }`}
-                      animate={{
-                        boxShadow:
-                          message.role === 'assistant'
-                            ? [
-                                '0 0 0 rgba(147, 51, 234, 0)',
-                                '0 0 20px rgba(147, 51, 234, 0.3)',
-                                '0 0 0 rgba(147, 51, 234, 0)',
-                              ]
-                            : undefined,
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      onClick={
-                        message.isClickableHistory && message.resumeSessionId
-                          ? () => {
-                              if (chatMode === 'voice_chat') {
-                                resumeConversation(message.resumeSessionId!)
-                              } else if (chatMode === 'plain_chat') {
-                                resumePlainChat(message.resumeSessionId!)
-                              }
-                            }
-                          : undefined
-                      }
+                      onClick={() => resumePlainChat(historyMsg.resumeSessionId!)}
                     >
-                      <div
-                        className={`text-sm whitespace-pre-line ${message.isClickableHistory ? 'max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/50 scrollbar-track-transparent' : ''}`}
-                      >
-                        {message.isVoice && (
-                          <span className="inline-flex items-center gap-1 text-xs opacity-75 mb-1">
-                            {message.role === 'user' ? '🎙️' : '🔊'} Voice
-                          </span>
-                        )}
-                        {renderMessageContent(message.content)}
-                        {message.isClickableHistory && (
-                          <div className="mt-2 flex items-center justify-between">
-                            <div className="text-xs opacity-70 italic">
-                              👆 Click to continue this conversation
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (message.resumeSessionId) {
-                                  if (
-                                    window.confirm(
-                                      'Are you sure you want to delete this conversation history?',
-                                    )
-                                  ) {
-                                    if (chatMode === 'voice_chat') {
-                                      deleteConversationHistory(message.resumeSessionId)
-                                    } else if (chatMode === 'plain_chat') {
-                                      deletePlainChatHistory(message.resumeSessionId)
-                                    }
-                                  }
-                                }
-                              }}
-                              className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded transition-all duration-200 ml-2"
-                              title="Delete this conversation history"
-                            >
-                              🗑️ Delete
-                            </button>
-                          </div>
-                        )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">
+                            {historyMsg.content.replace('📝 ', '')}
+                          </p>
+                          <p className="text-white/50 text-xs mt-1">
+                            {new Date(historyMsg.timestamp).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (
+                              window.confirm('Are you sure you want to delete this conversation?')
+                            ) {
+                              deletePlainChatHistory(historyMsg.resumeSessionId!)
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
+                          title="Delete conversation"
+                        >
+                          <X className="w-4 h-4 text-red-400" />
+                        </button>
                       </div>
-                      {message.isVoice &&
-                        chatMode === 'voice_chat' &&
-                        message.role === 'assistant' && (
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs opacity-70">🔊 Voice message</span>
-                            <button
-                              onClick={() => generateAndPlaySpeech(message.content)}
-                              disabled={isPlaying || isLoading}
-                              className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
-                              title="Replay with your Cartesia cloned voice"
-                            >
-                              {isPlaying ? '🔊 Playing...' : '🔁 Replay'}
-                            </button>
-                          </div>
-                        )}
                     </motion.div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
+                  ))}
+              </AnimatePresence>
 
-            {isLoading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex justify-start"
-              >
-                <div className="flex space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-3 border border-white/10">
-                    <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-                  </div>
+              {plainChatMessages.filter((msg) => msg.isClickableHistory).length === 0 && (
+                <div className="text-center text-white/40 text-sm mt-8 px-4">
+                  <p>No chat history yet.</p>
+                  <p className="mt-2">Start a new conversation!</p>
                 </div>
-              </motion.div>
-            )}
-
-            <div ref={messagesEndRef} />
+              )}
+            </div>
           </div>
         )}
 
-        {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
-        {messages.length <= 2 && chatMode !== 'voice_chat' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="absolute bottom-32 left-0 right-0 px-6"
-          >
-            <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
-              <p className="text-white/70 text-sm mb-3 text-center">
-                {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                {chatMode === 'ai_control' ? (
-                  // AI Control Mode: Visual action buttons
-                  <>
-                    <button
-                      onClick={() => {
-                        setInputValue('show me about section')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      About
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('show me your experience')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      Experience
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('show me your skills')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      Skills
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('show me your projects')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      Projects
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('show me your contact')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      Contact
-                    </button>
-                  </>
-                ) : (
-                  // Plain Chat Mode: Question buttons
-                  <>
-                    <button
-                      onClick={() => {
-                        setInputValue('What are your key skills and technical expertise?')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      💡 Skills
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('Tell me about your professional experience and background')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      💼 Experience
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('What projects have you worked on recently?')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      🚀 Projects
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInputValue('How can I get in touch with you?')
-                        const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                        handleSubmit(fakeEvent)
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                    >
-                      📧 Contact
-                    </button>
-                  </>
-                )}
+        {/* Main Content Area - Adjusted for sidebar */}
+        <div className={chatMode === 'plain_chat' ? 'ml-64' : ''}>
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <motion.div
+                className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
+                animate={{
+                  boxShadow:
+                    voiceState === 'speaking'
+                      ? ['0 0 0 0 rgba(255,255,255,0.4)', '0 0 0 20px rgba(255,255,255,0)']
+                      : '0 0 0 0 rgba(255,255,255,0)',
+                }}
+                transition={{ duration: 1.5, repeat: voiceState === 'speaking' ? Infinity : 0 }}
+              >
+                <Bot className="w-8 h-8 text-white" />
+              </motion.div>
+              <div>
+                <h3 className="font-bold text-white text-xl">Sajal's Digital Twin</h3>
+                <p className="text-blue-100 text-sm">
+                  {voiceState === 'listening' && '🎙️ Listening...'}
+                  {voiceState === 'speaking' && '🔊 Speaking...'}
+                  {voiceState === 'processing' && '⚡ Processing...'}
+                  {voiceState === 'idle' && '💬 Ready to chat'}
+                </p>
               </div>
             </div>
-          </motion.div>
-        )}
 
-        {/* Input */}
-        <div
-          className={`fixed bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
-          style={{ zIndex: 9999 }}
-        >
-          {chatMode === 'voice_chat' ? (
-            // Voice Chat Mode - Pure Voice Interface
-            <div className="flex flex-col items-center space-y-4 px-2 sm:px-0">
-              {!isVoiceConversationActive ? (
-                // Start Conversation Mode - Compact
-                <>
-                  <div className="flex items-center justify-between gap-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 mb-3 mx-2 sm:mx-0">
-                    <div className="flex items-center gap-2">
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Mic className="w-5 h-5 text-white" />
+            <div className="flex items-center space-x-2">
+              {/* Phone Call Button */}
+              <button
+                onClick={handlePhoneCall}
+                className="p-2 bg-green-500/80 hover:bg-green-600 rounded-lg transition-colors"
+                title="Call +61 2 7804 4137"
+              >
+                <Phone className="w-5 h-5 text-white" />
+              </button>
+
+              {/* Chat Mode Toggle */}
+              <div className="flex items-center space-x-1 bg-white/10 rounded-lg p-1">
+                <button
+                  onClick={() => setChatMode('ai_control')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                    chatMode === 'ai_control'
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                  title="AI Control: Brief responses + instant UI visualization"
+                >
+                  🤖 AI Control
+                </button>
+                <button
+                  onClick={() => setChatMode('plain_chat')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                    chatMode === 'plain_chat'
+                      ? 'bg-blue-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                  title="Plain Chat: Detailed text responses + no UI changes"
+                >
+                  💬 Plain Chat
+                </button>
+                <button
+                  onClick={() => setChatMode('voice_chat')}
+                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                    chatMode === 'voice_chat'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'text-gray-300 hover:text-white'
+                  }`}
+                  title="Voice Chat: Talk and listen - mobile optimized"
+                >
+                  🎙️ Voice Chat
+                </button>
+              </div>
+
+              <button
+                onClick={() => setMode('landing')}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages - Hidden during active voice conversation */}
+          {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
+            <div
+              className={`h-[calc(100%-160px)] overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96' : 'pb-20'}`}
+            >
+              <AnimatePresence>
+                {messages.map((message, index) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          message.role === 'user'
+                            ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                            : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                        }`}
+                      >
+                        {message.role === 'user' ? (
+                          <User className="w-5 h-5 text-white" />
+                        ) : (
+                          <Bot className="w-5 h-5 text-white" />
+                        )}
                       </div>
-                      <div className="text-left">
-                        <p className="text-white font-medium text-sm">🎙️ Voice Conversation</p>
-                        <p className="text-white/60 text-xs">💡 Hold Space or Click Mic</p>
-                      </div>
+                      <motion.div
+                        className={`rounded-2xl px-4 py-3 ${
+                          message.role === 'user'
+                            ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
+                            : message.isClickableHistory
+                              ? 'bg-gradient-to-br from-green-600/20 to-blue-600/20 backdrop-blur-lg text-white border border-green-400/30 cursor-pointer hover:from-green-600/30 hover:to-blue-600/30 transition-all'
+                              : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
+                        }`}
+                        animate={{
+                          boxShadow:
+                            message.role === 'assistant'
+                              ? [
+                                  '0 0 0 rgba(147, 51, 234, 0)',
+                                  '0 0 20px rgba(147, 51, 234, 0.3)',
+                                  '0 0 0 rgba(147, 51, 234, 0)',
+                                ]
+                              : undefined,
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        onClick={
+                          message.isClickableHistory && message.resumeSessionId
+                            ? () => {
+                                if (chatMode === 'voice_chat') {
+                                  resumeConversation(message.resumeSessionId!)
+                                } else if (chatMode === 'plain_chat') {
+                                  resumePlainChat(message.resumeSessionId!)
+                                }
+                              }
+                            : undefined
+                        }
+                      >
+                        <div
+                          className={`text-sm whitespace-pre-line ${message.isClickableHistory ? 'max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/50 scrollbar-track-transparent' : ''}`}
+                        >
+                          {message.isVoice && (
+                            <span className="inline-flex items-center gap-1 text-xs opacity-75 mb-1">
+                              {message.role === 'user' ? '🎙️' : '🔊'} Voice
+                            </span>
+                          )}
+                          {renderMessageContent(message.content)}
+                          {message.isClickableHistory && (
+                            <div className="mt-2 flex items-center justify-between">
+                              <div className="text-xs opacity-70 italic">
+                                👆 Click to continue this conversation
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (message.resumeSessionId) {
+                                    if (
+                                      window.confirm(
+                                        'Are you sure you want to delete this conversation history?',
+                                      )
+                                    ) {
+                                      if (chatMode === 'voice_chat') {
+                                        deleteConversationHistory(message.resumeSessionId)
+                                      } else if (chatMode === 'plain_chat') {
+                                        deletePlainChatHistory(message.resumeSessionId)
+                                      }
+                                    }
+                                  }
+                                }}
+                                className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded transition-all duration-200 ml-2"
+                                title="Delete this conversation history"
+                              >
+                                🗑️ Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {message.isVoice &&
+                          chatMode === 'voice_chat' &&
+                          message.role === 'assistant' && (
+                            <div className="flex items-center justify-between mt-2">
+                              <span className="text-xs opacity-70">🔊 Voice message</span>
+                              <button
+                                onClick={() => generateAndPlaySpeech(message.content)}
+                                disabled={isPlaying || isLoading}
+                                className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
+                                title="Replay with your Cartesia cloned voice"
+                              >
+                                {isPlaying ? '🔊 Playing...' : '🔁 Replay'}
+                              </button>
+                            </div>
+                          )}
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex justify-start"
+                >
+                  <div className="flex space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-lg rounded-2xl px-4 py-3 border border-white/10">
+                      <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-3 flex-wrap px-2">
-                    <motion.button
-                      onClick={() => {
-                        // Force page reload to completely reset state
-                        console.log('� Reloading page to ensure complete state reset')
-                        startVoiceConversation()
-                      }}
-                      className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white text-sm font-medium transition-all shadow-lg"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      🎤 Start New
-                    </motion.button>
+                </motion.div>
+              )}
 
-                    {conversationSummary && (
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+
+          {/* Quick Action Buttons - Different for each mode - Only show when messages are few and not in voice chat */}
+          {messages.length <= 2 && chatMode !== 'voice_chat' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-32 left-0 right-0 px-6"
+            >
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+                <p className="text-white/70 text-sm mb-3 text-center">
+                  {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                  {chatMode === 'ai_control' ? (
+                    // AI Control Mode: Visual action buttons
+                    <>
+                      <button
+                        onClick={() => {
+                          setInputValue('show me about section')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        About
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('show me your experience')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        Experience
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('show me your skills')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        Skills
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('show me your projects')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        Projects
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('show me your contact')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        Contact
+                      </button>
+                    </>
+                  ) : (
+                    // Plain Chat Mode: Question buttons
+                    <>
+                      <button
+                        onClick={() => {
+                          setInputValue('What are your key skills and technical expertise?')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        💡 Skills
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('Tell me about your professional experience and background')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        💼 Experience
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('What projects have you worked on recently?')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        🚀 Projects
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('How can I get in touch with you?')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        📧 Contact
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Input */}
+          <div
+            className={`fixed bottom-0 ${chatMode === 'plain_chat' ? 'left-64' : 'left-0'} right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
+            style={{ zIndex: 9999 }}
+          >
+            {chatMode === 'voice_chat' ? (
+              // Voice Chat Mode - Pure Voice Interface
+              <div className="flex flex-col items-center space-y-4 px-2 sm:px-0">
+                {!isVoiceConversationActive ? (
+                  // Start Conversation Mode - Compact
+                  <>
+                    <div className="flex items-center justify-between gap-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 mb-3 mx-2 sm:mx-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Mic className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-white font-medium text-sm">🎙️ Voice Conversation</p>
+                          <p className="text-white/60 text-xs">💡 Hold Space or Click Mic</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-3 flex-wrap px-2">
                       <motion.button
-                        onClick={continueVoiceConversation}
-                        className="px-6 py-2 bg-blue-500/80 hover:bg-blue-600 rounded-full text-white text-sm transition-colors"
+                        onClick={() => {
+                          // Force page reload to completely reset state
+                          console.log('� Reloading page to ensure complete state reset')
+                          startVoiceConversation()
+                        }}
+                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white text-sm font-medium transition-all shadow-lg"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        🔄 Continue Previous Conversation
+                        🎤 Start New
                       </motion.button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                // Active Conversation Mode
-                <>
-                  {/* Voice Status */}
-                  <div className="text-center px-4">
-                    <p className="text-white/70 text-sm">
-                      {isRecording
-                        ? '🎙️ Listening... Speak now! (Release Space to stop)'
-                        : isLoading
-                          ? '⚡ Processing with Deepgram + Cartesia...'
-                          : isPlaying
-                            ? '🔊 AI is speaking...'
-                            : '🎯 Hold Space or Click Mic to talk'}
-                    </p>
-                  </div>
 
-                  {/* Mic Button */}
-                  <motion.button
-                    type="button"
-                    onClick={
-                      isRecording ? stopRecording : isPlaying ? stopAISpeech : startRecording
-                    }
-                    disabled={isLoading}
-                    className={`p-6 rounded-full transition-all shadow-lg ${
-                      isRecording
-                        ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                        : isPlaying
-                          ? 'bg-orange-500 hover:bg-orange-600'
+                      {conversationSummary && (
+                        <motion.button
+                          onClick={continueVoiceConversation}
+                          className="px-6 py-2 bg-blue-500/80 hover:bg-blue-600 rounded-full text-white text-sm transition-colors"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          🔄 Continue Previous Conversation
+                        </motion.button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  // Active Conversation Mode
+                  <>
+                    {/* Voice Status */}
+                    <div className="text-center px-4">
+                      <p className="text-white/70 text-sm">
+                        {isRecording
+                          ? '🎙️ Listening... Speak now! (Release Space to stop)'
                           : isLoading
-                            ? 'bg-gray-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
-                    } disabled:opacity-50`}
-                    whileHover={{ scale: isLoading ? 1 : 1.05 }}
-                    whileTap={{ scale: isLoading ? 1 : 0.95 }}
-                  >
-                    {isRecording ? (
-                      <motion.div
-                        animate={{ scale: [1, 1.2, 1] }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      >
-                        <MicOff className="w-8 h-8 text-white" />
-                      </motion.div>
-                    ) : isLoading ? (
-                      <Loader2 className="w-8 h-8 text-white animate-spin" />
-                    ) : isPlaying ? (
-                      <Square className="w-8 h-8 text-white" />
-                    ) : (
-                      <Mic className="w-8 h-8 text-white" />
-                    )}
-                  </motion.button>
+                            ? '⚡ Processing with Deepgram + Cartesia...'
+                            : isPlaying
+                              ? '🔊 AI is speaking...'
+                              : '🎯 Hold Space or Click Mic to talk'}
+                      </p>
+                    </div>
 
-                  {/* End Conversation Button */}
-                  <motion.button
-                    onClick={endVoiceConversation}
-                    className="mt-4 px-6 py-3 bg-red-500/90 hover:bg-red-600 rounded-full text-white font-medium transition-colors shadow-lg"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    title="Click to save conversation history"
-                  >
-                    🛑 End & Save Conversation
-                  </motion.button>
-                </>
-              )}
-            </div>
-          ) : (
-            // Text Chat Mode - Standard Input
-            <div className="space-y-3">
-              {/* New Chat Button for Plain Chat */}
-              {chatMode === 'plain_chat' && isPlainChatActive && (
-                <div className="flex justify-end">
-                  <motion.button
-                    type="button"
-                    onClick={startNewPlainChat}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-full text-white text-sm font-medium transition-all shadow-lg flex items-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    ✨ New Chat
-                  </motion.button>
-                </div>
-              )}
+                    {/* Mic Button */}
+                    <motion.button
+                      type="button"
+                      onClick={
+                        isRecording ? stopRecording : isPlaying ? stopAISpeech : startRecording
+                      }
+                      disabled={isLoading}
+                      className={`p-6 rounded-full transition-all shadow-lg ${
+                        isRecording
+                          ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                          : isPlaying
+                            ? 'bg-orange-500 hover:bg-orange-600'
+                            : isLoading
+                              ? 'bg-gray-500 cursor-not-allowed'
+                              : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                      } disabled:opacity-50`}
+                      whileHover={{ scale: isLoading ? 1 : 1.05 }}
+                      whileTap={{ scale: isLoading ? 1 : 0.95 }}
+                    >
+                      {isRecording ? (
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          <MicOff className="w-8 h-8 text-white" />
+                        </motion.div>
+                      ) : isLoading ? (
+                        <Loader2 className="w-8 h-8 text-white animate-spin" />
+                      ) : isPlaying ? (
+                        <Square className="w-8 h-8 text-white" />
+                      ) : (
+                        <Mic className="w-8 h-8 text-white" />
+                      )}
+                    </motion.button>
 
+                    {/* End Conversation Button */}
+                    <motion.button
+                      onClick={endVoiceConversation}
+                      className="mt-4 px-6 py-3 bg-red-500/90 hover:bg-red-600 rounded-full text-white font-medium transition-colors shadow-lg"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      title="Click to save conversation history"
+                    >
+                      🛑 End & Save Conversation
+                    </motion.button>
+                  </>
+                )}
+              </div>
+            ) : (
+              // Text Chat Mode - Standard Input
               <form onSubmit={handleSubmit} className="flex items-center space-x-2 sm:space-x-3">
                 <input
                   type="text"
@@ -1832,8 +1920,8 @@ export function AIControllerChat() {
                   <Send className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </motion.button>
               </form>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </motion.div>
     </motion.div>
