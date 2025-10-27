@@ -699,9 +699,21 @@ export function AIControllerChat() {
         setVoiceChatMessages((prev) => [...prev, aiMessage])
       }
 
-      // Step 3: Generate speech using TTS API (following phone architecture)
+      // Step 3: Clean text AGAIN before speech (remove any Query Enhancement that might have slipped through)
+      const cleanedForSpeech = aiResponseText
+        .replace(/Query Enhancement:[^\n]*/gi, '') // Remove Query Enhancement line
+        .replace(/IMPORTANT:[^\n]*/gi, '') // Remove IMPORTANT lines
+        .replace(/\[respond in[^\]]*\]/gi, '') // Remove language instructions
+        .replace(/\[Respond in[^\]]*\]/gi, '') // Capital R version
+        .replace(/Processing Mode:[^\n]*/gi, '')
+        .replace(/Enhanced RAG[^\n]*/gi, '')
+        .replace(/LLM-Enhanced[^\n]*/gi, '')
+        .replace(/\*\*Enhanced Interview Response\*\*[^\n]*/gi, '')
+        .trim()
+
       console.log('🔊 Generating speech...')
-      await generateAndPlaySpeech(aiResponseText, detectedLanguage)
+      console.log('📝 Text for speech:', cleanedForSpeech.substring(0, 100) + '...')
+      await generateAndPlaySpeech(cleanedForSpeech, detectedLanguage)
     } catch (error) {
       console.error('❌ Voice processing error:', error)
 
