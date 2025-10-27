@@ -52,6 +52,16 @@ export function AIControllerChat() {
   >([])
   const [isPlainChatActive, setIsPlainChatActive] = useState(false)
 
+  // Sidebar history state - loaded from memory API
+  const [sidebarHistories, setSidebarHistories] = useState<
+    Array<{
+      sessionId: string
+      title: string
+      timestamp: Date
+      turnCount: number
+    }>
+  >([])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -520,7 +530,7 @@ export function AIControllerChat() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: `Generate a short 2-4 word title for this conversation. Just return the title, nothing else. First question: "${plainChatHistory[0].question}"`,
+            message: `Generate a short 2-4 word English title that summarizes this question. Respond ONLY with the title in English, nothing else. Question: "${plainChatHistory[0].question}"`,
             conversationHistory: [],
             enhancedMode: false,
             interviewType: 'brief',
@@ -530,21 +540,43 @@ export function AIControllerChat() {
         if (titleResponse.ok) {
           const titleData = await titleResponse.json()
           title = titleData.response
-            .replace(/['"]/g, '') // Remove quotes
+            .replace(/['\"`]/g, '') // Remove quotes
             .replace(/^Title:\\s*/i, '') // Remove "Title:" prefix
+            .replace(/^Here's a title:\\s*/i, '') // Remove "Here's a title:" prefix
             .replace(/\\.$/, '') // Remove trailing period
+            .replace(/\\n/g, ' ') // Remove newlines
             .trim()
             .substring(0, 50) // Max 50 chars
+
+          // If title is still in non-English, use fallback
+          if (/[\\u0900-\\u097F\\u0600-\\u06FF]/.test(title)) {
+            throw new Error('Title not in English')
+          }
+
           console.log('✅ Generated title:', title)
         } else {
           throw new Error('Title generation failed')
         }
       } catch (error) {
         console.error('❌ Failed to generate AI title, using fallback:', error)
-        // Fallback: Use first question (first 40 chars)
+        // Fallback: Extract keywords from question
         const firstQuestion = plainChatHistory[0].question
-        title =
-          firstQuestion.length > 40 ? firstQuestion.substring(0, 40).trim() + '...' : firstQuestion
+        const keywords = firstQuestion
+          .toLowerCase()
+          .match(
+            /\\b(skill|experience|project|background|education|work|develop|build|create|design)\\w*/gi,
+          )
+
+        if (keywords && keywords.length > 0) {
+          title = keywords
+            .slice(0, 3)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ')
+        } else {
+          // Last resort: use first few words
+          title = firstQuestion.split(' ').slice(0, 4).join(' ')
+          title = title.length > 40 ? title.substring(0, 40).trim() + '...' : title
+        }
       }
 
       // Build conversation history
@@ -572,37 +604,9 @@ export function AIControllerChat() {
         console.error('❌ Failed to save to memory:', error)
       }
 
-      // Add to chat messages as clickable history
-      const historyId = `history_${currentSessionId}_${Date.now()}`
-      const historyMessage: Message = {
-        id: historyId,
-        content: `📝 ${title}`,
-        role: 'assistant',
-        timestamp: new Date(),
-        isVoice: false,
-        isClickableHistory: true,
-        resumeSessionId: currentSessionId,
-      }
-
-      console.log(`📋 Creating history with ID: ${historyId}`)
-
-      // Check if history already exists
-      const existingIndex = plainChatMessages.findIndex(
-        (msg) => msg.isClickableHistory && msg.resumeSessionId === currentSessionId,
-      )
-
-      setPlainChatMessages((prev) => {
-        if (existingIndex !== -1) {
-          console.log('🔄 Updating existing history')
-          return prev.map((msg) =>
-            msg.resumeSessionId === currentSessionId && msg.isClickableHistory
-              ? historyMessage
-              : msg,
-          )
-        }
-        console.log('✅ Adding NEW history')
-        return [...prev, historyMessage]
-      })
+      // History is now only shown in sidebar, not in main chat
+      // The sidebar reads directly from memory API when it loads
+      console.log('� History saved for sidebar display (not added to chat messages)')
     } catch (error) {
       console.error('❌ Failed to generate plain chat history:', error)
     }
