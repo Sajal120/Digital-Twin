@@ -57,6 +57,7 @@ export async function detectLanguageContext(
     // If AI has already detected the language, use it (highest priority)
     if (aiDetectedLanguage && aiDetectedLanguage !== 'en') {
       console.log(`🤖 Using AI-detected language: ${aiDetectedLanguage}`)
+      console.log(`📤 Setting preferredResponseLanguage to: ${aiDetectedLanguage}`)
       return {
         detectedLanguage: aiDetectedLanguage,
         preferredResponseLanguage: aiDetectedLanguage,
@@ -1045,7 +1046,12 @@ export async function generateMultiLanguageResponse(
     let translationUsed = false
 
     if (languageContext.detectedLanguage !== 'en' && languageContext.confidence > 0.7) {
-      console.log(`🌍 Generating ${languageContext.detectedLanguage} response`)
+      console.log(
+        `🌍 Generating ${languageContext.detectedLanguage} response (confidence: ${languageContext.confidence})`,
+      )
+      console.log(
+        `📝 preferredResponseLanguage: ${languageContext.preferredResponseLanguage || 'not set'}`,
+      )
 
       const languageNames: Record<string, string> = {
         hi: 'Hindi/Hinglish',
