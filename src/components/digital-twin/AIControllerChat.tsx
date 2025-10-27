@@ -234,14 +234,15 @@ export function AIControllerChat() {
     setIsLoading(true)
 
     // For Plain Chat: Initialize session if not active (only once per conversation)
+    let currentSessionId = plainChatSessionId
     if (chatMode === 'plain_chat' && !isPlainChatActive && plainChatHistory.length === 0) {
-      const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      console.log('🆕 Starting new plain chat session:', newSessionId)
+      currentSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      console.log('🆕 Starting new plain chat session:', currentSessionId)
       console.log('🔍 Previous session:', plainChatSessionId)
       console.log('🔍 History length before:', plainChatHistory.length)
-      setPlainChatSessionId(newSessionId)
+      setPlainChatSessionId(currentSessionId)
       setIsPlainChatActive(true)
-      console.log('✅ Session activated')
+      console.log('✅ Session activated with ID:', currentSessionId)
     }
 
     // Detect language in plain chat (like voice chat)
@@ -364,7 +365,7 @@ export function AIControllerChat() {
             },
           ]
           console.log('📝 Added to plain chat history, total turns:', newHistory.length)
-          console.log('🔍 Current session ID:', plainChatSessionId)
+          console.log('🔍 Current session ID:', currentSessionId)
           console.log('🔍 isPlainChatActive:', isPlainChatActive)
           return newHistory
         })
