@@ -341,12 +341,16 @@ export function AIControllerChat() {
           ? `${currentQuestion}\n\nIMPORTANT: Respond ONLY in ${detectedLanguage === 'hi' ? 'Hindi' : detectedLanguage === 'es' ? 'Spanish' : 'English'} language. Do not mix languages. Keep the response in a single language.`
           : currentQuestion
 
+      // For Plain Chat: Only use current conversation (filter out history items)
+      const relevantMessages =
+        chatMode === 'plain_chat' ? messages.filter((m) => !m.isClickableHistory) : messages
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageWithLanguage,
-          conversationHistory: messages.map((m) => ({
+          conversationHistory: relevantMessages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
