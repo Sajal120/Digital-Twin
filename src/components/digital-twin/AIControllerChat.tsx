@@ -236,9 +236,12 @@ export function AIControllerChat() {
     // For Plain Chat: Initialize session if not active (only once per conversation)
     if (chatMode === 'plain_chat' && !isPlainChatActive && plainChatHistory.length === 0) {
       const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      console.log('🆕 Starting new plain chat session:', newSessionId)
+      console.log('🔍 Previous session:', plainChatSessionId)
+      console.log('🔍 History length before:', plainChatHistory.length)
       setPlainChatSessionId(newSessionId)
       setIsPlainChatActive(true)
-      console.log('🆕 Started new plain chat session:', newSessionId)
+      console.log('✅ Session activated')
     }
 
     // Detect language in plain chat (like voice chat)
@@ -349,17 +352,22 @@ export function AIControllerChat() {
 
       setMessages((prev) => [...prev, assistantMessage])
 
-      // Track history for Plain Chat
-      if (chatMode === 'plain_chat' && isPlainChatActive) {
-        setPlainChatHistory((prev) => [
-          ...prev,
-          {
-            question: currentQuestion,
-            answer: data.response,
-            timestamp: new Date(),
-          },
-        ])
-        console.log('📝 Added to plain chat history, total turns:', plainChatHistory.length + 1)
+      // Track history for Plain Chat - Always track if in plain chat mode
+      if (chatMode === 'plain_chat') {
+        setPlainChatHistory((prev) => {
+          const newHistory = [
+            ...prev,
+            {
+              question: currentQuestion,
+              answer: data.response,
+              timestamp: new Date(),
+            },
+          ]
+          console.log('📝 Added to plain chat history, total turns:', newHistory.length)
+          console.log('🔍 Current session ID:', plainChatSessionId)
+          console.log('🔍 isPlainChatActive:', isPlainChatActive)
+          return newHistory
+        })
       }
 
       // Only process intents and auto-hide in AI Control mode
