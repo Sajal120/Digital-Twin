@@ -478,20 +478,56 @@ export function AIControllerChat() {
   // Plain Chat session management functions (similar to voice chat)
   const loadPlainChatHistories = async () => {
     try {
-      console.log('📚 Loading all plain chat histories from memory...')
+      console.log('📚 Loading all plain chat histories...')
 
-      const response = await fetch('/api/voice/memory?chatType=plain_chat', {
-        method: 'GET',
-      })
+      let histories: any[] = []
 
-      if (response.ok) {
-        const data = await response.json()
+      // Try loading from localStorage first (persistent backup)
+      try {
+        const localData = localStorage.getItem('plainChatHistories')
+        if (localData) {
+          const localHistories = JSON.parse(localData)
+          if (Array.isArray(localHistories) && localHistories.length > 0) {
+            console.log('📦 Loaded from localStorage:', localHistories.length, 'histories')
+            histories = localHistories
+          }
+        }
+      } catch (localError) {
+        console.warn('⚠️ localStorage not available:', localError)
+      }
 
-        if (data.histories && Array.isArray(data.histories)) {
-          console.log('✅ Loaded', data.histories.length, 'plain chat histories')
+      // Also try loading from API (may have newer data)
+      try {
+        const response = await fetch('/api/voice/memory?chatType=plain_chat', {
+          method: 'GET',
+        })
 
-          // Convert histories to Message objects for sidebar display
-          const historyMessages: Message[] = data.histories.map((hist: any) => ({
+        if (response.ok) {
+          const data = await response.json()
+          if (data.histories && Array.isArray(data.histories) && data.histories.length > 0) {
+            console.log('📡 Loaded from API:', data.histories.length, 'histories')
+            // Merge with localStorage data (API data takes precedence)
+            const apiHistories = data.histories
+            histories = apiHistories.concat(
+              histories.filter(
+                (h: any) => !apiHistories.some((a: any) => a.sessionId === h.sessionId),
+              ),
+            )
+          }
+        }
+      } catch (apiError) {
+        console.warn('⚠️ API not available, using localStorage only')
+      }
+
+      console.log('✅ Total loaded histories:', histories.length)
+
+      if (histories.length > 0) {
+        // Convert histories to Message objects for sidebar display
+        const historyMessages: Message[] = histories
+          .sort(
+            (a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+          )
+          .map((hist: any) => ({
             id: `history_${hist.sessionId}_${Date.now()}`,
             content: hist.title || 'Untitled Chat',
             role: 'assistant' as const,
@@ -500,14 +536,13 @@ export function AIControllerChat() {
             resumeSessionId: hist.sessionId,
           }))
 
-          // Update plainChatMessages with only history items (don't remove welcome message)
-          setPlainChatMessages((prev) => {
-            const nonHistoryMessages = prev.filter((msg) => !msg.isClickableHistory)
-            return [...historyMessages, ...nonHistoryMessages]
-          })
+        // Update plainChatMessages with only history items (don't remove welcome message)
+        setPlainChatMessages((prev) => {
+          const nonHistoryMessages = prev.filter((msg) => !msg.isClickableHistory)
+          return [...historyMessages, ...nonHistoryMessages]
+        })
 
-          console.log('✅ Sidebar updated with', historyMessages.length, 'history items')
-        }
+        console.log('✅ Sidebar updated with', historyMessages.length, 'history items')
       }
     } catch (error) {
       console.error('❌ Failed to load plain chat histories:', error)
@@ -680,18 +715,23 @@ export function AIControllerChat() {
         .join('\\n\\n')
 
       // Save to memory API
+      const historyData = {
+        sessionId: currentSessionId,
+        summary: conversationText,
+        memory: plainChatHistory,
+        turnCount: plainChatHistory.length,
+        title: title,
+        chatType: 'plain_chat',
+        timestamp: new Date().toISOString(),
+      }
+
       try {
         await fetch('/api/voice/memory', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'save',
-            sessionId: currentSessionId,
-            summary: conversationText,
-            memory: plainChatHistory,
-            turnCount: plainChatHistory.length,
-            title: title,
-            chatType: 'plain_chat',
+            ...historyData,
           }),
         })
         console.log('💾 Plain chat history saved to memory')
@@ -701,6 +741,27 @@ export function AIControllerChat() {
         console.log('✅ Session marked as completed:', currentSessionId)
       } catch (error) {
         console.error('❌ Failed to save to memory:', error)
+      }
+
+      // Also save to localStorage for persistence across page reloads
+      try {
+        const localData = localStorage.getItem('plainChatHistories')
+        const existing = localData ? JSON.parse(localData) : []
+        const index = existing.findIndex((h: any) => h.sessionId === currentSessionId)
+
+        if (index >= 0) {
+          // Update existing
+          existing[index] = historyData
+          console.log('🔄 Updated in localStorage')
+        } else {
+          // Add new
+          existing.push(historyData)
+          console.log('➕ Added to localStorage')
+        }
+
+        localStorage.setItem('plainChatHistories', JSON.stringify(existing))
+      } catch (localError) {
+        console.warn('⚠️ localStorage save failed:', localError)
       }
 
       // Add to sidebar by updating messages with clickable history
@@ -734,56 +795,79 @@ export function AIControllerChat() {
     try {
       console.log('🔄 Resuming plain chat session:', sessionId)
 
-      const response = await fetch(`/api/voice/memory?sessionId=${sessionId}`, {
-        method: 'GET',
-      })
+      let data: any = null
 
-      if (response.ok) {
-        const data = await response.json()
-
-        if (data.memory && data.memory.length > 0) {
-          console.log('✅ Loaded chat history:', data.memory.length, 'turns')
-
-          // Restore the conversation state
-          setPlainChatHistory(data.memory)
-          setPlainChatSessionId(sessionId)
-          setIsPlainChatActive(true) // Mark as active for continuation
-
-          // Clear current messages and rebuild from history
-          const welcomeMessage: Message = {
-            id: '1',
-            content: session?.user
-              ? `Hi ${session.user.name}! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!`
-              : "Hi! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!",
-            role: 'assistant',
-            timestamp: new Date(),
+      // Try loading from localStorage first
+      try {
+        const localData = localStorage.getItem('plainChatHistories')
+        if (localData) {
+          const histories = JSON.parse(localData)
+          data = histories.find((h: any) => h.sessionId === sessionId)
+          if (data) {
+            console.log('📦 Loaded from localStorage')
           }
-
-          const restoredMessages: Message[] = [welcomeMessage]
-
-          data.memory.forEach((turn: any) => {
-            restoredMessages.push({
-              id: `user_${Date.now()}_${Math.random()}`,
-              content: turn.question || turn.transcript,
-              role: 'user',
-              timestamp: new Date(turn.timestamp),
-            })
-            restoredMessages.push({
-              id: `ai_${Date.now()}_${Math.random()}`,
-              content: turn.answer || turn.response,
-              role: 'assistant',
-              timestamp: new Date(turn.timestamp),
-            })
-          })
-
-          // CRITICAL: Preserve history items from sidebar when resuming
-          setPlainChatMessages((prev) => {
-            const historyItems = prev.filter((msg) => msg.isClickableHistory)
-            return [...historyItems, ...restoredMessages]
-          })
-
-          console.log('✅ Chat resumed successfully - ready to continue')
         }
+      } catch (localError) {
+        console.warn('⚠️ localStorage not available:', localError)
+      }
+
+      // If not in localStorage, try API
+      if (!data) {
+        const response = await fetch(`/api/voice/memory?sessionId=${sessionId}`, {
+          method: 'GET',
+        })
+
+        if (response.ok) {
+          const apiData = await response.json()
+          if (apiData.found) {
+            data = apiData
+            console.log('📡 Loaded from API')
+          }
+        }
+      }
+
+      if (data && data.memory && data.memory.length > 0) {
+        console.log('✅ Loaded chat history:', data.memory.length, 'turns')
+
+        // Restore the conversation state
+        setPlainChatHistory(data.memory)
+        setPlainChatSessionId(sessionId)
+        setIsPlainChatActive(true) // Mark as active for continuation
+
+        // Clear current messages and rebuild from history
+        const welcomeMessage: Message = {
+          id: '1',
+          content: session?.user
+            ? `Hi ${session.user.name}! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!`
+            : "Hi! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!",
+          role: 'assistant',
+          timestamp: new Date(),
+        }
+
+        const restoredMessages: Message[] = [welcomeMessage]
+
+        data.memory.forEach((turn: any) => {
+          restoredMessages.push({
+            id: `user_${Date.now()}_${Math.random()}`,
+            content: turn.question || turn.transcript,
+            role: 'user',
+            timestamp: new Date(turn.timestamp),
+          })
+          restoredMessages.push({
+            id: `ai_${Date.now()}_${Math.random()}`,
+            content: turn.answer || turn.response,
+            role: 'assistant',
+            timestamp: new Date(turn.timestamp),
+          })
+        })
+
+        // CRITICAL: Preserve history items from sidebar when resuming
+        setPlainChatMessages((prev) => {
+          const historyItems = prev.filter((msg) => msg.isClickableHistory)
+          return [...historyItems, ...restoredMessages]
+        })
+
+        console.log('✅ Chat resumed successfully - ready to continue')
       }
     } catch (error) {
       console.error('❌ Failed to resume chat:', error)
@@ -800,6 +884,19 @@ export function AIControllerChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
       })
+
+      // Remove from localStorage
+      try {
+        const localData = localStorage.getItem('plainChatHistories')
+        if (localData) {
+          const histories = JSON.parse(localData)
+          const filtered = histories.filter((h: any) => h.sessionId !== sessionId)
+          localStorage.setItem('plainChatHistories', JSON.stringify(filtered))
+          console.log('🗑️ Removed from localStorage')
+        }
+      } catch (localError) {
+        console.warn('⚠️ localStorage delete failed:', localError)
+      }
 
       // Remove from UI
       setPlainChatMessages((prev) =>
