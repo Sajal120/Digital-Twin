@@ -1016,13 +1016,17 @@ export async function generateMultiLanguageResponse(
   conversationHistory: any[] = [],
 ): Promise<MultiLanguageRAGResult> {
   try {
-    // Check for pre-built templates first for common phrases
-    if (languageContext.detectedLanguage !== 'en') {
+    // Skip templates for AI-detected languages - generate custom responses for better accuracy
+    // Templates are only used for pattern-detected languages now
+    const useTemplates = languageContext.confidence < 0.95 // AI detection has 0.99 confidence
+
+    // Check for pre-built templates only for pattern-detected languages
+    if (useTemplates && languageContext.detectedLanguage !== 'en') {
       const template = findConversationTemplate(originalMessage)
       if (template) {
         const templateResponse = getTemplateResponse(template, languageContext.detectedLanguage)
         if (templateResponse) {
-          console.log('✅ Using natural language template')
+          console.log('✅ Using natural language template (pattern-detected language)')
           return {
             response: templateResponse,
             originalLanguage: languageContext.detectedLanguage,
@@ -1039,6 +1043,8 @@ export async function generateMultiLanguageResponse(
           }
         }
       }
+    } else if (languageContext.confidence >= 0.95) {
+      console.log('🤖 Skipping templates for AI-detected language - will generate custom response')
     }
 
     // Generate contextual response
