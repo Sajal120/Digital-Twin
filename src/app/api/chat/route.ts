@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       githubToken, // OAuth token for GitHub integration
       user, // Google auth user information
       tokens, // Object containing various OAuth tokens
+      detectLanguage = false, // Enable language detection
     } = body
 
     // Handle both old format (user_id, role, content) and new portfolio format (message, conversationHistory)
@@ -68,6 +69,42 @@ export async function POST(request: NextRequest) {
       content = message
       role = 'user'
       user_id = user_id || 'portfolio-visitor'
+    }
+
+    // Detect language if requested (uses minimal tokens)
+    let detectedLanguage = 'en'
+    if (detectLanguage && content && process.env.GROQ_API_KEY) {
+      try {
+        const langDetectionResponse = await fetch(
+          'https://api.groq.com/openai/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'llama-3.1-8b-instant', // Fastest, cheapest model
+              messages: [
+                {
+                  role: 'user',
+                  content: `Detect the language of this text and respond with ONLY a 2-letter ISO code (en/hi/es/ar/ne/zh/ja/etc). If it's Hindi written in Roman script (Hinglish), respond with "hi". Text: "${content.substring(0, 200)}"`,
+                },
+              ],
+              max_tokens: 5,
+              temperature: 0,
+            }),
+          },
+        )
+
+        if (langDetectionResponse.ok) {
+          const langData = await langDetectionResponse.json()
+          detectedLanguage = langData.choices[0]?.message?.content?.trim().toLowerCase() || 'en'
+          console.log('🌐 AI detected language:', detectedLanguage)
+        }
+      } catch (error) {
+        console.warn('⚠️ Language detection failed, using default:', error)
+      }
     }
 
     // Validate required fields
@@ -124,6 +161,7 @@ export async function POST(request: NextRequest) {
         githubToken || tokens?.github,
         request,
         phoneOptimized, // Pass phone optimization flag
+        detectedLanguage, // Pass AI-detected language
       )
       aiResponse = enhancedResult.response
       responseMetadata = enhancedResult.metadata
@@ -165,6 +203,7 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
         enhanced: enhancedMode && !!responseMetadata,
         metadata: responseMetadata,
+        detectedLanguage: detectLanguage ? detectedLanguage : undefined,
       })
     }
 
@@ -557,6 +596,7 @@ async function generateEnhancedPortfolioResponse(
   githubToken?: string,
   request?: NextRequest,
   phoneOptimized: boolean = false,
+  aiDetectedLanguage?: string, // AI-detected language from frontend
 ): Promise<{ response: string; metadata: any }> {
   try {
     // Skip special actions for phone (too slow)
@@ -670,7 +710,12 @@ async function generateEnhancedPortfolioResponse(
             topicsDiscussed: [],
             requiresContext: false,
           }
-          const result = await processMultiLanguageQuery(message, tempContext, sessionId)
+          const result = await processMultiLanguageQuery(
+            message,
+            tempContext,
+            sessionId,
+            aiDetectedLanguage,
+          )
           console.log(`🌍 Language: ${result.languageContext.detectedLanguage}`)
           console.log(`🎯 Selected pattern: ${result.selectedPattern.pattern}`)
           console.log(`🔍 Search query: "${result.enhancedQuery}"`)

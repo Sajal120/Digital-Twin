@@ -266,17 +266,27 @@ export function AIControllerChat() {
       setIsPlainChatActive(true) // Ensure it's active
     }
 
-    // Detect language in plain chat (like voice chat)
+    // Detect language in plain chat using AI (more accurate than pattern matching)
     let detectedLanguage = 'en'
+    let useAIDetection = false // Flag to enable AI detection
+
     if (chatMode === 'plain_chat') {
-      // Simple language detection based on character sets
+      // Quick pattern check first for obvious cases (fast path)
       const hasDevanagari = /[\u0900-\u097F]/.test(currentQuestion)
       const hasSpanish = /[¿¡áéíóúñ]/.test(currentQuestion)
       const hasArabic = /[\u0600-\u06FF]/.test(currentQuestion)
+      const hasChinese = /[\u4e00-\u9fff]/.test(currentQuestion)
+      const hasJapanese = /[\u3040-\u309f\u30a0-\u30ff]/.test(currentQuestion)
 
       if (hasDevanagari) {
-        detectedLanguage = 'hi' // Hindi/Nepali
+        detectedLanguage = 'hi' // Hindi/Nepali in Devanagari
         console.log('🌐 Detected Devanagari script (Hindi/Nepali)')
+      } else if (hasChinese) {
+        detectedLanguage = 'zh'
+        console.log('🌐 Detected Chinese')
+      } else if (hasJapanese) {
+        detectedLanguage = 'ja'
+        console.log('🌐 Detected Japanese')
       } else if (hasSpanish) {
         detectedLanguage = 'es'
         console.log('🌐 Detected Spanish')
@@ -284,8 +294,19 @@ export function AIControllerChat() {
         detectedLanguage = 'ar'
         console.log('🌐 Detected Arabic')
       } else {
-        detectedLanguage = 'en'
-        console.log('🌐 Detected English (default)')
+        // For Roman script, use AI detection (handles Hinglish, mixed languages, etc.)
+        // Quick heuristic: Check for common Hinglish words first
+        const hindiWords =
+          /\b(kaise|kese|kaisa|kaisi|kya|hai|hain|ho|hoon|hun|tha|the|thi|main|mai|mein|me|aap|tum|tumhara|tumhari|mera|meri|tera|teri|uska|uski|yeh|yah|woh|wo|nahi|nahin|haan|ha|accha|acha|theek|thik|shukriya|dhanyavaad|namaste|namaskar|bhailog|dost|bhai|behen|timro|timi|tapai|cha|chha|mero|hamro|khelne|gareko|ramro|sahi|kata|kaha|kun|kasari|kina)\b/gi
+
+        if (hindiWords.test(currentQuestion)) {
+          detectedLanguage = 'hi' // Hinglish (Hindi written in Roman script)
+          console.log('🌐 Detected Hinglish (Hindi/Nepali in Roman script)')
+        } else {
+          // Enable AI detection for ambiguous cases
+          useAIDetection = true
+          console.log('🤖 Using AI to detect language...')
+        }
       }
     }
 
@@ -335,27 +356,20 @@ export function AIControllerChat() {
 
     // For Plain Chat mode OR AI Control mode without intent, get detailed response from API
     try {
-      // Build message with language instruction for Plain Chat
-      const messageWithLanguage =
-        chatMode === 'plain_chat' && detectedLanguage !== 'en'
-          ? `${currentQuestion}\n\nIMPORTANT: Respond ONLY in ${detectedLanguage === 'hi' ? 'Hindi' : detectedLanguage === 'es' ? 'Spanish' : 'English'} language. Do not mix languages. Keep the response in a single language.`
-          : currentQuestion
-
-      // For Plain Chat: Only use current conversation (filter out history items)
-      const relevantMessages =
-        chatMode === 'plain_chat' ? messages.filter((m) => !m.isClickableHistory) : messages
-
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: messageWithLanguage,
-          conversationHistory: relevantMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          message: currentQuestion,
+          conversationHistory: messages
+            .filter((m) => !m.isClickableHistory) // Filter out history items
+            .map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
           enhancedMode: chatMode !== 'ai_control', // Force enhanced mode for Plain Chat
           interviewType: chatMode !== 'ai_control' ? 'general' : 'brief',
+          detectLanguage: chatMode === 'plain_chat' && useAIDetection, // Use AI detection only when needed
           user: session?.user
             ? {
                 name: session.user.name,
@@ -369,6 +383,13 @@ export function AIControllerChat() {
       if (!response.ok) throw new Error('Failed to get response')
 
       const data = await response.json()
+
+      // Use AI-detected language if available, otherwise use pattern-detected language
+      if (data.detectedLanguage) {
+        detectedLanguage = data.detectedLanguage
+        console.log('🤖 AI detected language:', detectedLanguage)
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: data.response,

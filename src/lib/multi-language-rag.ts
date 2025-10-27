@@ -51,8 +51,21 @@ export interface MultiLanguageRAGResult {
 export async function detectLanguageContext(
   message: string,
   deepgramHint?: string,
+  aiDetectedLanguage?: string, // AI-detected language from frontend (more accurate than pattern matching)
 ): Promise<LanguageContext> {
   try {
+    // If AI has already detected the language, use it (highest priority)
+    if (aiDetectedLanguage && aiDetectedLanguage !== 'en') {
+      console.log(`🤖 Using AI-detected language: ${aiDetectedLanguage}`)
+      return {
+        detectedLanguage: aiDetectedLanguage,
+        preferredResponseLanguage: aiDetectedLanguage,
+        confidence: 0.99, // AI detection is highly accurate
+        needsTranslation: false,
+        culturalContext: [],
+      }
+    }
+
     // Quick rule-based detection for common patterns
     const messageLower = message.toLowerCase()
 
@@ -1135,6 +1148,7 @@ export async function processMultiLanguageQuery(
   message: string,
   contextEnhanced: any,
   sessionId: string,
+  aiDetectedLanguage?: string, // AI-detected language from frontend
 ): Promise<{
   languageContext: LanguageContext
   selectedPattern: {
@@ -1149,8 +1163,8 @@ export async function processMultiLanguageQuery(
   }
   enhancedQuery: string
 }> {
-  // Step 1: Detect language and context
-  const languageContext = await detectLanguageContext(message)
+  // Step 1: Detect language and context (use AI detection if available)
+  const languageContext = await detectLanguageContext(message, undefined, aiDetectedLanguage)
   console.log(
     `🌍 Language detected: ${languageContext.detectedLanguage} (confidence: ${languageContext.confidence})`,
   )
