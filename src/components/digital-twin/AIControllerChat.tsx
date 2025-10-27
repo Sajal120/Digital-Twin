@@ -576,129 +576,99 @@ export function AIControllerChat() {
           .replace(/\\s\\s+/g, ' ')
       }
 
-      // Generate meaningful title using AI (like ChatGPT)
+      // Generate meaningful title using smart extraction (no AI)
       let title = ''
-      try {
-        console.log('🏷️ Generating meaningful title for conversation...')
-        const titleResponse = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: `You are a title generator. Create a concise 2-4 word English title that captures the main topic of this question. Rules: 1) Use ONLY common English words, 2) No foreign language words (no Nepali, Hindi, Spanish, etc.), 3) Be specific and descriptive, 4) Respond with ONLY the title, nothing else.\\n\\nQuestion: "${plainChatHistory[0].question}"\\n\\nTitle:`,
-            conversationHistory: [],
-            enhancedMode: false,
-            interviewType: 'brief',
-          }),
+      const firstQuestion = plainChatHistory[0].question
+
+      console.log('🏷️ Generating meaningful title from question:', firstQuestion)
+
+      // Define stop words to filter out
+      const stopWords = new Set([
+        'what',
+        'are',
+        'is',
+        'your',
+        'you',
+        'the',
+        'a',
+        'an',
+        'and',
+        'or',
+        'but',
+        'can',
+        'could',
+        'would',
+        'should',
+        'do',
+        'does',
+        'did',
+        'have',
+        'has',
+        'had',
+        'will',
+        'shall',
+        'may',
+        'might',
+        'must',
+        'tell',
+        'me',
+        'about',
+        'how',
+        'why',
+        'when',
+        'where',
+        'who',
+        'which',
+        'this',
+        'that',
+        'these',
+        'those',
+        'timro',
+        'timi',
+        'cha',
+        'ho',
+        'ma',
+        'tapai',
+        'for',
+        'with',
+        'from',
+      ])
+
+      // Extract meaningful words
+      const words = firstQuestion
+        .toLowerCase()
+        .replace(/[^\w\s]/g, ' ') // Replace punctuation with spaces
+        .split(/\s+/)
+        .filter((word) => {
+          return word.length >= 3 && /^[a-z]+$/.test(word) && !stopWords.has(word)
         })
 
-        if (titleResponse.ok) {
-          const titleData = await titleResponse.json()
-          title = titleData.response
-            .replace(/['\"`]/g, '') // Remove quotes
-            .replace(/^Title:\\s*/i, '') // Remove "Title:" prefix
-            .replace(/^Here's a title:\\s*/i, '') // Remove "Here's a title:" prefix
-            .replace(/\\.$/, '') // Remove trailing period
-            .replace(/\\n/g, ' ') // Remove newlines
-            .trim()
-            .substring(0, 50) // Max 50 chars
+      if (words.length >= 2) {
+        // Use first 2-3 meaningful words
+        title = words
+          .slice(0, 3)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ')
+        console.log('✅ Title from words:', title)
+      } else if (words.length === 1) {
+        // Single meaningful word - add context
+        title = words[0].charAt(0).toUpperCase() + words[0].slice(1) + ' Discussion'
+        console.log('✅ Title from single word:', title)
+      } else {
+        // Fallback: Use first few words of question (after filtering stop words)
+        const questionWords = firstQuestion
+          .split(/\s+/)
+          .filter((w) => w.length >= 3)
+          .slice(0, 3)
 
-          // Filter out common non-English words that slip through
-          const nonEnglishWords = [
-            'timro',
-            'timi',
-            'ma',
-            'cha',
-            'ho',
-            'khelne',
-            'gareko',
-            'khelchhu',
-            'vancha',
-            'vanchan',
-            'lekin',
-            'mero',
-            'tapai',
-          ]
-          const titleWords = title.toLowerCase().split(' ')
-          const hasNonEnglish = titleWords.some((word) => nonEnglishWords.includes(word))
-
-          // If title contains non-English or is too short, use fallback
-          if (
-            hasNonEnglish ||
-            /[\\u0900-\\u097F\\u0600-\\u06FF]/.test(title) ||
-            title.split(' ').length < 2
-          ) {
-            console.log('⚠️ Title contains non-English words or invalid, using fallback')
-            throw new Error('Title not in proper English')
-          }
-
-          console.log('✅ Generated title:', title)
-        } else {
-          throw new Error('Title generation failed')
-        }
-      } catch (error) {
-        console.error('❌ Failed to generate AI title, using fallback:', error)
-        // Fallback: Extract English words from question
-        const firstQuestion = plainChatHistory[0].question.toLowerCase()
-
-        // First try: Look for meaningful keywords (excluding generic words)
-        const keywords = firstQuestion.match(
-          /\\b(football|soccer|sport|skill|experience|project|background|education|work|develop|build|create|design|play|game|professional|language|programming|technology|career|achievement|challenge|success|team|leadership|innovation)\\w*/gi,
-        )
-
-        if (keywords && keywords.length >= 1) {
-          // Use keywords, capitalize first letter
-          title = keywords
-            .slice(0, 3)
+        if (questionWords.length > 0) {
+          title = questionWords
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
             .join(' ')
-          console.log('📌 Title from keywords:', title)
+          console.log('✅ Title from question words:', title)
         } else {
-          // Second try: Extract pure English words (filter out non-English and common words)
-          const stopWords = [
-            'timro',
-            'timi',
-            'cha',
-            'ho',
-            'the',
-            'and',
-            'or',
-            'but',
-            'what',
-            'are',
-            'your',
-            'my',
-            'tell',
-            'about',
-            'can',
-            'you',
-            'how',
-            'why',
-            'when',
-            'where',
-            'who',
-          ]
-          const words = firstQuestion
-            .split(/\\s+/)
-            .map((w) => w.replace(/[^a-z]/gi, '')) // Remove punctuation
-            .filter((word) => {
-              return (
-                word.length > 2 && // At least 3 chars
-                /^[a-z]+$/i.test(word) && // Only English letters
-                !stopWords.includes(word.toLowerCase()) // Not a stop word
-              )
-            })
-
-          if (words.length >= 1) {
-            title = words
-              .slice(0, 3)
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-              .join(' ')
-            console.log('📌 Title from words:', title)
-          } else {
-            // Last resort: use timestamp-based title
-            title = `Chat ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-            console.log('📌 Using date-based title:', title)
-          }
+          title = 'General Discussion'
+          console.log('✅ Using default title')
         }
       }
 
