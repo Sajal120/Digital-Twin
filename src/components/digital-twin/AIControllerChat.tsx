@@ -528,7 +528,7 @@ export function AIControllerChat() {
     setIsPlainChatActive(false) // Not active yet
     setPlainChatHistory([]) // Clear history
 
-    // Clear current chat messages (keep only welcome message)
+    // Clear current chat messages BUT KEEP history items in sidebar
     const welcomeMessage: Message = {
       id: '1',
       content: session?.user
@@ -538,7 +538,11 @@ export function AIControllerChat() {
       timestamp: new Date(),
     }
 
-    setPlainChatMessages([welcomeMessage])
+    setPlainChatMessages((prev) => {
+      // Keep all history items, only clear non-history messages
+      const historyItems = prev.filter((msg) => msg.isClickableHistory)
+      return [welcomeMessage, ...historyItems]
+    })
 
     console.log('✨ Ready for NEW plain chat session (will create session ID on first message)')
   }
@@ -580,7 +584,7 @@ export function AIControllerChat() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: `Generate a short 2-4 word English title that summarizes this question. Respond ONLY with the title in English, nothing else. Question: "${plainChatHistory[0].question}"`,
+            message: `You are a title generator. Create a concise 2-4 word English title that captures the main topic of this question. Rules: 1) Use ONLY common English words, 2) No foreign language words (no Nepali, Hindi, Spanish, etc.), 3) Be specific and descriptive, 4) Respond with ONLY the title, nothing else.\\n\\nQuestion: "${plainChatHistory[0].question}"\\n\\nTitle:`,
             conversationHistory: [],
             enhancedMode: false,
             interviewType: 'brief',
@@ -598,9 +602,33 @@ export function AIControllerChat() {
             .trim()
             .substring(0, 50) // Max 50 chars
 
-          // If title is still in non-English, use fallback
-          if (/[\\u0900-\\u097F\\u0600-\\u06FF]/.test(title)) {
-            throw new Error('Title not in English')
+          // Filter out common non-English words that slip through
+          const nonEnglishWords = [
+            'timro',
+            'timi',
+            'ma',
+            'cha',
+            'ho',
+            'khelne',
+            'gareko',
+            'khelchhu',
+            'vancha',
+            'vanchan',
+            'lekin',
+            'mero',
+            'tapai',
+          ]
+          const titleWords = title.toLowerCase().split(' ')
+          const hasNonEnglish = titleWords.some((word) => nonEnglishWords.includes(word))
+
+          // If title contains non-English or is too short, use fallback
+          if (
+            hasNonEnglish ||
+            /[\\u0900-\\u097F\\u0600-\\u06FF]/.test(title) ||
+            title.split(' ').length < 2
+          ) {
+            console.log('⚠️ Title contains non-English words or invalid, using fallback')
+            throw new Error('Title not in proper English')
           }
 
           console.log('✅ Generated title:', title)
@@ -614,7 +642,7 @@ export function AIControllerChat() {
         const keywords = firstQuestion
           .toLowerCase()
           .match(
-            /\\b(skill|experience|project|background|education|work|develop|build|create|design)\\w*/gi,
+            /\\b(football|soccer|sport|skill|experience|project|background|education|work|develop|build|create|design|play|game|professional)\\w*/gi,
           )
 
         if (keywords && keywords.length > 0) {
@@ -623,9 +651,21 @@ export function AIControllerChat() {
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
             .join(' ')
         } else {
-          // Last resort: use first few words
-          title = firstQuestion.split(' ').slice(0, 4).join(' ')
+          // Last resort: use first few English words only
+          const words = firstQuestion.split(' ').filter((word) => {
+            const w = word.toLowerCase()
+            return (
+              !/[\\u0900-\\u097F\\u0600-\\u06FF]/.test(w) &&
+              !['timro', 'timi', 'ma', 'cha', 'ho'].includes(w)
+            )
+          })
+          title = words.slice(0, 4).join(' ')
           title = title.length > 40 ? title.substring(0, 40).trim() + '...' : title
+
+          // If still empty or too short, use generic title
+          if (!title || title.length < 3) {
+            title = 'Chat Conversation'
+          }
         }
       }
 
@@ -1700,120 +1740,122 @@ export function AIControllerChat() {
               style={{ maxHeight: 'calc(100vh - 300px)' }}
             >
               <AnimatePresence>
-                {messages.map((message, index) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
+                {messages
+                  .filter((msg) => !msg.isClickableHistory) // Don't show history in main chat - it's in sidebar
+                  .map((message, index) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                          message.role === 'user'
-                            ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
-                            : 'bg-gradient-to-br from-purple-500 to-pink-500'
-                        }`}
-                      >
-                        {message.role === 'user' ? (
-                          <User className="w-5 h-5 text-white" />
-                        ) : (
-                          <Bot className="w-5 h-5 text-white" />
-                        )}
-                      </div>
-                      <motion.div
-                        className={`rounded-2xl px-4 py-3 ${
-                          message.role === 'user'
-                            ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
-                            : message.isClickableHistory
-                              ? 'bg-gradient-to-br from-green-600/20 to-blue-600/20 backdrop-blur-lg text-white border border-green-400/30 cursor-pointer hover:from-green-600/30 hover:to-blue-600/30 transition-all'
-                              : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
-                        }`}
-                        animate={{
-                          boxShadow:
-                            message.role === 'assistant'
-                              ? [
-                                  '0 0 0 rgba(147, 51, 234, 0)',
-                                  '0 0 20px rgba(147, 51, 234, 0.3)',
-                                  '0 0 0 rgba(147, 51, 234, 0)',
-                                ]
-                              : undefined,
-                        }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        onClick={
-                          message.isClickableHistory && message.resumeSessionId
-                            ? () => {
-                                if (chatMode === 'voice_chat') {
-                                  resumeConversation(message.resumeSessionId!)
-                                } else if (chatMode === 'plain_chat') {
-                                  resumePlainChat(message.resumeSessionId!)
-                                }
-                              }
-                            : undefined
-                        }
+                        className={`flex space-x-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`}
                       >
                         <div
-                          className={`text-sm whitespace-pre-line ${message.isClickableHistory ? 'max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/50 scrollbar-track-transparent' : ''}`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            message.role === 'user'
+                              ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                              : 'bg-gradient-to-br from-purple-500 to-pink-500'
+                          }`}
                         >
-                          {message.isVoice && (
-                            <span className="inline-flex items-center gap-1 text-xs opacity-75 mb-1">
-                              {message.role === 'user' ? '🎙️' : '🔊'} Voice
-                            </span>
-                          )}
-                          {renderMessageContent(message.content)}
-                          {message.isClickableHistory && (
-                            <div className="mt-2 flex items-center justify-between">
-                              <div className="text-xs opacity-70 italic">
-                                👆 Click to continue this conversation
-                              </div>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  if (message.resumeSessionId) {
-                                    if (
-                                      window.confirm(
-                                        'Are you sure you want to delete this conversation history?',
-                                      )
-                                    ) {
-                                      if (chatMode === 'voice_chat') {
-                                        deleteConversationHistory(message.resumeSessionId)
-                                      } else if (chatMode === 'plain_chat') {
-                                        deletePlainChatHistory(message.resumeSessionId)
-                                      }
-                                    }
-                                  }
-                                }}
-                                className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded transition-all duration-200 ml-2"
-                                title="Delete this conversation history"
-                              >
-                                🗑️ Delete
-                              </button>
-                            </div>
+                          {message.role === 'user' ? (
+                            <User className="w-5 h-5 text-white" />
+                          ) : (
+                            <Bot className="w-5 h-5 text-white" />
                           )}
                         </div>
-                        {message.isVoice &&
-                          chatMode === 'voice_chat' &&
-                          message.role === 'assistant' && (
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs opacity-70">🔊 Voice message</span>
-                              <button
-                                onClick={() => generateAndPlaySpeech(message.content)}
-                                disabled={isPlaying || isLoading}
-                                className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
-                                title="Replay with your Cartesia cloned voice"
-                              >
-                                {isPlaying ? '🔊 Playing...' : '🔁 Replay'}
-                              </button>
-                            </div>
-                          )}
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                ))}
+                        <motion.div
+                          className={`rounded-2xl px-4 py-3 ${
+                            message.role === 'user'
+                              ? 'bg-gradient-to-br from-blue-600 to-cyan-600 text-white'
+                              : message.isClickableHistory
+                                ? 'bg-gradient-to-br from-green-600/20 to-blue-600/20 backdrop-blur-lg text-white border border-green-400/30 cursor-pointer hover:from-green-600/30 hover:to-blue-600/30 transition-all'
+                                : 'bg-white/10 backdrop-blur-lg text-white border border-white/10'
+                          }`}
+                          animate={{
+                            boxShadow:
+                              message.role === 'assistant'
+                                ? [
+                                    '0 0 0 rgba(147, 51, 234, 0)',
+                                    '0 0 20px rgba(147, 51, 234, 0.3)',
+                                    '0 0 0 rgba(147, 51, 234, 0)',
+                                  ]
+                                : undefined,
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          onClick={
+                            message.isClickableHistory && message.resumeSessionId
+                              ? () => {
+                                  if (chatMode === 'voice_chat') {
+                                    resumeConversation(message.resumeSessionId!)
+                                  } else if (chatMode === 'plain_chat') {
+                                    resumePlainChat(message.resumeSessionId!)
+                                  }
+                                }
+                              : undefined
+                          }
+                        >
+                          <div
+                            className={`text-sm whitespace-pre-line ${message.isClickableHistory ? 'max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-green-500/50 scrollbar-track-transparent' : ''}`}
+                          >
+                            {message.isVoice && (
+                              <span className="inline-flex items-center gap-1 text-xs opacity-75 mb-1">
+                                {message.role === 'user' ? '🎙️' : '🔊'} Voice
+                              </span>
+                            )}
+                            {renderMessageContent(message.content)}
+                            {message.isClickableHistory && (
+                              <div className="mt-2 flex items-center justify-between">
+                                <div className="text-xs opacity-70 italic">
+                                  👆 Click to continue this conversation
+                                </div>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (message.resumeSessionId) {
+                                      if (
+                                        window.confirm(
+                                          'Are you sure you want to delete this conversation history?',
+                                        )
+                                      ) {
+                                        if (chatMode === 'voice_chat') {
+                                          deleteConversationHistory(message.resumeSessionId)
+                                        } else if (chatMode === 'plain_chat') {
+                                          deletePlainChatHistory(message.resumeSessionId)
+                                        }
+                                      }
+                                    }
+                                  }}
+                                  className="text-xs px-2 py-1 bg-red-500/20 hover:bg-red-500/40 text-red-300 hover:text-red-200 rounded transition-all duration-200 ml-2"
+                                  title="Delete this conversation history"
+                                >
+                                  🗑️ Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {message.isVoice &&
+                            chatMode === 'voice_chat' &&
+                            message.role === 'assistant' && (
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs opacity-70">🔊 Voice message</span>
+                                <button
+                                  onClick={() => generateAndPlaySpeech(message.content)}
+                                  disabled={isPlaying || isLoading}
+                                  className="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded transition-colors disabled:opacity-50"
+                                  title="Replay with your Cartesia cloned voice"
+                                >
+                                  {isPlaying ? '🔊 Playing...' : '🔁 Replay'}
+                                </button>
+                              </div>
+                            )}
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  ))}
               </AnimatePresence>
 
               {isLoading && (
