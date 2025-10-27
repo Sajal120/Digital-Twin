@@ -86,8 +86,8 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! 🤖 I'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!`
-        : "Hi! 🤖 I'll show you visual content instead of text descriptions. Use the quick buttons below or just ask me to show you something!",
+        ? `Hi ${session.user.name}! 🤖 AI Control is for **Quick Actions only**:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor questions, please use **Plain Chat** mode! 💬`
+        : 'Hi! 🤖 AI Control is for **Quick Actions only**:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor questions, please use **Plain Chat** mode! 💬',
       role: 'assistant',
       timestamp: new Date(),
     },
@@ -324,6 +324,9 @@ export function AIControllerChat() {
           case 'show_about':
             briefResponse = "Here's my story! 👋"
             break
+          case 'show_experience':
+            briefResponse = "Here's my experience! 💼"
+            break
           default:
             briefResponse = 'Here you go! ✨'
         }
@@ -337,6 +340,18 @@ export function AIControllerChat() {
 
         setMessages((prev) => [...prev, assistantMessage])
         handleAIResponse(inputValue, true)
+        setIsLoading(false)
+        return
+      } else {
+        // No intent detected in AI Control mode - show error message
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content:
+            '❌ AI Control mode only works with Quick Actions:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor general questions, please use **Plain Chat** mode! 💬',
+          role: 'assistant',
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
         setIsLoading(false)
         return
       }
@@ -357,8 +372,8 @@ export function AIControllerChat() {
               role: m.role,
               content: m.content,
             })),
-          enhancedMode: chatMode !== 'ai_control', // Force enhanced mode for Plain Chat
-          interviewType: chatMode !== 'ai_control' ? 'general' : 'brief',
+          enhancedMode: true, // Always use enhanced mode for Plain Chat
+          interviewType: 'general',
           detectLanguage: chatMode === 'plain_chat' && useAIDetection, // Use AI detection only when needed
           user: session?.user
             ? {
@@ -389,7 +404,7 @@ export function AIControllerChat() {
 
       setMessages((prev) => [...prev, assistantMessage])
 
-      // Track history for Plain Chat - Always track if in plain chat mode
+      // Track history for Plain Chat
       if (chatMode === 'plain_chat') {
         setPlainChatHistory((prev) => {
           const newHistory = [
@@ -407,10 +422,8 @@ export function AIControllerChat() {
         })
       }
 
-      // Only process intents and auto-hide in AI Control mode
-      if (chatMode === 'ai_control') {
-        handleAIResponse(data.response, true)
-      }
+      // This code path is only reached in Plain Chat or Voice Chat mode
+      // (AI Control returns early with brief responses or error messages)
     } catch (error) {
       console.error('Error:', error)
       const errorMessage: Message = {
