@@ -140,6 +140,25 @@ export function AIControllerChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Auto-save plain chat history after each conversation turn
+  useEffect(() => {
+    // Only auto-save if we have an active plain chat session with at least 1 turn
+    if (
+      chatMode === 'plain_chat' &&
+      isPlainChatActive &&
+      plainChatHistory.length > 0 &&
+      plainChatSessionId
+    ) {
+      // Debounce the save (wait 2 seconds after last message)
+      const saveTimer = setTimeout(() => {
+        console.log('💾 Auto-saving plain chat history...')
+        generatePlainChatHistory()
+      }, 2000)
+
+      return () => clearTimeout(saveTimer)
+    }
+  }, [plainChatHistory, isPlainChatActive, plainChatSessionId, chatMode])
+
   // Keyboard shortcuts for voice chat
   useEffect(() => {
     if (chatMode !== 'voice_chat') return
