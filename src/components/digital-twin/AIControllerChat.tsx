@@ -150,6 +150,13 @@ export function AIControllerChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Load plain chat histories from memory API when switching to plain chat mode
+  useEffect(() => {
+    if (chatMode === 'plain_chat') {
+      loadPlainChatHistories()
+    }
+  }, [chatMode])
+
   // Auto-save plain chat history after each conversation turn
   useEffect(() => {
     // Only auto-save if we have an active plain chat session with at least 1 turn
@@ -245,14 +252,18 @@ export function AIControllerChat() {
 
     // For Plain Chat: Initialize session if not active (only once per conversation)
     let currentSessionId = plainChatSessionId
-    if (chatMode === 'plain_chat' && !isPlainChatActive && plainChatHistory.length === 0) {
+    if (chatMode === 'plain_chat' && !plainChatSessionId) {
+      // Create new session only if we don't have one
       currentSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       console.log('🆕 Starting new plain chat session:', currentSessionId)
-      console.log('🔍 Previous session:', plainChatSessionId)
-      console.log('🔍 History length before:', plainChatHistory.length)
       setPlainChatSessionId(currentSessionId)
       setIsPlainChatActive(true)
       console.log('✅ Session activated with ID:', currentSessionId)
+    } else if (chatMode === 'plain_chat' && plainChatSessionId) {
+      // Use existing session
+      console.log('� Continuing existing session:', plainChatSessionId)
+      currentSessionId = plainChatSessionId
+      setIsPlainChatActive(true) // Ensure it's active
     }
 
     // Detect language in plain chat (like voice chat)
@@ -465,6 +476,44 @@ export function AIControllerChat() {
   }
 
   // Plain Chat session management functions (similar to voice chat)
+  const loadPlainChatHistories = async () => {
+    try {
+      console.log('📚 Loading all plain chat histories from memory...')
+
+      const response = await fetch('/api/voice/memory?chatType=plain_chat', {
+        method: 'GET',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+
+        if (data.histories && Array.isArray(data.histories)) {
+          console.log('✅ Loaded', data.histories.length, 'plain chat histories')
+
+          // Convert histories to Message objects for sidebar display
+          const historyMessages: Message[] = data.histories.map((hist: any) => ({
+            id: `history_${hist.sessionId}_${Date.now()}`,
+            content: hist.title || 'Untitled Chat',
+            role: 'assistant' as const,
+            timestamp: new Date(hist.timestamp),
+            isClickableHistory: true,
+            resumeSessionId: hist.sessionId,
+          }))
+
+          // Update plainChatMessages with only history items (don't remove welcome message)
+          setPlainChatMessages((prev) => {
+            const nonHistoryMessages = prev.filter((msg) => !msg.isClickableHistory)
+            return [...historyMessages, ...nonHistoryMessages]
+          })
+
+          console.log('✅ Sidebar updated with', historyMessages.length, 'history items')
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to load plain chat histories:', error)
+    }
+  }
+
   const startNewPlainChat = async () => {
     console.log('💬 Starting NEW plain chat conversation...')
 
@@ -474,23 +523,24 @@ export function AIControllerChat() {
       await generatePlainChatHistory()
     }
 
-    // Create UNIQUE new session with timestamp
-    const newSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    console.log('🆔 Creating unique session:', newSessionId)
+    // Reset all plain chat state - NO pre-creating session ID
+    setPlainChatSessionId('') // Empty string - will be created on first message
+    setIsPlainChatActive(false) // Not active yet
+    setPlainChatHistory([]) // Clear history
 
-    // Reset all plain chat state
-    setPlainChatSessionId(newSessionId)
-    setIsPlainChatActive(false) // Set to false so first message creates new session
-    setPlainChatHistory([])
+    // Clear current chat messages (keep only welcome message)
+    const welcomeMessage: Message = {
+      id: '1',
+      content: session?.user
+        ? `Hi ${session.user.name}! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!`
+        : "Hi! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!",
+      role: 'assistant',
+      timestamp: new Date(),
+    }
 
-    // Clear current chat messages (keep only clickable histories)
-    setPlainChatMessages((prev) => {
-      const histories = prev.filter((msg) => msg.isClickableHistory)
-      console.log('📋 Keeping', histories.length, 'history items')
-      return histories
-    })
+    setPlainChatMessages([welcomeMessage])
 
-    console.log('✨ Ready for NEW plain chat session')
+    console.log('✨ Ready for NEW plain chat session (will create session ID on first message)')
   }
 
   const generatePlainChatHistory = async () => {
@@ -600,13 +650,36 @@ export function AIControllerChat() {
           }),
         })
         console.log('💾 Plain chat history saved to memory')
+
+        // After saving, mark this session as completed (not active anymore)
+        setIsPlainChatActive(false)
+        console.log('✅ Session marked as completed:', currentSessionId)
       } catch (error) {
         console.error('❌ Failed to save to memory:', error)
       }
 
-      // History is now only shown in sidebar, not in main chat
-      // The sidebar reads directly from memory API when it loads
-      console.log('� History saved for sidebar display (not added to chat messages)')
+      // Add to sidebar by updating messages with clickable history
+      // First, remove any old history for this session
+      setPlainChatMessages((prev) => {
+        const withoutOldHistory = prev.filter(
+          (msg) => !msg.isClickableHistory || msg.resumeSessionId !== currentSessionId,
+        )
+
+        // Add new/updated history entry
+        const historyMessage: Message = {
+          id: `history_${currentSessionId}_${Date.now()}`,
+          content: title, // Just show the title in sidebar
+          role: 'assistant',
+          timestamp: new Date(),
+          isClickableHistory: true,
+          resumeSessionId: currentSessionId,
+        }
+
+        console.log('📋 Adding/updating history entry for session:', currentSessionId)
+        return [historyMessage, ...withoutOldHistory] // Put history at top
+      })
+
+      console.log('✅ History saved for sidebar display')
     } catch (error) {
       console.error('❌ Failed to generate plain chat history:', error)
     }
@@ -626,13 +699,23 @@ export function AIControllerChat() {
         if (data.memory && data.memory.length > 0) {
           console.log('✅ Loaded chat history:', data.memory.length, 'turns')
 
-          // Restore the conversation
+          // Restore the conversation state
           setPlainChatHistory(data.memory)
           setPlainChatSessionId(sessionId)
-          setIsPlainChatActive(true)
+          setIsPlainChatActive(true) // Mark as active for continuation
 
           // Clear current messages and rebuild from history
-          const restoredMessages: Message[] = []
+          const welcomeMessage: Message = {
+            id: '1',
+            content: session?.user
+              ? `Hi ${session.user.name}! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!`
+              : "Hi! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!",
+            role: 'assistant',
+            timestamp: new Date(),
+          }
+
+          const restoredMessages: Message[] = [welcomeMessage]
+
           data.memory.forEach((turn: any) => {
             restoredMessages.push({
               id: `user_${Date.now()}_${Math.random()}`,
@@ -648,12 +731,9 @@ export function AIControllerChat() {
             })
           })
 
-          setPlainChatMessages((prev) => [
-            ...prev.filter((msg) => msg.isClickableHistory),
-            ...restoredMessages,
-          ])
+          setPlainChatMessages(restoredMessages)
 
-          console.log('✅ Chat resumed successfully')
+          console.log('✅ Chat resumed successfully - ready to continue')
         }
       }
     } catch (error) {
@@ -673,7 +753,27 @@ export function AIControllerChat() {
       })
 
       // Remove from UI
-      setPlainChatMessages((prev) => prev.filter((msg) => msg.resumeSessionId !== sessionId))
+      setPlainChatMessages((prev) =>
+        prev.filter((msg) => !msg.isClickableHistory || msg.resumeSessionId !== sessionId),
+      )
+
+      // If the deleted session was the current active one, reset
+      if (plainChatSessionId === sessionId) {
+        setPlainChatSessionId('')
+        setPlainChatHistory([])
+        setIsPlainChatActive(false)
+
+        // Reset to welcome message only
+        const welcomeMessage: Message = {
+          id: '1',
+          content: session?.user
+            ? `Hi ${session.user.name}! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!`
+            : "Hi! 💬 I'm here to answer your questions with detailed responses. Feel free to ask me anything about my background, experience, or interests!",
+          role: 'assistant',
+          timestamp: new Date(),
+        }
+        setPlainChatMessages([welcomeMessage])
+      }
 
       console.log('✅ History deleted')
     } catch (error) {
@@ -1458,7 +1558,6 @@ export function AIControllerChat() {
               <AnimatePresence>
                 {plainChatMessages
                   .filter((msg) => msg.isClickableHistory)
-                  .reverse()
                   .map((historyMsg) => (
                     <motion.div
                       key={historyMsg.id}
@@ -1466,7 +1565,7 @@ export function AIControllerChat() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       className={`group mb-2 p-3 rounded-lg cursor-pointer transition-all ${
-                        historyMsg.resumeSessionId === plainChatSessionId
+                        historyMsg.resumeSessionId === plainChatSessionId && isPlainChatActive
                           ? 'bg-purple-600/30 border border-purple-500/50'
                           : 'bg-white/5 hover:bg-white/10 border border-transparent'
                       }`}
@@ -1475,7 +1574,7 @@ export function AIControllerChat() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-medium truncate">
-                            {historyMsg.content.replace('📝 ', '')}
+                            {historyMsg.content}
                           </p>
                           <p className="text-white/50 text-xs mt-1">
                             {new Date(historyMsg.timestamp).toLocaleDateString()}
