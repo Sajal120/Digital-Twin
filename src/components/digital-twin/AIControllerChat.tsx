@@ -1263,7 +1263,7 @@ export function AIControllerChat() {
     conversationSummary,
   ])
 
-  // Spacebar functionality for voice recording
+  // Spacebar functionality for voice recording - Push-to-talk pattern
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (
@@ -1271,28 +1271,24 @@ export function AIControllerChat() {
         isVoiceConversationActive &&
         event.code === 'Space' &&
         !event.repeat &&
-        !isLoading
+        !isLoading &&
+        !isPlaying
       ) {
         event.preventDefault()
-        if (isRecording) {
-          stopRecording()
-        } else if (isPlaying) {
-          stopAISpeech()
-        } else {
+        // Only start recording on keydown if not already recording
+        if (!isRecording) {
           startRecording()
         }
       }
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (
-        chatMode === 'voice_chat' &&
-        isVoiceConversationActive &&
-        event.code === 'Space' &&
-        isRecording
-      ) {
+      if (chatMode === 'voice_chat' && isVoiceConversationActive && event.code === 'Space') {
         event.preventDefault()
-        stopRecording()
+        // Stop recording on keyup if currently recording
+        if (isRecording) {
+          stopRecording()
+        }
       }
     }
 
@@ -1693,22 +1689,22 @@ export function AIControllerChat() {
         >
           {chatMode === 'voice_chat' ? (
             // Voice Chat Mode - Pure Voice Interface
-            <div className="flex flex-col items-center space-y-4">
+            <div className="flex flex-col items-center space-y-4 px-2 sm:px-0">
               {!isVoiceConversationActive ? (
                 // Start Conversation Mode - Compact
                 <>
-                  <div className="flex items-center justify-between gap-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 mb-3">
+                  <div className="flex items-center justify-between gap-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 mb-3 mx-2 sm:mx-0">
                     <div className="flex items-center gap-2">
                       <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
                         <Mic className="w-5 h-5 text-white" />
                       </div>
                       <div className="text-left">
                         <p className="text-white font-medium text-sm">🎙️ Voice Conversation</p>
-                        <p className="text-white/60 text-xs">💡 Press Space or Click Mic</p>
+                        <p className="text-white/60 text-xs">💡 Hold Space or Click Mic</p>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-center gap-3">
+                  <div className="flex items-center justify-center gap-3 flex-wrap px-2">
                     <motion.button
                       onClick={() => {
                         // Force page reload to completely reset state
@@ -1738,15 +1734,15 @@ export function AIControllerChat() {
                 // Active Conversation Mode
                 <>
                   {/* Voice Status */}
-                  <div className="text-center">
+                  <div className="text-center px-4">
                     <p className="text-white/70 text-sm">
                       {isRecording
                         ? '🎙️ Listening... Speak now! (Release Space to stop)'
                         : isLoading
                           ? '⚡ Processing with Deepgram + Cartesia...'
                           : isPlaying
-                            ? '🔊 AI is speaking... (Space/Click to stop)'
-                            : '🎯 Press Space or Click Mic to talk'}
+                            ? '🔊 AI is speaking...'
+                            : '🎯 Hold Space or Click Mic to talk'}
                     </p>
                   </div>
 
