@@ -44,7 +44,7 @@ export interface ActiveComponents {
 }
 
 // Chat mode for controlling intent detection
-export type ChatMode = 'ai_control' | 'plain_chat' | 'voice_chat'
+export type ChatMode = 'ai_control' | 'text_chat' | 'voice_chat'
 
 // Context state
 interface AIControlState {

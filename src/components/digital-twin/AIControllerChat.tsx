@@ -86,14 +86,14 @@ export function AIControllerChat() {
     {
       id: '1',
       content: session?.user
-        ? `Hi ${session.user.name}! 🤖 AI Control is for **Quick Actions only**:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor questions, please use **Plain Chat** mode! 💬`
-        : 'Hi! 🤖 AI Control is for **Quick Actions only**:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor questions, please use **Plain Chat** mode! 💬',
+        ? `Hi ${session.user.name}! 🤖 AI Control is for **Quick Actions only**:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor questions, please use **Text Chat** mode! 💬`
+        : 'Hi! 🤖 AI Control is for **Quick Actions only**:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor questions, please use **Text Chat** mode! 💬',
       role: 'assistant',
       timestamp: new Date(),
     },
   ])
 
-  const [plainChatMessages, setPlainChatMessages] = useState<Message[]>([
+  const [textChatMessages, setTextChatMessages] = useState<Message[]>([
     {
       id: '1',
       content: session?.user
@@ -347,7 +347,7 @@ export function AIControllerChat() {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           content:
-            '❌ AI Control mode only works with Quick Actions:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor general questions, please use **Plain Chat** mode! 💬',
+            '❌ AI Control mode only works with Quick Actions:\n\n• About\n• Experience\n• Skills\n• Projects\n• Contact\n\nFor general questions, please use **Text Chat** mode! 💬',
           role: 'assistant',
           timestamp: new Date(),
         }
@@ -1888,10 +1888,10 @@ export function AIControllerChat() {
                       ? 'bg-blue-600 text-white shadow-lg'
                       : 'text-gray-300 hover:text-white'
                   }`}
-                  title="Plain Chat: Detailed text responses + no UI changes"
+                  title="Text Chat: Detailed text responses + no UI changes"
                 >
-                  <span className="hidden sm:inline">💬 Plain Chat</span>
-                  <span className="sm:hidden">💬 Chat</span>
+                  <span className="hidden sm:inline">💬 Text Chat</span>
+                  <span className="sm:hidden">💬 Text</span>
                 </button>
                 <button
                   onClick={() => setChatMode('voice_chat')}
