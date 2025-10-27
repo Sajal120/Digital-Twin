@@ -271,9 +271,9 @@ export function AIControllerChat() {
     let useAIDetection = false // Flag to enable AI detection
 
     if (chatMode === 'plain_chat') {
-      // Quick pattern check first for obvious cases (fast path)
+      // Always use AI detection for maximum accuracy
+      // Pattern matching kept only for Unicode scripts (instant detection)
       const hasDevanagari = /[\u0900-\u097F]/.test(currentQuestion)
-      const hasSpanish = /[¿¡áéíóúñ]/.test(currentQuestion)
       const hasArabic = /[\u0600-\u06FF]/.test(currentQuestion)
       const hasChinese = /[\u4e00-\u9fff]/.test(currentQuestion)
       const hasJapanese = /[\u3040-\u309f\u30a0-\u30ff]/.test(currentQuestion)
@@ -287,26 +287,14 @@ export function AIControllerChat() {
       } else if (hasJapanese) {
         detectedLanguage = 'ja'
         console.log('🌐 Detected Japanese')
-      } else if (hasSpanish) {
-        detectedLanguage = 'es'
-        console.log('🌐 Detected Spanish')
       } else if (hasArabic) {
         detectedLanguage = 'ar'
         console.log('🌐 Detected Arabic')
       } else {
-        // For Roman script, use AI detection (handles Hinglish, mixed languages, etc.)
-        // Quick heuristic: Check for common Hinglish words first
-        const hindiWords =
-          /\b(kaise|kese|kaisa|kaisi|kya|hai|hain|ho|hoon|hun|tha|the|thi|main|mai|mein|me|aap|tum|tumhara|tumhari|mera|meri|tera|teri|uska|uski|yeh|yah|woh|wo|nahi|nahin|haan|ha|accha|acha|theek|thik|shukriya|dhanyavaad|namaste|namaskar|bhailog|dost|bhai|behen|timro|timi|tapai|cha|chha|mero|hamro|khelne|gareko|ramro|sahi|kata|kaha|kun|kasari|kina)\b/gi
-
-        if (hindiWords.test(currentQuestion)) {
-          detectedLanguage = 'hi' // Hinglish (Hindi written in Roman script)
-          console.log('🌐 Detected Hinglish (Hindi/Nepali in Roman script)')
-        } else {
-          // Enable AI detection for ambiguous cases
-          useAIDetection = true
-          console.log('🤖 Using AI to detect language...')
-        }
+        // For all Roman script text, use AI detection for 99% accuracy
+        // This includes: English, Spanish, French, Hinglish, mixed languages, etc.
+        useAIDetection = true
+        console.log('🤖 Using AI to detect language for Roman script text...')
       }
     }
 
@@ -1818,40 +1806,43 @@ export function AIControllerChat() {
                 <Phone className="w-5 h-5 text-white" />
               </button>
 
-              {/* Chat Mode Toggle */}
-              <div className="hidden sm:flex items-center space-x-1 bg-white/10 rounded-lg p-1">
+              {/* Chat Mode Toggle - Visible on Mobile */}
+              <div className="flex items-center space-x-1 bg-white/10 rounded-lg p-1">
                 <button
                   onClick={() => setChatMode('ai_control')}
-                  className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-medium transition-all ${
+                  className={`px-1.5 sm:px-3 py-1 rounded text-[9px] sm:text-xs font-medium transition-all whitespace-nowrap ${
                     chatMode === 'ai_control'
                       ? 'bg-purple-600 text-white shadow-lg'
                       : 'text-gray-300 hover:text-white'
                   }`}
                   title="AI Control: Brief responses + instant UI visualization"
                 >
-                  🤖 AI Control
+                  <span className="hidden sm:inline">🤖 AI Control</span>
+                  <span className="sm:hidden">🤖 AI</span>
                 </button>
                 <button
                   onClick={() => setChatMode('plain_chat')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  className={`px-1.5 sm:px-3 py-1 rounded text-[9px] sm:text-xs font-medium transition-all whitespace-nowrap ${
                     chatMode === 'plain_chat'
                       ? 'bg-blue-600 text-white shadow-lg'
                       : 'text-gray-300 hover:text-white'
                   }`}
                   title="Plain Chat: Detailed text responses + no UI changes"
                 >
-                  💬 Plain Chat
+                  <span className="hidden sm:inline">💬 Plain Chat</span>
+                  <span className="sm:hidden">💬 Chat</span>
                 </button>
                 <button
                   onClick={() => setChatMode('voice_chat')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  className={`px-1.5 sm:px-3 py-1 rounded text-[9px] sm:text-xs font-medium transition-all whitespace-nowrap ${
                     chatMode === 'voice_chat'
                       ? 'bg-green-600 text-white shadow-lg'
                       : 'text-gray-300 hover:text-white'
                   }`}
                   title="Voice Chat: Talk and listen - mobile optimized"
                 >
-                  🎙️ Voice Chat
+                  <span className="hidden sm:inline">🎙️ Voice Chat</span>
+                  <span className="sm:hidden">🎙️ Voice</span>
                 </button>
               </div>
 
