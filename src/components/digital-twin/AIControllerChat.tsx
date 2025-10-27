@@ -1690,7 +1690,7 @@ export function AIControllerChat() {
       >
         {/* ChatGPT-style Sidebar for Plain Chat */}
         {chatMode === 'plain_chat' && (
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-r border-white/10 flex flex-col">
+          <div className="hidden lg:flex absolute left-0 top-0 bottom-0 w-64 bg-slate-950/90 backdrop-blur-xl border-r border-white/10 flex-col">
             {/* Sidebar Header */}
             <div className="p-4 border-b border-white/10">
               <motion.button
@@ -1760,12 +1760,12 @@ export function AIControllerChat() {
         )}
 
         {/* Main Content Area - Adjusted for sidebar */}
-        <div className={chatMode === 'plain_chat' ? 'ml-64' : ''}>
+        <div className={chatMode === 'plain_chat' ? 'lg:ml-64' : ''}>
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <motion.div
-                className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
+                className="w-10 h-10 sm:w-14 sm:h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
                 animate={{
                   boxShadow:
                     voiceState === 'speaking'
@@ -1774,11 +1774,11 @@ export function AIControllerChat() {
                 }}
                 transition={{ duration: 1.5, repeat: voiceState === 'speaking' ? Infinity : 0 }}
               >
-                <Bot className="w-8 h-8 text-white" />
+                <Bot className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
               </motion.div>
               <div>
-                <h3 className="font-bold text-white text-xl">Sajal's Digital Twin</h3>
-                <p className="text-blue-100 text-sm">
+                <h3 className="font-bold text-white text-sm sm:text-xl">Sajal's Digital Twin</h3>
+                <p className="text-blue-100 text-xs sm:text-sm">
                   {voiceState === 'listening' && '🎙️ Listening...'}
                   {voiceState === 'speaking' && '🔊 Speaking...'}
                   {voiceState === 'processing' && '⚡ Processing...'}
@@ -1798,10 +1798,10 @@ export function AIControllerChat() {
               </button>
 
               {/* Chat Mode Toggle */}
-              <div className="flex items-center space-x-1 bg-white/10 rounded-lg p-1">
+              <div className="hidden sm:flex items-center space-x-1 bg-white/10 rounded-lg p-1">
                 <button
                   onClick={() => setChatMode('ai_control')}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                  className={`px-2 sm:px-3 py-1 rounded text-[10px] sm:text-xs font-medium transition-all ${
                     chatMode === 'ai_control'
                       ? 'bg-purple-600 text-white shadow-lg'
                       : 'text-gray-300 hover:text-white'
@@ -1846,7 +1846,7 @@ export function AIControllerChat() {
           {/* Messages - Hidden during active voice conversation */}
           {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
             <div
-              className={`overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96 h-[calc(100%-240px)]' : 'pb-32 h-[calc(100%-180px)]'}`}
+              className={`overflow-y-auto p-3 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96 h-[calc(100%-240px)]' : 'pb-32 h-[calc(100%-180px)]'}`}
               style={{ maxHeight: 'calc(100vh - 300px)' }}
             >
               <AnimatePresence>
@@ -1996,7 +1996,7 @@ export function AIControllerChat() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className={`absolute bottom-32 right-0 px-6 ${chatMode === 'plain_chat' ? 'left-64' : 'left-0'}`}
+                className={`absolute bottom-32 right-0 px-3 sm:px-6 ${chatMode === 'plain_chat' ? 'lg:left-64 left-0' : 'left-0'}`}
               >
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
                   <p className="text-white/70 text-sm mb-3 text-center">
@@ -2111,12 +2111,12 @@ export function AIControllerChat() {
 
           {/* Input */}
           <div
-            className={`fixed bottom-0 ${chatMode === 'plain_chat' ? 'left-64' : 'left-0'} right-0 p-4 sm:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
+            className={`fixed bottom-0 ${chatMode === 'plain_chat' ? 'lg:left-64 left-0' : 'left-0'} right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
             style={{ zIndex: 9999 }}
           >
             {chatMode === 'voice_chat' ? (
               // Voice Chat Mode - Pure Voice Interface
-              <div className="flex flex-col items-center space-y-4 px-2 sm:px-0">
+              <div className="flex flex-col items-center space-y-3 sm:space-y-4 px-3 sm:px-0">
                 {!isVoiceConversationActive ? (
                   // Start Conversation Mode - Compact
                   <>
