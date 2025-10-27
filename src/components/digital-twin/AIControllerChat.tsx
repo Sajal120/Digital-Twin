@@ -640,20 +640,43 @@ export function AIControllerChat() {
         // Fallback: Extract English words from question
         const firstQuestion = plainChatHistory[0].question.toLowerCase()
 
-        // First try: Look for specific keywords
+        // First try: Look for meaningful keywords (excluding generic words)
         const keywords = firstQuestion.match(
-          /\\b(football|soccer|sport|skill|experience|project|background|education|work|develop|build|create|design|play|game|professional|tell|about|your|my)\\w*/gi,
+          /\\b(football|soccer|sport|skill|experience|project|background|education|work|develop|build|create|design|play|game|professional|language|programming|technology|career|achievement|challenge|success|team|leadership|innovation)\\w*/gi,
         )
 
-        if (keywords && keywords.length >= 2) {
+        if (keywords && keywords.length >= 1) {
           // Use keywords, capitalize first letter
           title = keywords
             .slice(0, 3)
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
             .join(' ')
           console.log('📌 Title from keywords:', title)
         } else {
-          // Second try: Extract pure English words (filter out non-English)
+          // Second try: Extract pure English words (filter out non-English and common words)
+          const stopWords = [
+            'timro',
+            'timi',
+            'cha',
+            'ho',
+            'the',
+            'and',
+            'or',
+            'but',
+            'what',
+            'are',
+            'your',
+            'my',
+            'tell',
+            'about',
+            'can',
+            'you',
+            'how',
+            'why',
+            'when',
+            'where',
+            'who',
+          ]
           const words = firstQuestion
             .split(/\\s+/)
             .map((w) => w.replace(/[^a-z]/gi, '')) // Remove punctuation
@@ -661,13 +684,11 @@ export function AIControllerChat() {
               return (
                 word.length > 2 && // At least 3 chars
                 /^[a-z]+$/i.test(word) && // Only English letters
-                !['timro', 'timi', 'cha', 'ho', 'the', 'and', 'or', 'but'].includes(
-                  word.toLowerCase(),
-                )
+                !stopWords.includes(word.toLowerCase()) // Not a stop word
               )
             })
 
-          if (words.length >= 2) {
+          if (words.length >= 1) {
             title = words
               .slice(0, 3)
               .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
