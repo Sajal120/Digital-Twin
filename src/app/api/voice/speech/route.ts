@@ -2,9 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { detectLanguage } from '@/utils/languageDetection'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Initialize client lazily to avoid build-time errors
+let openai: OpenAI | null = null
+
+function getOpenAIClient() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 // Cartesia configuration (primary voice provider)
 const CARTESIA_API_KEY = process.env.CARTESIA_API_KEY
@@ -18,6 +26,8 @@ export async function POST(request: NextRequest) {
     url: request.url,
     headers: Object.fromEntries(request.headers.entries()),
   })
+
+  const openai = getOpenAIClient()
 
   try {
     let requestBody
@@ -154,6 +164,11 @@ async function generateCartesiaSpeech(text: string, language = 'auto') {
 
 async function generateOpenAISpeech(text: string, voice: string) {
   console.log('🔄 Using OpenAI TTS fallback (slower, more natural)')
+
+  const openai = getOpenAIClient()
+  if (!openai) {
+    throw new Error('OpenAI client not available')
+  }
 
   // Generate speech using OpenAI TTS with slower, more natural settings
   const mp3 = await openai.audio.speech.create({

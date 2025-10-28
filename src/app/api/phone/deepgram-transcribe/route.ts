@@ -1,12 +1,25 @@
 import { createClient } from '@deepgram/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 
-const deepgram = createClient(process.env.DEEPGRAM_API_KEY || '')
+// Initialize client lazily to avoid build-time errors
+let deepgram: ReturnType<typeof createClient> | null = null
+
+function getDeepgramClient() {
+  if (!deepgram && process.env.DEEPGRAM_API_KEY) {
+    deepgram = createClient(process.env.DEEPGRAM_API_KEY)
+  }
+  return deepgram
+}
 
 export async function POST(request: NextRequest) {
   console.log('🎤 Deepgram multilingual transcription endpoint called')
 
   try {
+    const deepgram = getDeepgramClient()
+    if (!deepgram) {
+      return NextResponse.json({ error: 'Deepgram API key not configured' }, { status: 500 })
+    }
+
     const body = await request.json()
     const { audioUrl } = body
 

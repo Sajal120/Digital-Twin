@@ -49,7 +49,14 @@ const getPayloadSecret = (): string => {
 const getDatabaseConnection = (): string => {
   const dbUrl = process.env.DATABASE_URL || process.env.DATABASE_URI
 
+  // During build time, allow a placeholder connection string
   if (!dbUrl) {
+    if (isBuildTime()) {
+      console.warn(
+        '⚠️ No DATABASE_URL found during build - using placeholder (runtime will need real URL)',
+      )
+      return 'postgresql://placeholder:placeholder@localhost:5432/placeholder'
+    }
     throw new Error('DATABASE_URL or DATABASE_URI environment variable is required')
   }
 

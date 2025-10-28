@@ -2,10 +2,25 @@ import { createClient } from '@deepgram/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-const deepgram = createClient(process.env.DEEPGRAM_API_KEY || '')
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Initialize clients lazily to avoid build-time errors
+let deepgram: ReturnType<typeof createClient> | null = null
+let openai: OpenAI | null = null
+
+function getDeepgramClient() {
+  if (!deepgram && process.env.DEEPGRAM_API_KEY) {
+    deepgram = createClient(process.env.DEEPGRAM_API_KEY)
+  }
+  return deepgram
+}
+
+function getOpenAIClient() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  }
+  return openai
+}
 
 export async function POST(request: NextRequest) {
   console.log('🎤 Voice Chat Transcription - Using Deepgram (fast & reliable)')
@@ -52,6 +67,11 @@ export async function POST(request: NextRequest) {
 
 async function transcribeWithOpenAI(audioFile: Blob) {
   console.log('🎤 Using OpenAI Whisper for transcription')
+
+  const openai = getOpenAIClient()
+  if (!openai) {
+    throw new Error('OpenAI client not available')
+  }
 
   console.log('🎤 Received audio blob:', {
     size: audioFile.size,
@@ -122,8 +142,10 @@ async function transcribeWithOpenAI(audioFile: Blob) {
 async function transcribeWithDeepgram(audioFile: Blob) {
   console.log('🎤 Using Deepgram for voice chat transcription')
 
+  const deepgram = getDeepgramClient()
+
   // Check for API key
-  if (!process.env.DEEPGRAM_API_KEY) {
+  if (!deepgram || !process.env.DEEPGRAM_API_KEY) {
     console.error('❌ DEEPGRAM_API_KEY not configured!')
     return NextResponse.json({ error: 'Deepgram API key not configured' }, { status: 500 })
   }
