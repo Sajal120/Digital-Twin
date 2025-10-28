@@ -122,15 +122,15 @@ export function AIControllerChat() {
   const messages =
     chatMode === 'ai_control'
       ? aiControlMessages
-      : chatMode === 'plain_chat'
-        ? plainChatMessages
+      : chatMode === 'text_chat'
+        ? textChatMessages
         : voiceChatMessages
 
   const setMessages =
     chatMode === 'ai_control'
       ? setAiControlMessages
-      : chatMode === 'plain_chat'
-        ? setPlainChatMessages
+      : chatMode === 'text_chat'
+        ? setTextChatMessages
         : setVoiceChatMessages
 
   useEffect(() => {
@@ -154,7 +154,7 @@ export function AIControllerChat() {
 
   // Load plain chat histories from memory API when switching to plain chat mode
   useEffect(() => {
-    if (chatMode === 'plain_chat') {
+    if (chatMode === 'text_chat') {
       loadPlainChatHistories()
     }
   }, [chatMode])
@@ -163,7 +163,7 @@ export function AIControllerChat() {
   useEffect(() => {
     // Only auto-save if we have an active plain chat session with at least 1 turn
     if (
-      chatMode === 'plain_chat' &&
+      chatMode === 'text_chat' &&
       isPlainChatActive &&
       plainChatHistory.length > 0 &&
       plainChatSessionId
@@ -254,14 +254,14 @@ export function AIControllerChat() {
 
     // For Plain Chat: Initialize session if not active (only once per conversation)
     let currentSessionId = plainChatSessionId
-    if (chatMode === 'plain_chat' && !plainChatSessionId) {
+    if (chatMode === 'text_chat' && !plainChatSessionId) {
       // Create new session only if we don't have one
       currentSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       console.log('🆕 Starting new plain chat session:', currentSessionId)
       setPlainChatSessionId(currentSessionId)
       setIsPlainChatActive(true)
       console.log('✅ Session activated with ID:', currentSessionId)
-    } else if (chatMode === 'plain_chat' && plainChatSessionId) {
+    } else if (chatMode === 'text_chat' && plainChatSessionId) {
       // Use existing session
       console.log('� Continuing existing session:', plainChatSessionId)
       currentSessionId = plainChatSessionId
@@ -272,7 +272,7 @@ export function AIControllerChat() {
     let detectedLanguage = 'en'
     let useAIDetection = false // Flag to enable AI detection
 
-    if (chatMode === 'plain_chat') {
+    if (chatMode === 'text_chat') {
       // Always use AI detection for maximum accuracy
       // Pattern matching kept only for Unicode scripts (instant detection)
       const hasDevanagari = /[\u0900-\u097F]/.test(currentQuestion)
@@ -374,7 +374,7 @@ export function AIControllerChat() {
             })),
           enhancedMode: true, // Always use enhanced mode for Plain Chat
           interviewType: 'general',
-          detectLanguage: chatMode === 'plain_chat' && useAIDetection, // Use AI detection only when needed
+          detectLanguage: chatMode === 'text_chat' && useAIDetection, // Use AI detection only when needed
           user: session?.user
             ? {
                 name: session.user.name,
@@ -405,7 +405,7 @@ export function AIControllerChat() {
       setMessages((prev) => [...prev, assistantMessage])
 
       // Track history for Plain Chat
-      if (chatMode === 'plain_chat') {
+      if (chatMode === 'text_chat') {
         setPlainChatHistory((prev) => {
           const newHistory = [
             ...prev,
@@ -564,8 +564,8 @@ export function AIControllerChat() {
             resumeSessionId: hist.sessionId,
           }))
 
-        // Update plainChatMessages with only history items (don't remove welcome message)
-        setPlainChatMessages((prev) => {
+        // Update textChatMessages with only history items (don't remove welcome message)
+        setTextChatMessages((prev) => {
           const nonHistoryMessages = prev.filter((msg) => !msg.isClickableHistory)
           return [...historyMessages, ...nonHistoryMessages]
         })
@@ -601,7 +601,7 @@ export function AIControllerChat() {
       timestamp: new Date(),
     }
 
-    setPlainChatMessages((prev) => {
+    setTextChatMessages((prev) => {
       // Keep all history items, only clear non-history messages
       const historyItems = prev.filter((msg) => msg.isClickableHistory)
       return [welcomeMessage, ...historyItems]
@@ -749,7 +749,7 @@ export function AIControllerChat() {
         memory: plainChatHistory,
         turnCount: plainChatHistory.length,
         title: title,
-        chatType: 'plain_chat',
+        chatType: 'text_chat',
         timestamp: new Date().toISOString(),
       }
 
@@ -794,7 +794,7 @@ export function AIControllerChat() {
 
       // Add to sidebar by updating messages with clickable history
       // First, remove any old history for this session
-      setPlainChatMessages((prev) => {
+      setTextChatMessages((prev) => {
         const withoutOldHistory = prev.filter(
           (msg) => !msg.isClickableHistory || msg.resumeSessionId !== currentSessionId,
         )
@@ -890,7 +890,7 @@ export function AIControllerChat() {
         })
 
         // CRITICAL: Preserve history items from sidebar when resuming
-        setPlainChatMessages((prev) => {
+        setTextChatMessages((prev) => {
           const historyItems = prev.filter((msg) => msg.isClickableHistory)
           return [...historyItems, ...restoredMessages]
         })
@@ -927,7 +927,7 @@ export function AIControllerChat() {
       }
 
       // Remove from UI
-      setPlainChatMessages((prev) =>
+      setTextChatMessages((prev) =>
         prev.filter((msg) => !msg.isClickableHistory || msg.resumeSessionId !== sessionId),
       )
 
@@ -946,7 +946,7 @@ export function AIControllerChat() {
           role: 'assistant',
           timestamp: new Date(),
         }
-        setPlainChatMessages([welcomeMessage])
+        setTextChatMessages([welcomeMessage])
       }
 
       console.log('✅ History deleted')
@@ -1703,7 +1703,7 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className={`relative w-full ${chatMode === 'plain_chat' ? 'max-w-7xl' : 'max-w-4xl'} bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
+        className={`relative w-full ${chatMode === 'text_chat' ? 'max-w-7xl' : 'max-w-4xl'} bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
         style={{
           height:
             chatMode === 'voice_chat' ? 'calc(100vh - 12rem)' : 'min(85vh, calc(100vh - 4rem))',
@@ -1713,7 +1713,7 @@ export function AIControllerChat() {
         animate={{ y: 0 }}
       >
         {/* ChatGPT-style Sidebar for Plain Chat */}
-        {chatMode === 'plain_chat' && (
+        {chatMode === 'text_chat' && (
           <>
             {/* Mobile Overlay */}
             {isMobileSidebarOpen && (
@@ -1762,7 +1762,7 @@ export function AIControllerChat() {
               {/* History List */}
               <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent p-2">
                 <AnimatePresence>
-                  {plainChatMessages
+                  {textChatMessages
                     .filter((msg) => msg.isClickableHistory)
                     .map((historyMsg) => (
                       <motion.div
@@ -1808,7 +1808,7 @@ export function AIControllerChat() {
                     ))}
                 </AnimatePresence>
 
-                {plainChatMessages.filter((msg) => msg.isClickableHistory).length === 0 && (
+                {textChatMessages.filter((msg) => msg.isClickableHistory).length === 0 && (
                   <div className="text-center text-white/40 text-sm mt-8 px-4">
                     <p>No chat history yet.</p>
                     <p className="mt-2">Start a new conversation!</p>
@@ -1820,12 +1820,12 @@ export function AIControllerChat() {
         )}
 
         {/* Main Content Area - Adjusted for sidebar */}
-        <div className={chatMode === 'plain_chat' ? 'lg:ml-64' : ''}>
+        <div className={chatMode === 'text_chat' ? 'lg:ml-64' : ''}>
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Hamburger Menu for Mobile - Only in Plain Chat */}
-              {chatMode === 'plain_chat' && (
+              {chatMode === 'text_chat' && (
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
                   className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -1882,9 +1882,9 @@ export function AIControllerChat() {
                   <span className="sm:hidden">🤖 AI</span>
                 </button>
                 <button
-                  onClick={() => setChatMode('plain_chat')}
+                  onClick={() => setChatMode('text_chat')}
                   className={`px-1.5 sm:px-3 py-1 rounded text-[9px] sm:text-xs font-medium transition-all whitespace-nowrap ${
-                    chatMode === 'plain_chat'
+                    chatMode === 'text_chat'
                       ? 'bg-blue-600 text-white shadow-lg'
                       : 'text-gray-300 hover:text-white'
                   }`}
@@ -1974,7 +1974,7 @@ export function AIControllerChat() {
                               ? () => {
                                   if (chatMode === 'voice_chat') {
                                     resumeConversation(message.resumeSessionId!)
-                                  } else if (chatMode === 'plain_chat') {
+                                  } else if (chatMode === 'text_chat') {
                                     resumePlainChat(message.resumeSessionId!)
                                   }
                                 }
@@ -2006,7 +2006,7 @@ export function AIControllerChat() {
                                       ) {
                                         if (chatMode === 'voice_chat') {
                                           deleteConversationHistory(message.resumeSessionId)
-                                        } else if (chatMode === 'plain_chat') {
+                                        } else if (chatMode === 'text_chat') {
                                           deletePlainChatHistory(message.resumeSessionId)
                                         }
                                       }
@@ -2069,7 +2069,7 @@ export function AIControllerChat() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className={`absolute bottom-32 right-0 px-3 sm:px-6 ${chatMode === 'plain_chat' ? 'lg:left-64 left-0' : 'left-0'}`}
+                className={`absolute bottom-32 right-0 px-3 sm:px-6 ${chatMode === 'text_chat' ? 'lg:left-64 left-0' : 'left-0'}`}
               >
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
                   <p className="text-white/70 text-sm mb-3 text-center">
@@ -2184,7 +2184,7 @@ export function AIControllerChat() {
 
           {/* Input */}
           <div
-            className={`fixed bottom-0 ${chatMode === 'plain_chat' ? 'lg:left-64 left-0' : 'left-0'} right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
+            className={`fixed bottom-0 ${chatMode === 'text_chat' ? 'lg:left-64 left-0' : 'left-0'} right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
             style={{ zIndex: 9999 }}
           >
             {chatMode === 'voice_chat' ? (

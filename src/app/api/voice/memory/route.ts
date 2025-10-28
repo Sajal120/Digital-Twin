@@ -10,7 +10,7 @@ const conversationSummaries = new Map<
     turnCount: number
     memory: Array<{ transcript?: string; response?: string; question?: string; answer?: string }>
     title?: string
-    chatType?: 'voice_chat' | 'plain_chat'
+    chatType?: 'voice_chat' | 'text_chat'
   }
 >()
 
