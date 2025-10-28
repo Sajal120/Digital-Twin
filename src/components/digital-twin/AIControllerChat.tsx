@@ -20,6 +20,7 @@ import {
 import { useSession } from 'next-auth/react'
 
 import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
+import { DragonBackground } from './DragonBackground'
 
 interface Message {
   id: string
@@ -1692,14 +1693,16 @@ export function AIControllerChat() {
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className="fixed inset-0 z-40 flex items-center justify-center p-4"
     >
-      {/* Backdrop */}
+      {/* Backdrop with Dragon Animation */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-      />
+        className="absolute inset-0 bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950"
+      >
+        <DragonBackground />
+      </motion.div>
 
       {/* Chat window */}
       <motion.div
