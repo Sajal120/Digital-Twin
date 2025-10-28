@@ -65,6 +65,9 @@ export function AIControllerChat() {
     }>
   >([])
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : false,
+  )
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const localAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -149,6 +152,16 @@ export function AIControllerChat() {
       }
     }
   }, [mediaRecorder])
+
+  // Track window resize for desktop/mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -1736,11 +1749,15 @@ export function AIControllerChat() {
             {/* Sidebar - Mobile Drawer + Desktop Always Visible */}
             <motion.div
               initial={false}
-              animate={{
-                x: isMobileSidebarOpen ? 0 : '-100%',
+              className="fixed lg:relative left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50"
+              style={{
+                transform: isDesktop
+                  ? 'translateX(0)'
+                  : isMobileSidebarOpen
+                    ? 'translateX(0)'
+                    : 'translateX(-100%)',
+                transition: 'transform 0.3s ease-out',
               }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed lg:relative left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 lg:translate-x-0"
             >
               {/* Sidebar Header */}
               <div className="p-4 border-b border-white/10">
