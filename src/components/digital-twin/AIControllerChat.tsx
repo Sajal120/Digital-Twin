@@ -21,6 +21,7 @@ import { useSession } from 'next-auth/react'
 
 import { useAIControl, detectIntent } from '@/contexts/AIControlContext'
 import { DragonBackground } from './DragonBackground'
+import { ChatboxDragon } from './ChatboxDragon'
 
 interface Message {
   id: string
@@ -1715,6 +1716,9 @@ export function AIControllerChat() {
         initial={{ y: 50 }}
         animate={{ y: 0 }}
       >
+        {/* Mini Dragon inside chatbox */}
+        <ChatboxDragon />
+
         {/* ChatGPT-style Sidebar for Text Chat */}
         {chatMode === 'text_chat' && (
           <>
@@ -1733,10 +1737,10 @@ export function AIControllerChat() {
             <motion.div
               initial={false}
               animate={{
-                x: isMobileSidebarOpen ? 0 : '-100%',
+                x: isMobileSidebarOpen || window.innerWidth >= 1024 ? 0 : '-100%',
               }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="flex absolute left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex-col z-50 lg:static lg:translate-x-0"
+              className="absolute left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 lg:static"
             >
               {/* Sidebar Header */}
               <div className="p-4 border-b border-white/10">
