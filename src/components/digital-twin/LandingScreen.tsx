@@ -119,7 +119,8 @@ export function LandingScreen() {
               <Sparkles className="w-8 h-8 text-purple-400" />
             </p>
             <p className="text-gray-400 text-lg">
-              Experience an AI-powered conversation about my work, skills, and projects
+              Experience an AI-powered conversation with my professional digital twin or explore my
+              portfolio
             </p>
           </motion.div>
 

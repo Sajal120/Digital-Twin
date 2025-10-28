@@ -46,12 +46,12 @@ export function AIControllerChat() {
   const [conversationSummary, setConversationSummary] = useState('')
   const [sessionId, setSessionId] = useState<string>('')
 
-  // Plain chat session management (similar to voice chat)
-  const [plainChatSessionId, setPlainChatSessionId] = useState<string>('')
-  const [plainChatHistory, setPlainChatHistory] = useState<
+  // Text chat session management (similar to voice chat)
+  const [textChatSessionId, setPlainChatSessionId] = useState<string>('')
+  const [textChatHistory, setPlainChatHistory] = useState<
     Array<{ question: string; answer: string; timestamp: Date }>
   >([])
-  const [isPlainChatActive, setIsPlainChatActive] = useState(false)
+  const [isTextChatActive, setIsPlainChatActive] = useState(false)
 
   // Sidebar history state - loaded from memory API
   const [sidebarHistories, setSidebarHistories] = useState<
@@ -152,31 +152,31 @@ export function AIControllerChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Load plain chat histories from memory API when switching to plain chat mode
+  // Load text chat histories from memory API when switching to text chat mode
   useEffect(() => {
     if (chatMode === 'text_chat') {
-      loadPlainChatHistories()
+      loadTextChatHistories()
     }
   }, [chatMode])
 
-  // Auto-save plain chat history after each conversation turn
+  // Auto-save text chat history after each conversation turn
   useEffect(() => {
-    // Only auto-save if we have an active plain chat session with at least 1 turn
+    // Only auto-save if we have an active text chat session with at least 1 turn
     if (
       chatMode === 'text_chat' &&
-      isPlainChatActive &&
-      plainChatHistory.length > 0 &&
-      plainChatSessionId
+      isTextChatActive &&
+      textChatHistory.length > 0 &&
+      textChatSessionId
     ) {
       // Debounce the save (wait 2 seconds after last message)
       const saveTimer = setTimeout(() => {
-        console.log('💾 Auto-saving plain chat history after', plainChatHistory.length, 'turns')
-        generatePlainChatHistory()
+        console.log('💾 Auto-saving text chat history after', textChatHistory.length, 'turns')
+        generateTextChatHistory()
       }, 2000)
 
       return () => clearTimeout(saveTimer)
     }
-  }, [plainChatHistory.length, isPlainChatActive, plainChatSessionId, chatMode])
+  }, [textChatHistory.length, isTextChatActive, textChatSessionId, chatMode])
 
   // Keyboard shortcuts for voice chat
   useEffect(() => {
@@ -252,23 +252,23 @@ export function AIControllerChat() {
     setInputValue('')
     setIsLoading(true)
 
-    // For Plain Chat: Initialize session if not active (only once per conversation)
-    let currentSessionId = plainChatSessionId
-    if (chatMode === 'text_chat' && !plainChatSessionId) {
+    // For Text Chat: Initialize session if not active (only once per conversation)
+    let currentSessionId = textChatSessionId
+    if (chatMode === 'text_chat' && !textChatSessionId) {
       // Create new session only if we don't have one
       currentSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      console.log('🆕 Starting new plain chat session:', currentSessionId)
+      console.log('🆕 Starting new text chat session:', currentSessionId)
       setPlainChatSessionId(currentSessionId)
       setIsPlainChatActive(true)
       console.log('✅ Session activated with ID:', currentSessionId)
-    } else if (chatMode === 'text_chat' && plainChatSessionId) {
+    } else if (chatMode === 'text_chat' && textChatSessionId) {
       // Use existing session
-      console.log('� Continuing existing session:', plainChatSessionId)
-      currentSessionId = plainChatSessionId
+      console.log('� Continuing existing session:', textChatSessionId)
+      currentSessionId = textChatSessionId
       setIsPlainChatActive(true) // Ensure it's active
     }
 
-    // Detect language in plain chat using AI (more accurate than pattern matching)
+    // Detect language in text chat using AI (more accurate than pattern matching)
     let detectedLanguage = 'en'
     let useAIDetection = false // Flag to enable AI detection
 
@@ -357,9 +357,9 @@ export function AIControllerChat() {
       }
     }
 
-    // For Plain Chat mode, ALWAYS call API - no brief responses
+    // For Text Chat mode, ALWAYS call API - no brief responses
 
-    // For Plain Chat mode OR AI Control mode without intent, get detailed response from API
+    // For Text Chat mode OR AI Control mode without intent, get detailed response from API
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -372,7 +372,7 @@ export function AIControllerChat() {
               role: m.role,
               content: m.content,
             })),
-          enhancedMode: true, // Always use enhanced mode for Plain Chat
+          enhancedMode: true, // Always use enhanced mode for Text Chat
           interviewType: 'general',
           detectLanguage: chatMode === 'text_chat' && useAIDetection, // Use AI detection only when needed
           user: session?.user
@@ -404,7 +404,7 @@ export function AIControllerChat() {
 
       setMessages((prev) => [...prev, assistantMessage])
 
-      // Track history for Plain Chat
+      // Track history for Text Chat
       if (chatMode === 'text_chat') {
         setPlainChatHistory((prev) => {
           const newHistory = [
@@ -415,14 +415,14 @@ export function AIControllerChat() {
               timestamp: new Date(),
             },
           ]
-          console.log('📝 Added to plain chat history, total turns:', newHistory.length)
+          console.log('📝 Added to text chat history, total turns:', newHistory.length)
           console.log('🔍 Current session ID:', currentSessionId)
-          console.log('🔍 isPlainChatActive:', isPlainChatActive)
+          console.log('🔍 isTextChatActive:', isTextChatActive)
           return newHistory
         })
       }
 
-      // This code path is only reached in Plain Chat or Voice Chat mode
+      // This code path is only reached in Text Chat or Voice Chat mode
       // (AI Control returns early with brief responses or error messages)
     } catch (error) {
       console.error('Error:', error)
@@ -503,16 +503,16 @@ export function AIControllerChat() {
     window.open('tel:+61278044137')
   }
 
-  // Plain Chat session management functions (similar to voice chat)
-  const loadPlainChatHistories = async () => {
+  // Text Chat session management functions (similar to voice chat)
+  const loadTextChatHistories = async () => {
     try {
-      console.log('📚 Loading all plain chat histories...')
+      console.log('📚 Loading all text chat histories...')
 
       let histories: any[] = []
 
       // Try loading from localStorage first (persistent backup)
       try {
-        const localData = localStorage.getItem('plainChatHistories')
+        const localData = localStorage.getItem('textChatHistories')
         if (localData) {
           const localHistories = JSON.parse(localData)
           if (Array.isArray(localHistories) && localHistories.length > 0) {
@@ -526,7 +526,7 @@ export function AIControllerChat() {
 
       // Also try loading from API (may have newer data)
       try {
-        const response = await fetch('/api/voice/memory?chatType=plain_chat', {
+        const response = await fetch('/api/voice/memory?chatType=text_chat', {
           method: 'GET',
         })
 
@@ -573,20 +573,20 @@ export function AIControllerChat() {
         console.log('✅ Sidebar updated with', historyMessages.length, 'history items')
       }
     } catch (error) {
-      console.error('❌ Failed to load plain chat histories:', error)
+      console.error('❌ Failed to load text chat histories:', error)
     }
   }
 
-  const startNewPlainChat = async () => {
-    console.log('💬 Starting NEW plain chat conversation...')
+  const startNewTextChat = async () => {
+    console.log('💬 Starting NEW text chat conversation...')
 
     // If there's an active chat with history, save it first
-    if (isPlainChatActive && plainChatHistory.length > 0) {
+    if (isTextChatActive && textChatHistory.length > 0) {
       console.log('💾 Saving current conversation before starting new...')
-      await generatePlainChatHistory()
+      await generateTextChatHistory()
     }
 
-    // Reset all plain chat state - NO pre-creating session ID
+    // Reset all text chat state - NO pre-creating session ID
     setPlainChatSessionId('') // Empty string - will be created on first message
     setIsPlainChatActive(false) // Not active yet
     setPlainChatHistory([]) // Clear history
@@ -607,26 +607,26 @@ export function AIControllerChat() {
       return [welcomeMessage, ...historyItems]
     })
 
-    console.log('✨ Ready for NEW plain chat session (will create session ID on first message)')
+    console.log('✨ Ready for NEW text chat session (will create session ID on first message)')
   }
 
-  const generatePlainChatHistory = async () => {
+  const generateTextChatHistory = async () => {
     try {
-      console.log('📝 Generating plain chat history...')
+      console.log('📝 Generating text chat history...')
 
-      if (plainChatHistory.length < 1) {
+      if (textChatHistory.length < 1) {
         console.log('⏭️ Chat too short, skipping history')
         return
       }
 
-      let currentSessionId = plainChatSessionId
+      let currentSessionId = textChatSessionId
       if (!currentSessionId || currentSessionId === '') {
         currentSessionId = `chat_emergency_${Date.now()}`
         setPlainChatSessionId(currentSessionId)
         console.log('🆘 Emergency session ID created:', currentSessionId)
       }
 
-      console.log(`🔍 Saving ${plainChatHistory.length} turns for session: ${currentSessionId}`)
+      console.log(`🔍 Saving ${textChatHistory.length} turns for session: ${currentSessionId}`)
 
       // Clean response text
       const cleanResponse = (text: string) => {
@@ -641,7 +641,7 @@ export function AIControllerChat() {
 
       // Generate meaningful title using smart extraction (no AI)
       let title = ''
-      const firstQuestion = plainChatHistory[0].question
+      const firstQuestion = textChatHistory[0].question
 
       console.log('🏷️ Generating meaningful title from question:', firstQuestion)
 
@@ -738,7 +738,7 @@ export function AIControllerChat() {
       console.log('🏷️ Final title:', title)
 
       // Build conversation history
-      const conversationText = plainChatHistory
+      const conversationText = textChatHistory
         .map((turn) => `👤 You: ${turn.question}\\n🤖 Me: ${cleanResponse(turn.answer)}`)
         .join('\\n\\n')
 
@@ -746,8 +746,8 @@ export function AIControllerChat() {
       const historyData = {
         sessionId: currentSessionId,
         summary: conversationText,
-        memory: plainChatHistory,
-        turnCount: plainChatHistory.length,
+        memory: textChatHistory,
+        turnCount: textChatHistory.length,
         title: title,
         chatType: 'text_chat',
         timestamp: new Date().toISOString(),
@@ -762,7 +762,7 @@ export function AIControllerChat() {
             ...historyData,
           }),
         })
-        console.log('💾 Plain chat history saved to memory')
+        console.log('💾 Text chat history saved to memory')
 
         // After saving, mark this session as completed (not active anymore)
         setIsPlainChatActive(false)
@@ -773,7 +773,7 @@ export function AIControllerChat() {
 
       // Also save to localStorage for persistence across page reloads
       try {
-        const localData = localStorage.getItem('plainChatHistories')
+        const localData = localStorage.getItem('textChatHistories')
         const existing = localData ? JSON.parse(localData) : []
         const index = existing.findIndex((h: any) => h.sessionId === currentSessionId)
 
@@ -787,7 +787,7 @@ export function AIControllerChat() {
           console.log('➕ Added to localStorage')
         }
 
-        localStorage.setItem('plainChatHistories', JSON.stringify(existing))
+        localStorage.setItem('textChatHistories', JSON.stringify(existing))
       } catch (localError) {
         console.warn('⚠️ localStorage save failed:', localError)
       }
@@ -815,19 +815,19 @@ export function AIControllerChat() {
 
       console.log('✅ History saved for sidebar display')
     } catch (error) {
-      console.error('❌ Failed to generate plain chat history:', error)
+      console.error('❌ Failed to generate text chat history:', error)
     }
   }
 
-  const resumePlainChat = async (sessionId: string) => {
+  const resumeTextChat = async (sessionId: string) => {
     try {
-      console.log('🔄 Resuming plain chat session:', sessionId)
+      console.log('🔄 Resuming text chat session:', sessionId)
 
       let data: any = null
 
       // Try loading from localStorage first
       try {
-        const localData = localStorage.getItem('plainChatHistories')
+        const localData = localStorage.getItem('textChatHistories')
         if (localData) {
           const histories = JSON.parse(localData)
           data = histories.find((h: any) => h.sessionId === sessionId)
@@ -902,9 +902,9 @@ export function AIControllerChat() {
     }
   }
 
-  const deletePlainChatHistory = async (sessionId: string) => {
+  const deleteTextChatHistory = async (sessionId: string) => {
     try {
-      console.log('🗑️ Deleting plain chat history:', sessionId)
+      console.log('🗑️ Deleting text chat history:', sessionId)
 
       // Remove from memory API
       await fetch('/api/voice/memory', {
@@ -915,11 +915,11 @@ export function AIControllerChat() {
 
       // Remove from localStorage
       try {
-        const localData = localStorage.getItem('plainChatHistories')
+        const localData = localStorage.getItem('textChatHistories')
         if (localData) {
           const histories = JSON.parse(localData)
           const filtered = histories.filter((h: any) => h.sessionId !== sessionId)
-          localStorage.setItem('plainChatHistories', JSON.stringify(filtered))
+          localStorage.setItem('textChatHistories', JSON.stringify(filtered))
           console.log('🗑️ Removed from localStorage')
         }
       } catch (localError) {
@@ -932,7 +932,7 @@ export function AIControllerChat() {
       )
 
       // If the deleted session was the current active one, reset
-      if (plainChatSessionId === sessionId) {
+      if (textChatSessionId === sessionId) {
         setPlainChatSessionId('')
         setPlainChatHistory([])
         setIsPlainChatActive(false)
@@ -1712,7 +1712,7 @@ export function AIControllerChat() {
         initial={{ y: 50 }}
         animate={{ y: 0 }}
       >
-        {/* ChatGPT-style Sidebar for Plain Chat */}
+        {/* ChatGPT-style Sidebar for Text Chat */}
         {chatMode === 'text_chat' && (
           <>
             {/* Mobile Overlay */}
@@ -1748,7 +1748,7 @@ export function AIControllerChat() {
                 </div>
                 <motion.button
                   onClick={() => {
-                    startNewPlainChat()
+                    startNewTextChat()
                     setIsMobileSidebarOpen(false)
                   }}
                   className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg text-white text-sm font-medium transition-all shadow-lg flex items-center justify-center gap-2"
@@ -1771,12 +1771,12 @@ export function AIControllerChat() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         className={`group mb-2 p-3 rounded-lg cursor-pointer transition-all ${
-                          historyMsg.resumeSessionId === plainChatSessionId && isPlainChatActive
+                          historyMsg.resumeSessionId === textChatSessionId && isTextChatActive
                             ? 'bg-purple-600/30 border border-purple-500/50'
                             : 'bg-white/5 hover:bg-white/10 border border-transparent'
                         }`}
                         onClick={() => {
-                          resumePlainChat(historyMsg.resumeSessionId!)
+                          resumeTextChat(historyMsg.resumeSessionId!)
                           setIsMobileSidebarOpen(false)
                         }}
                       >
@@ -1795,7 +1795,7 @@ export function AIControllerChat() {
                               if (
                                 window.confirm('Are you sure you want to delete this conversation?')
                               ) {
-                                deletePlainChatHistory(historyMsg.resumeSessionId!)
+                                deleteTextChatHistory(historyMsg.resumeSessionId!)
                               }
                             }}
                             className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
@@ -1824,7 +1824,7 @@ export function AIControllerChat() {
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Hamburger Menu for Mobile - Only in Plain Chat */}
+              {/* Hamburger Menu for Mobile - Only in Text Chat */}
               {chatMode === 'text_chat' && (
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
@@ -1975,7 +1975,7 @@ export function AIControllerChat() {
                                   if (chatMode === 'voice_chat') {
                                     resumeConversation(message.resumeSessionId!)
                                   } else if (chatMode === 'text_chat') {
-                                    resumePlainChat(message.resumeSessionId!)
+                                    resumeTextChat(message.resumeSessionId!)
                                   }
                                 }
                               : undefined
@@ -2007,7 +2007,7 @@ export function AIControllerChat() {
                                         if (chatMode === 'voice_chat') {
                                           deleteConversationHistory(message.resumeSessionId)
                                         } else if (chatMode === 'text_chat') {
-                                          deletePlainChatHistory(message.resumeSessionId)
+                                          deleteTextChatHistory(message.resumeSessionId)
                                         }
                                       }
                                     }
@@ -2131,7 +2131,7 @@ export function AIControllerChat() {
                         </button>
                       </>
                     ) : (
-                      // Plain Chat Mode: Question buttons
+                      // Text Chat Mode: Question buttons
                       <>
                         <button
                           onClick={() => {
