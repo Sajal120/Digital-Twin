@@ -1749,7 +1749,7 @@ export function AIControllerChat() {
             {/* Sidebar - Mobile Drawer + Desktop Always Visible */}
             <motion.div
               initial={false}
-              className="fixed lg:relative left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50"
+              className="fixed lg:relative left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 lg:rounded-l-3xl overflow-hidden"
               style={{
                 transform: isDesktop
                   ? 'translateX(0)'
@@ -1844,7 +1844,11 @@ export function AIControllerChat() {
         )}
 
         {/* Main Content Area - Flex-1 to take remaining space next to sidebar */}
-        <div className={chatMode === 'text_chat' ? 'flex-1 flex flex-col overflow-hidden' : ''}>
+        <div
+          className={
+            chatMode === 'text_chat' ? 'flex-1 flex flex-col overflow-hidden relative min-w-0' : ''
+          }
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
