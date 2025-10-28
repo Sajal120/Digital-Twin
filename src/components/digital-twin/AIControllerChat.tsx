@@ -1707,7 +1707,7 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
+        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'} ${chatMode === 'text_chat' ? 'flex' : ''}`}
         style={{
           height:
             chatMode === 'voice_chat' ? 'calc(100vh - 12rem)' : 'min(85vh, calc(100vh - 4rem))',
@@ -1733,14 +1733,14 @@ export function AIControllerChat() {
               />
             )}
 
-            {/* Sidebar - Mobile Drawer + Desktop Fixed */}
+            {/* Sidebar - Mobile Drawer + Desktop Always Visible */}
             <motion.div
               initial={false}
               animate={{
-                x: isMobileSidebarOpen || window.innerWidth >= 1024 ? 0 : '-100%',
+                x: isMobileSidebarOpen ? 0 : '-100%',
               }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 lg:static"
+              className="fixed lg:relative left-0 top-0 bottom-0 w-64 bg-slate-950/95 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 lg:translate-x-0"
             >
               {/* Sidebar Header */}
               <div className="p-4 border-b border-white/10">
@@ -1826,11 +1826,21 @@ export function AIControllerChat() {
           </>
         )}
 
-        {/* Main Content Area - No sidebar offset */}
-        <div>
+        {/* Main Content Area - Flex-1 to take remaining space next to sidebar */}
+        <div className={chatMode === 'text_chat' ? 'flex-1 flex flex-col overflow-hidden' : ''}>
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Hamburger Menu Button - Only visible on mobile in text chat mode */}
+              {chatMode === 'text_chat' && (
+                <button
+                  onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                  className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Toggle chat history"
+                >
+                  <Menu className="w-5 h-5 text-white" />
+                </button>
+              )}
               <motion.div
                 className="w-10 h-10 sm:w-14 sm:h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
                 animate={{
