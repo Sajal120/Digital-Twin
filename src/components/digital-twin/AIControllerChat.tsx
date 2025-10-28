@@ -1707,7 +1707,7 @@ export function AIControllerChat() {
 
       {/* Chat window */}
       <motion.div
-        className={`relative w-full ${chatMode === 'text_chat' ? 'max-w-7xl' : 'max-w-4xl'} bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
+        className={`relative w-full max-w-4xl bg-gradient-to-br from-slate-900/95 via-purple-900/95 to-slate-900/95 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden mobile-vh-fix z-10 ${chatMode === 'voice_chat' ? 'h-[calc(100vh-16rem)]' : 'h-[85vh] sm:h-[80vh] md:h-[80vh]'}`}
         style={{
           height:
             chatMode === 'voice_chat' ? 'calc(100vh - 12rem)' : 'min(85vh, calc(100vh - 4rem))',
@@ -1719,8 +1719,8 @@ export function AIControllerChat() {
         {/* Mini Dragon inside chatbox */}
         <ChatboxDragon />
 
-        {/* ChatGPT-style Sidebar for Text Chat */}
-        {chatMode === 'text_chat' && (
+        {/* ChatGPT-style Sidebar for Text Chat - DISABLED */}
+        {false && chatMode === 'text_chat' && (
           <>
             {/* Mobile Overlay */}
             {isMobileSidebarOpen && (
@@ -1826,21 +1826,11 @@ export function AIControllerChat() {
           </>
         )}
 
-        {/* Main Content Area - Adjusted for sidebar */}
-        <div className={chatMode === 'text_chat' ? 'lg:ml-64' : ''}>
+        {/* Main Content Area - No sidebar offset */}
+        <div>
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Hamburger Menu for Mobile - Only in Text Chat */}
-              {chatMode === 'text_chat' && (
-                <button
-                  onClick={() => setIsMobileSidebarOpen(true)}
-                  className="lg:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  aria-label="Open menu"
-                >
-                  <Menu className="w-5 h-5 text-white" />
-                </button>
-              )}
               <motion.div
                 className="w-10 h-10 sm:w-14 sm:h-14 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-lg"
                 animate={{
@@ -2076,7 +2066,7 @@ export function AIControllerChat() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className={`absolute bottom-32 right-0 px-3 sm:px-6 ${chatMode === 'text_chat' ? 'lg:left-64 left-0' : 'left-0'}`}
+                className="absolute bottom-32 right-0 left-0 px-3 sm:px-6"
               >
                 <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
                   <p className="text-white/70 text-sm mb-3 text-center">
@@ -2191,7 +2181,7 @@ export function AIControllerChat() {
 
           {/* Input */}
           <div
-            className={`fixed bottom-0 ${chatMode === 'text_chat' ? 'lg:left-64 left-0' : 'left-0'} right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999] ${chatMode === 'voice_chat' && !isVoiceConversationActive ? 'pb-8' : ''}`}
+            className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999]"
             style={{ zIndex: 9999 }}
           >
             {chatMode === 'voice_chat' ? (
