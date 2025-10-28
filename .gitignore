@@ -10,13 +10,17 @@ build/
 dist/
 dist / media
 
-# Environment variables
+# Environment variables - NEVER commit these!
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 *.env
+!.env.example
 
 # Database & Logs
 data/
@@ -27,6 +31,43 @@ server.log
 migration.log
 rag_testing.log
 validation.log
+
+# Development & Testing Scripts
+test-*.js
+test-*.cjs
+test-*.ps1
+test-*.sh
+debug-*.js
+debug-*.cjs
+comprehensive-test.*
+simple-test.*
+sync-*.js
+check-*.js
+complete-*.js
+find-*.js
+fix-*.js
+generate-*.js
+generate-*.cjs
+get-*.cjs
+list-*.cjs
+upload-*.js
+upload-*.cjs
+regenerate-*.cjs
+nuclear-*.js
+reset-*.js
+inspect-*.js
+validate-*.js
+verify-*.js
+update-*.js
+switch-*.js
+build-disable-*.js
+*.temp.js
+*.test.js
+
+# Audio files (temporary/testing)
+thinking_*.mp3
+test-audio.mp3
+*.test.mp3
 
 # IDE
 .vscode/settings.json

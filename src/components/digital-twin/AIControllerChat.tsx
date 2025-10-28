@@ -1719,8 +1719,8 @@ export function AIControllerChat() {
         {/* Mini Dragon inside chatbox */}
         <ChatboxDragon />
 
-        {/* ChatGPT-style Sidebar for Text Chat - DISABLED */}
-        {false && chatMode === 'text_chat' && (
+        {/* ChatGPT-style Sidebar for Text Chat - Mobile-style for all screens */}
+        {chatMode === 'text_chat' && (
           <>
             {/* Mobile Overlay */}
             {isMobileSidebarOpen && (
@@ -2059,9 +2059,65 @@ export function AIControllerChat() {
             </div>
           )}
 
-          {/* Quick Action Buttons - Different for each mode - Only show when no conversation yet */}
-          {messages.filter((m) => !m.isClickableHistory).length <= 1 &&
-            chatMode !== 'voice_chat' && (
+          {/* Quick Action Buttons - Always show in text chat mode like mobile */}
+          {chatMode === 'text_chat' ? (
+            // Text Chat Mode: Always show Quick Questions like mobile
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="absolute bottom-28 right-0 left-0 px-3 sm:px-6"
+            >
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+                <p className="text-white/70 text-sm mb-3 text-center">Quick Questions:</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <button
+                    onClick={() => {
+                      setInputValue('What are your key skills and technical expertise?')
+                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                      handleSubmit(fakeEvent)
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                  >
+                    💡 Skills
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInputValue('Tell me about your professional experience and background')
+                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                      handleSubmit(fakeEvent)
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                  >
+                    💼 Experience
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInputValue('What projects have you worked on recently?')
+                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                      handleSubmit(fakeEvent)
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                  >
+                    🚀 Projects
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInputValue('How can I get in touch with you?')
+                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                      handleSubmit(fakeEvent)
+                    }}
+                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                  >
+                    📧 Contact
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            // AI Control Mode: Only show when no conversation yet
+            messages.filter((m) => !m.isClickableHistory).length <= 1 &&
+            chatMode === 'ai_control' && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -2177,7 +2233,8 @@ export function AIControllerChat() {
                   </div>
                 </div>
               </motion.div>
-            )}
+            )
+          )}
 
           {/* Input */}
           <div
