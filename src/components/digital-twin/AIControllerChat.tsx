@@ -47,11 +47,11 @@ export function AIControllerChat() {
   const [sessionId, setSessionId] = useState<string>('')
 
   // Text chat session management (similar to voice chat)
-  const [textChatSessionId, setPlainChatSessionId] = useState<string>('')
-  const [textChatHistory, setPlainChatHistory] = useState<
+  const [textChatSessionId, setTextChatSessionId] = useState<string>('')
+  const [textChatHistory, setTextChatHistory] = useState<
     Array<{ question: string; answer: string; timestamp: Date }>
   >([])
-  const [isTextChatActive, setIsPlainChatActive] = useState(false)
+  const [isTextChatActive, setIsTextChatActive] = useState(false)
 
   // Sidebar history state - loaded from memory API
   const [sidebarHistories, setSidebarHistories] = useState<
@@ -258,14 +258,14 @@ export function AIControllerChat() {
       // Create new session only if we don't have one
       currentSessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       console.log('🆕 Starting new text chat session:', currentSessionId)
-      setPlainChatSessionId(currentSessionId)
-      setIsPlainChatActive(true)
+      setTextChatSessionId(currentSessionId)
+      setIsTextChatActive(true)
       console.log('✅ Session activated with ID:', currentSessionId)
     } else if (chatMode === 'text_chat' && textChatSessionId) {
       // Use existing session
       console.log('� Continuing existing session:', textChatSessionId)
       currentSessionId = textChatSessionId
-      setIsPlainChatActive(true) // Ensure it's active
+      setIsTextChatActive(true) // Ensure it's active
     }
 
     // Detect language in text chat using AI (more accurate than pattern matching)
@@ -406,7 +406,7 @@ export function AIControllerChat() {
 
       // Track history for Text Chat
       if (chatMode === 'text_chat') {
-        setPlainChatHistory((prev) => {
+        setTextChatHistory((prev) => {
           const newHistory = [
             ...prev,
             {
@@ -587,9 +587,9 @@ export function AIControllerChat() {
     }
 
     // Reset all text chat state - NO pre-creating session ID
-    setPlainChatSessionId('') // Empty string - will be created on first message
-    setIsPlainChatActive(false) // Not active yet
-    setPlainChatHistory([]) // Clear history
+    setTextChatSessionId('') // Empty string - will be created on first message
+    setIsTextChatActive(false) // Not active yet
+    setTextChatHistory([]) // Clear history
 
     // Clear current chat messages BUT KEEP history items in sidebar
     const welcomeMessage: Message = {
@@ -622,7 +622,7 @@ export function AIControllerChat() {
       let currentSessionId = textChatSessionId
       if (!currentSessionId || currentSessionId === '') {
         currentSessionId = `chat_emergency_${Date.now()}`
-        setPlainChatSessionId(currentSessionId)
+        setTextChatSessionId(currentSessionId)
         console.log('🆘 Emergency session ID created:', currentSessionId)
       }
 
@@ -765,7 +765,7 @@ export function AIControllerChat() {
         console.log('💾 Text chat history saved to memory')
 
         // After saving, mark this session as completed (not active anymore)
-        setIsPlainChatActive(false)
+        setIsTextChatActive(false)
         console.log('✅ Session marked as completed:', currentSessionId)
       } catch (error) {
         console.error('❌ Failed to save to memory:', error)
@@ -858,9 +858,9 @@ export function AIControllerChat() {
         console.log('✅ Loaded chat history:', data.memory.length, 'turns')
 
         // Restore the conversation state
-        setPlainChatHistory(data.memory)
-        setPlainChatSessionId(sessionId)
-        setIsPlainChatActive(true) // Mark as active for continuation
+        setTextChatHistory(data.memory)
+        setTextChatSessionId(sessionId)
+        setIsTextChatActive(true) // Mark as active for continuation
 
         // Clear current messages and rebuild from history
         const welcomeMessage: Message = {
@@ -933,9 +933,9 @@ export function AIControllerChat() {
 
       // If the deleted session was the current active one, reset
       if (textChatSessionId === sessionId) {
-        setPlainChatSessionId('')
-        setPlainChatHistory([])
-        setIsPlainChatActive(false)
+        setTextChatSessionId('')
+        setTextChatHistory([])
+        setIsTextChatActive(false)
 
         // Reset to welcome message only
         const welcomeMessage: Message = {
