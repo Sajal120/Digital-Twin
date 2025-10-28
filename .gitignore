@@ -23,7 +23,7 @@ dist / media
 !.env.example
 
 # Database & Logs
-data/
+/data/
 *.sqlite
 *.db
 *.log
