@@ -1846,11 +1846,13 @@ export function AIControllerChat() {
         {/* Main Content Area - Flex-1 to take remaining space next to sidebar */}
         <div
           className={
-            chatMode === 'text_chat' ? 'flex-1 flex flex-col overflow-hidden relative min-w-0' : ''
+            chatMode === 'text_chat'
+              ? 'flex-1 flex flex-col overflow-hidden relative min-w-0'
+              : 'flex flex-col h-full'
           }
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 sm:p-6 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Hamburger Menu Button - Only visible on mobile in text chat mode */}
               {chatMode === 'text_chat' && (
@@ -1947,8 +1949,7 @@ export function AIControllerChat() {
           {/* Messages - Hidden during active voice conversation */}
           {!(chatMode === 'voice_chat' && isVoiceConversationActive) && (
             <div
-              className={`overflow-y-auto p-3 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96 h-[calc(100%-240px)]' : 'pb-32 h-[calc(100%-180px)]'}`}
-              style={{ maxHeight: 'calc(100vh - 300px)' }}
+              className={`flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent ${chatMode === 'voice_chat' ? 'pb-96' : 'pb-32'}`}
             >
               <AnimatePresence>
                 {messages
@@ -2091,186 +2092,186 @@ export function AIControllerChat() {
           )}
 
           {/* Quick Action Buttons - Always show in text chat mode like mobile */}
-          {chatMode === 'text_chat' ? (
-            // Text Chat Mode: Always show Quick Questions like mobile
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-28 right-0 left-0 px-3 sm:px-6"
-            >
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
-                <p className="text-white/70 text-sm mb-3 text-center">Quick Questions:</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <button
-                    onClick={() => {
-                      setInputValue('What are your key skills and technical expertise?')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    💡 Skills
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('Tell me about your professional experience and background')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    💼 Experience
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('What projects have you worked on recently?')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    🚀 Projects
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInputValue('How can I get in touch with you?')
-                      const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                      handleSubmit(fakeEvent)
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                  >
-                    📧 Contact
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            // AI Control Mode: Only show when no conversation yet
-            messages.filter((m) => !m.isClickableHistory).length <= 1 &&
-            chatMode === 'ai_control' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="absolute bottom-32 right-0 left-0 px-3 sm:px-6"
-              >
-                <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
-                  <p className="text-white/70 text-sm mb-3 text-center">
-                    {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
-                  </p>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                    {chatMode === 'ai_control' ? (
-                      // AI Control Mode: Visual action buttons
-                      <>
-                        <button
-                          onClick={() => {
-                            setInputValue('show me about section')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          About
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue('show me your experience')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          Experience
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue('show me your skills')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          Skills
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue('show me your projects')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          Projects
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue('show me your contact')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          Contact
-                        </button>
-                      </>
-                    ) : (
-                      // Text Chat Mode: Question buttons
-                      <>
-                        <button
-                          onClick={() => {
-                            setInputValue('What are your key skills and technical expertise?')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          💡 Skills
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue(
-                              'Tell me about your professional experience and background',
-                            )
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          💼 Experience
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue('What projects have you worked on recently?')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          🚀 Projects
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputValue('How can I get in touch with you?')
-                            const fakeEvent = { preventDefault: () => {} } as React.FormEvent
-                            handleSubmit(fakeEvent)
-                          }}
-                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
-                        >
-                          📧 Contact
-                        </button>
-                      </>
-                    )}
+          {chatMode === 'text_chat'
+            ? // Text Chat Mode: Show Quick Questions only when no conversation yet
+              messages.filter((m) => !m.isClickableHistory).length <= 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="absolute bottom-28 right-0 left-0 px-3 sm:px-6"
+                >
+                  <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+                    <p className="text-white/70 text-sm mb-3 text-center">Quick Questions:</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <button
+                        onClick={() => {
+                          setInputValue('What are your key skills and technical expertise?')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        💡 Skills
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('Tell me about your professional experience and background')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        💼 Experience
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('What projects have you worked on recently?')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        🚀 Projects
+                      </button>
+                      <button
+                        onClick={() => {
+                          setInputValue('How can I get in touch with you?')
+                          const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                          handleSubmit(fakeEvent)
+                        }}
+                        className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                      >
+                        📧 Contact
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            )
-          )}
+                </motion.div>
+              )
+            : // AI Control Mode: Only show when no conversation yet
+              messages.filter((m) => !m.isClickableHistory).length <= 1 &&
+              chatMode === 'ai_control' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  className="absolute bottom-32 right-0 left-0 px-3 sm:px-6"
+                >
+                  <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10">
+                    <p className="text-white/70 text-sm mb-3 text-center">
+                      {chatMode === 'ai_control' ? 'Quick Actions:' : 'Quick Questions:'}
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                      {chatMode === 'ai_control' ? (
+                        // AI Control Mode: Visual action buttons
+                        <>
+                          <button
+                            onClick={() => {
+                              setInputValue('show me about section')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            About
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue('show me your experience')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            Experience
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue('show me your skills')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            Skills
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue('show me your projects')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            Projects
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue('show me your contact')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            Contact
+                          </button>
+                        </>
+                      ) : (
+                        // Text Chat Mode: Question buttons
+                        <>
+                          <button
+                            onClick={() => {
+                              setInputValue('What are your key skills and technical expertise?')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            💡 Skills
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue(
+                                'Tell me about your professional experience and background',
+                              )
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            💼 Experience
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue('What projects have you worked on recently?')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            🚀 Projects
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInputValue('How can I get in touch with you?')
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+                              handleSubmit(fakeEvent)
+                            }}
+                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg text-sm font-medium transition-all"
+                          >
+                            📧 Contact
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
           {/* Input */}
           <div
-            className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom z-[9999]"
-            style={{ zIndex: 9999 }}
+            className={`p-3 sm:p-4 md:p-6 bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 safe-area-inset-bottom ${chatMode === 'text_chat' ? 'flex-shrink-0 border-t border-white/10' : 'fixed bottom-0 left-0 right-0 z-[9999]'}`}
+            style={chatMode !== 'text_chat' ? { zIndex: 9999 } : {}}
           >
             {chatMode === 'voice_chat' ? (
               // Voice Chat Mode - Pure Voice Interface
