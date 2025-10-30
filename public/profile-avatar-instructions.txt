@@ -1,1 +1,0 @@
-Please place your 3D avatar image as profile-avatar.png in the public folder
